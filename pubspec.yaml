@@ -1,0 +1,35 @@
+name: fuel_cal
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+  change_app_package_name: ^1.4.0
+  flutter_lints: ^3.0.0 # Keep only this one entry for flutter_lints
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+flutter:
+  uses-material-design: true
+
+  #assets:
+  #  - assets/icon/trash_icon.png # Make sure this path is correct based on where you put the image
+    # If app_icon.png is also in assets/icons/, you might list it here:
+    # - assets/icon/app_icon.png # Only needed if app_icon.png is also used directly in your Flutter code as an asset
