@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For input formatters
+import 'package:fuel_cal/currency_selection_page.dart';
+import 'package:fuel_cal/services/currency_service.dart'; // Import the service
 
 // Helper function to format numbers
 String _formatNumber(double number) {
@@ -13,88 +15,140 @@ String _formatNumber(double number) {
 }
 
 void main() {
+  // Ensure Flutter widgets are initialized before running the app
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const FuelCalculatorApp());
 }
 
-class FuelCalculatorApp extends StatelessWidget {
+class FuelCalculatorApp extends StatefulWidget {
   const FuelCalculatorApp({super.key});
+
+  @override
+  State<FuelCalculatorApp> createState() => _FuelCalculatorAppState();
+}
+
+class _FuelCalculatorAppState extends State<FuelCalculatorApp> {
+  bool _isFirstLaunch = true;
+  String _selectedCurrencyCode = '';
+  String _selectedCurrencySymbol = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFirstLaunchAndLoadCurrency();
+  }
+
+  Future<void> _checkFirstLaunchAndLoadCurrency() async {
+    String? currency = await CurrencyService.getCurrency(); // currency is String?, can be null
+
+    setState(() {
+      // FIX: Handle `currency` being null or empty safely
+      // If currency is null OR if it's an empty string, consider it a first launch.
+      if (currency == null || currency.isEmpty) {
+        _isFirstLaunch = true;
+        _selectedCurrencyCode = ''; // Ensure non-nullable strings are initialized to a default
+        _selectedCurrencySymbol = ''; // Ensure non-nullable strings are initialized to a default
+      } else {
+        // If we are in this 'else' block, 'currency' is guaranteed to be a non-null, non-empty String.
+        _isFirstLaunch = false;
+        _selectedCurrencyCode = currency; // Safe to assign now (String? to String)
+        _selectedCurrencySymbol = CurrencyService.getCurrencySymbol(currency); // Safe to pass now (String? to String)
+      }
+    });
+  }
+
+  void _onCurrencySelected() {
+    setState(() {
+      // No need to explicitly set _isFirstLaunch = false here,
+      // _checkFirstLaunchAndLoadCurrency will handle it based on loaded currency.
+      _checkFirstLaunchAndLoadCurrency(); // Re-fetch the currency after selection
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // Hide the debug banner
+      debugShowCheckedModeBanner: false,
       title: 'Fuel Calculator',
       theme: ThemeData(
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        // Define text theme for consistent styling
         textTheme: const TextTheme(
           displayLarge: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
-          // titleLarge is kept at 28.0 here, but overridden locally on pages
           titleLarge: TextStyle(fontSize: 28.0, fontWeight: FontWeight.bold, color: Colors.black87),
           titleMedium: TextStyle(fontSize: 22.0, fontWeight: FontWeight.bold, color: Colors.green), // Adjusted for result titles
           bodyMedium: TextStyle(fontSize: 16.0, color: Colors.black87),
         ),
-        // Define button theme with gradient and shadow
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            // NOTE: This global padding/textStyle will be overridden for the Clear button locally
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15), // More rounded corners
+              borderRadius: BorderRadius.circular(15),
             ),
             textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-            backgroundColor: Colors.transparent, // Set to transparent to show the gradient
+            backgroundColor: Colors.transparent, // Set the background to transparent for gradient
             shadowColor: Colors.black.withOpacity(0.3),
-            elevation: 8, // Add more elevation for shadow
+            elevation: 8,
           ).copyWith(
             overlayColor: MaterialStateProperty.resolveWith<Color?>(
-                  (Set<MaterialState> states) {
-                if (states.contains(MaterialState.pressed)) {
-                  return Colors.green.shade700.withOpacity(0.2); // Darker on press
-                }
-                return null; // Defer to the widget's default.
-              },
-            ),
+                (Set<MaterialState> states) {
+              if (states.contains(MaterialState.pressed)) {
+                return Colors.green.shade700.withOpacity(0.2); // Darker on press
+              }
+              return null; // Defer to the widget's default.
+            }),
           ),
         ),
-        // Define input decoration theme
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white, // White background for input fields
+          fillColor: Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), // More rounded
-            borderSide: BorderSide.none, // No default border
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.green, width: 2.0), // Green border on focus
+            borderSide: const BorderSide(color: Colors.green, width: 2.0),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0), // Light grey border when enabled
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
           ),
           labelStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
           hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14.0),
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         ),
-        // Card theme with subtle shadow
-        cardTheme: CardTheme(
-          elevation: 8, // Increased elevation for card shadow
+        cardTheme: CardThemeData(
+          elevation: 8,
           shadowColor: Colors.black.withOpacity(0.1),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20), // More rounded card corners
+            borderRadius: BorderRadius.circular(20),
           ),
           margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
         ),
       ),
-      home: const FuelCalculatorHomePage(),
+      home: _isFirstLaunch
+          ? CurrencySelectionPage(onCurrencySelected: _onCurrencySelected)
+          : FuelCalculatorHomePage(
+              selectedCurrencySymbol: _selectedCurrencySymbol,
+              selectedCurrencyCode: _selectedCurrencyCode,
+              onCurrencyChanged: _onCurrencySelected,
+            ),
     );
   }
 }
 
 class FuelCalculatorHomePage extends StatefulWidget {
-  const FuelCalculatorHomePage({super.key});
+  final String selectedCurrencySymbol;
+  final String selectedCurrencyCode;
+  final VoidCallback onCurrencyChanged;
+
+  const FuelCalculatorHomePage({
+    super.key,
+    required this.selectedCurrencySymbol,
+    required this.selectedCurrencyCode,
+    required this.onCurrencyChanged,
+  });
 
   @override
   State<FuelCalculatorHomePage> createState() => _FuelCalculatorHomePageState();
@@ -102,21 +156,31 @@ class FuelCalculatorHomePage extends StatefulWidget {
 
 class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
   int _selectedIndex = 0;
-
   final PageController _pageController = PageController();
 
-  static const List<Widget> _pages = <Widget>[
-    EfficiencyCalculatorPage(),
-    TripCostCalculatorPage(),
-    FuelNeededCalculatorPage(),
-    MaxDistanceCalculatorPage(),
-  ];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = <Widget>[
+      const EfficiencyCalculatorPage(),
+      TripCostCalculatorPage(selectedCurrencySymbol: widget.selectedCurrencySymbol),
+      FuelNeededCalculatorPage(selectedCurrencySymbol: widget.selectedCurrencySymbol),
+      const MaxDistanceCalculatorPage(),
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
       _pageController.jumpToPage(index);
     });
+  }
+
+  void _navigateToCurrencySelection() async {
+    await CurrencyService.clearCurrency();
+    widget.onCurrencyChanged();
   }
 
   @override
@@ -128,12 +192,51 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100, // Light grey background for the whole app
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text('Fuel Calculator', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.green, // Solid green app bar
+        title: const Text(
+          'Fuel Calculator',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 24.0,
+          ),
+        ),
+        centerTitle: false,
+        backgroundColor: Colors.green,
         elevation: 0,
-        centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 15.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.selectedCurrencyCode.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      widget.selectedCurrencyCode,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.compare_arrows, color: Colors.white), // Changed to a more generic "exchange" icon
+                  onPressed: _navigateToCurrencySelection,
+                  tooltip: 'Change Currency',
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: PageView(
         controller: _pageController,
@@ -176,6 +279,7 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
   }
 }
 
+
 // --- Page 1: Efficiency Calculator ---
 class EfficiencyCalculatorPage extends StatefulWidget {
   const EfficiencyCalculatorPage({super.key});
@@ -194,8 +298,7 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage> wit
   bool get wantKeepAlive => true;
 
   void _calculateEfficiency() {
-    // Dismiss the keyboard and unfocus any text field
-    FocusScope.of(context).unfocus(); // ADDED THIS LINE
+    FocusScope.of(context).unfocus();
 
     double distance = double.tryParse(_distanceController.text) ?? 0.0;
     double fuelUsed = double.tryParse(_fuelUsedController.text) ?? 0.0;
@@ -259,7 +362,6 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage> wit
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // Page Title
           Column(
             children: [
               RichText(
@@ -357,23 +459,22 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage> wit
                         ),
                       ),
                       const SizedBox(width: 15),
-                      // Clear Button with Google Material refresh icon
                       SizedBox(
-                        width: 45, // Reduced width
-                        height: 45, // Reduced height
+                        width: 45,
+                        height: 45,
                         child: ElevatedButton(
                           onPressed: _clearFields,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade800, // Dark blue background
-                            shadowColor: Colors.black.withOpacity(0.2), // Subtle shadow
-                            shape: const CircleBorder(), // Make it circular
-                            padding: EdgeInsets.zero, // No padding on the button itself
-                            elevation: 4, // Add some elevation
+                            backgroundColor: Colors.red.shade800,
+                            shadowColor: Colors.black.withOpacity(0.2),
+                            shape: const CircleBorder(),
+                            padding: EdgeInsets.zero,
+                            elevation: 4,
                           ),
                           child: const Icon(
-                            Icons.refresh, // Google Material Design refresh icon
+                            Icons.refresh,
                             size: 24, // Reduced size
-                            color: Colors.white, // White color for the icon
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -385,7 +486,6 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage> wit
           ),
           const SizedBox(height: 30),
 
-          // Conditional Results Display
           if (_fuelEfficiency > 0.0 || _efficiencyRating.isNotEmpty)
             Column(
               children: [
@@ -414,7 +514,7 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage> wit
                             ],
                           ),
                           CircularProgressIndicator(
-                            value: _fuelEfficiency / 60,
+                            value: _fuelEfficiency / 60, // Arbitrary max value for progress (e.g., 60 KM/L)
                             backgroundColor: Colors.green.shade100,
                             valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
                             strokeWidth: 5,
@@ -452,7 +552,8 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage> wit
 
 // --- Page 2: Trip Cost Calculator ---
 class TripCostCalculatorPage extends StatefulWidget {
-  const TripCostCalculatorPage({super.key});
+  final String selectedCurrencySymbol;
+  const TripCostCalculatorPage({super.key, required this.selectedCurrencySymbol});
 
   @override
   State<TripCostCalculatorPage> createState() => _TripCostCalculatorPageState();
@@ -472,8 +573,7 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
   bool get wantKeepAlive => true;
 
   void _calculateTripCost() {
-    // Dismiss the keyboard and unfocus any text field
-    FocusScope.of(context).unfocus(); // ADDED THIS LINE
+    FocusScope.of(context).unfocus();
 
     double tripDistance = double.tryParse(_tripDistanceController.text) ?? 0.0;
     double fuelPrice = double.tryParse(_fuelPriceController.text) ?? 0.0;
@@ -522,7 +622,6 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // Page Title
           Column(
             children: [
               RichText(
@@ -533,7 +632,7 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
                   children: <InlineSpan>[
                     WidgetSpan(
                       alignment: PlaceholderAlignment.middle,
-                      child: Icon(Icons.attach_money, size: 28.0, color: Colors.green.shade600),
+                      child: Icon(Icons.attach_money, size: 28.0, color: Colors.green.shade600), // Generic money icon for title
                     ),
                   ],
                 ),
@@ -546,8 +645,6 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
             ],
           ),
           const SizedBox(height: 30),
-
-          // Input Fields Card
           Card(
             child: Container(
               decoration: BoxDecoration(
@@ -579,10 +676,21 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
                   TextField(
                     controller: _fuelPriceController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Fuel Price per Liter (₹)',
+                    decoration: InputDecoration(
+                      labelText: 'Fuel Price per Liter (${widget.selectedCurrencySymbol})',
                       hintText: 'Enter fuel price per liter',
-                      prefixIcon: Icon(Icons.currency_rupee, color: Colors.green),
+                      prefixIcon: Align(
+                        widthFactor: 1.0, // To avoid extra spacing for prefix
+                        heightFactor: 1.0,
+                        child: Text(
+                          widget.selectedCurrencySymbol,
+                          style: const TextStyle(
+                            color: Colors.green, // Match the color of other icons
+                            fontSize: 18, // Adjust size as needed
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
                     inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
                   ),
@@ -633,23 +741,22 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
                         ),
                       ),
                       const SizedBox(width: 15),
-                      // Clear Button with Google Material refresh icon
                       SizedBox(
-                        width: 45, // Reduced width
-                        height: 45, // Reduced height
+                        width: 45,
+                        height: 45,
                         child: ElevatedButton(
                           onPressed: _clearFields,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade800, // Dark blue background
-                            shadowColor: Colors.black.withOpacity(0.2), // Subtle shadow
-                            shape: const CircleBorder(), // Make it circular
-                            padding: EdgeInsets.zero, // No padding on the button itself
-                            elevation: 4, // Add some elevation
+                            backgroundColor: Colors.red.shade800,
+                            shadowColor: Colors.black.withOpacity(0.2),
+                            shape: const CircleBorder(),
+                            padding: EdgeInsets.zero,
+                            elevation: 4,
                           ),
                           child: const Icon(
-                            Icons.refresh, // Google Material Design refresh icon
-                            size: 24, // Reduced size
-                            color: Colors.white, // White color for the icon
+                            Icons.refresh,
+                            size: 24,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -660,8 +767,6 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
             ),
           ),
           const SizedBox(height: 30),
-
-          // Conditional Results Display
           if (_totalTripCost > 0.0 || _errorMessage.isNotEmpty)
             Column(
               children: [
@@ -680,19 +785,25 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
                                 Text('Trip Cost', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontSize: 18, color: Colors.black87)),
                                 const SizedBox(height: 5),
                                 Text(
-                                  '₹${_formatNumber(_totalTripCost)}',
+                                  '${widget.selectedCurrencySymbol}${_formatNumber(_totalTripCost)}',
                                   style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.green),
                                 ),
                               ],
                             ),
                           ),
-                          Icon(Icons.currency_rupee, size: 40.0, color: Colors.green.shade700),
+                          Text(
+                            widget.selectedCurrencySymbol,
+                            style: TextStyle(
+                              fontSize: 40.0,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 const SizedBox(height: 20),
-
                 if (_totalTripCost > 0.0)
                   Card(
                     color: Colors.blue.shade50,
@@ -715,7 +826,7 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            '• Cost per KM: ₹${_formatNumber(_costPerKM)}',
+                            '• Cost per KM: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerKM)}',
                             style: TextStyle(fontSize: 16, color: Colors.blue.shade700),
                           ),
                         ],
@@ -744,7 +855,8 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage> with Au
 
 // --- Page 3: Fuel Needed Calculator ---
 class FuelNeededCalculatorPage extends StatefulWidget {
-  const FuelNeededCalculatorPage({super.key});
+  final String selectedCurrencySymbol;
+  const FuelNeededCalculatorPage({super.key, required this.selectedCurrencySymbol});
 
   @override
   State<FuelNeededCalculatorPage> createState() => _FuelNeededCalculatorPageState();
@@ -753,7 +865,7 @@ class FuelNeededCalculatorPage extends StatefulWidget {
 class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> with AutomaticKeepAliveClientMixin {
   final TextEditingController _plannedDistanceController = TextEditingController();
   final TextEditingController _vehicleEfficiencyController = TextEditingController();
-  final TextEditingController _fuelPriceController = TextEditingController(); // Optional
+  final TextEditingController _fuelPriceController = TextEditingController();
 
   double _fuelRequired = 0.0;
   double _totalAmount = 0.0;
@@ -763,12 +875,11 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
   bool get wantKeepAlive => true;
 
   void _calculateFuelNeeded() {
-    // Dismiss the keyboard and unfocus any text field
-    FocusScope.of(context).unfocus(); // ADDED THIS LINE
+    FocusScope.of(context).unfocus();
 
     double plannedDistance = double.tryParse(_plannedDistanceController.text) ?? 0.0;
     double vehicleEfficiency = double.tryParse(_vehicleEfficiencyController.text) ?? 0.0;
-    double fuelPrice = double.tryParse(_fuelPriceController.text) ?? 0.0; // Can be 0 if not entered
+    double fuelPrice = double.tryParse(_fuelPriceController.text) ?? 0.0;
 
     setState(() {
       _errorMessage = '';
@@ -814,7 +925,6 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // Page Title
           Column(
             children: [
               RichText(
@@ -838,8 +948,6 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
             ],
           ),
           const SizedBox(height: 30),
-
-          // Input Fields Card
           Card(
             child: Container(
               decoration: BoxDecoration(
@@ -882,10 +990,21 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
                   TextField(
                     controller: _fuelPriceController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Fuel Price per Liter (Optional) (₹)',
+                    decoration: InputDecoration(
+                      labelText: 'Fuel Price per Liter (Optional) (${widget.selectedCurrencySymbol})',
                       hintText: 'Enter fuel price per liter',
-                      prefixIcon: Icon(Icons.currency_rupee, color: Colors.green),
+                      prefixIcon: Align(
+                        widthFactor: 1.0,
+                        heightFactor: 1.0,
+                        child: Text(
+                          widget.selectedCurrencySymbol,
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
                     inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
                   ),
@@ -925,23 +1044,22 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
                         ),
                       ),
                       const SizedBox(width: 15),
-                      // Clear Button with Google Material refresh icon
                       SizedBox(
-                        width: 45, // Reduced width
-                        height: 45, // Reduced height
+                        width: 45,
+                        height: 45,
                         child: ElevatedButton(
                           onPressed: _clearFields,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade800, // Dark blue background
-                            shadowColor: Colors.black.withOpacity(0.2), // Subtle shadow
-                            shape: const CircleBorder(), // Make it circular
-                            padding: EdgeInsets.zero, // No padding on the button itself
-                            elevation: 4, // Add some elevation
+                            backgroundColor: Colors.red.shade800,
+                            shadowColor: Colors.black.withOpacity(0.2),
+                            shape: const CircleBorder(),
+                            padding: EdgeInsets.zero,
+                            elevation: 4,
                           ),
                           child: const Icon(
-                            Icons.refresh, // Google Material Design refresh icon
-                            size: 24, // Reduced size
-                            color: Colors.white, // White color for the icon
+                            Icons.refresh,
+                            size: 24,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -952,8 +1070,6 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
             ),
           ),
           const SizedBox(height: 30),
-
-          // Conditional Results Display
           if (_fuelRequired > 0.0 || _errorMessage.isNotEmpty)
             Column(
               children: [
@@ -963,7 +1079,7 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center, // Align items vertically in center
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: Column(
@@ -988,14 +1104,13 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
                     ),
                   ),
                 const SizedBox(height: 20),
-
                 if (_totalAmount > 0)
                   Card(
                     color: Colors.green.shade50,
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center, // Align items vertically in center
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Expanded(
                             child: Column(
@@ -1004,26 +1119,32 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
                                 Text('Total Amount', style: Theme.of(context).textTheme.titleMedium!.copyWith(fontSize: 18, color: Colors.black87)),
                                 const SizedBox(height: 5),
                                 Text(
-                                  '₹${_formatNumber(_totalAmount)}',
+                                  '${widget.selectedCurrencySymbol}${_formatNumber(_totalAmount)}',
                                   style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.green),
                                 ),
                               ],
                             ),
                           ),
-                          Icon(Icons.currency_rupee, size: 40.0, color: Colors.green.shade700),
+                          Text(
+                            widget.selectedCurrencySymbol,
+                            style: TextStyle(
+                              fontSize: 40.0,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 const SizedBox(height: 20),
-
                 if (_totalAmount > 0)
                   Card(
                     color: Colors.orange.shade50,
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start, // Align text to the start
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Cost Breakdown',
@@ -1039,12 +1160,12 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage> wit
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            '• Price per liter: ₹${_formatNumber(double.tryParse(_fuelPriceController.text) ?? 0.0)}',
+                            '• Price per liter: ${widget.selectedCurrencySymbol}${_formatNumber(double.tryParse(_fuelPriceController.text) ?? 0.0)}',
                             style: TextStyle(fontSize: 16, color: Colors.orange.shade700),
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            '• Total cost: ₹${_formatNumber(_totalAmount)}',
+                            '• Total cost: ${widget.selectedCurrencySymbol}${_formatNumber(_totalAmount)}',
                             style: TextStyle(fontSize: 16, color: Colors.orange.shade700),
                           ),
                         ],
@@ -1090,7 +1211,7 @@ class _MaxDistanceCalculatorPageState extends State<MaxDistanceCalculatorPage> w
 
   void _calculateMaxDistance() {
     // Dismiss the keyboard and unfocus any text field
-    FocusScope.of(context).unfocus(); // ADDED THIS LINE
+    FocusScope.of(context).unfocus();
 
     double availableFuel = double.tryParse(_availableFuelController.text) ?? 0.0;
     double vehicleEfficiency = double.tryParse(_vehicleEfficiencyController.text) ?? 0.0;
@@ -1101,7 +1222,7 @@ class _MaxDistanceCalculatorPageState extends State<MaxDistanceCalculatorPage> w
         _maximumDistance = availableFuel * vehicleEfficiency;
       } else {
         _maximumDistance = 0.0;
-        _errorMessage = 'Please enter valid positive values for required fuel and efficiency.';
+        _errorMessage = 'Please enter valid positive values for available fuel and efficiency.';
       }
     });
   }
@@ -1228,23 +1349,22 @@ class _MaxDistanceCalculatorPageState extends State<MaxDistanceCalculatorPage> w
                         ),
                       ),
                       const SizedBox(width: 15),
-                      // Clear Button with Google Material refresh icon
                       SizedBox(
-                        width: 45, // Reduced width
-                        height: 45, // Reduced height
+                        width: 45,
+                        height: 45,
                         child: ElevatedButton(
                           onPressed: _clearFields,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade800, // Dark blue background
-                            shadowColor: Colors.black.withOpacity(0.2), // Subtle shadow
-                            shape: const CircleBorder(), // Make it circular
-                            padding: EdgeInsets.zero, // No padding on the button itself
-                            elevation: 4, // Add some elevation
+                            backgroundColor: Colors.red.shade800,
+                            shadowColor: Colors.black.withOpacity(0.2),
+                            shape: const CircleBorder(),
+                            padding: EdgeInsets.zero,
+                            elevation: 4,
                           ),
                           child: const Icon(
-                            Icons.refresh, // Google Material Design refresh icon
-                            size: 24, // Reduced size
-                            color: Colors.white, // White color for the icon
+                            Icons.refresh,
+                            size: 24,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -1269,7 +1389,7 @@ class _MaxDistanceCalculatorPageState extends State<MaxDistanceCalculatorPage> w
                           Text('Maximum Distance', style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 10),
                           Text(
-                            '${_formatNumber(_maximumDistance)} KM', // Applied _formatNumber
+                            '${_formatNumber(_maximumDistance)} KM',
                             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green),
                           ),
                         ],
