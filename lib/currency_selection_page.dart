@@ -55,7 +55,7 @@ class _CurrencySelectionPageState extends State<CurrencySelectionPage> {
         backgroundColor: Colors.green,
         elevation: 0,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

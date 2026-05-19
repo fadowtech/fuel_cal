@@ -1,7 +1,7 @@
 name: fuel_cal
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-version: 1.0.0+1
+version: 1.0.4+6
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -10,14 +10,14 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.6
-  shared_preferences: ^2.0.15 # Use the latest version
+  shared_preferences: ^2.5.3 # Use the latest version
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
   change_app_package_name: ^1.4.0
-  flutter_lints: ^4.0.0 # Keep only this one entry for flutter_lints
+  flutter_lints: ^6.0.0 # Keep only this one entry for flutter_lints
   
 
 flutter_icons:
