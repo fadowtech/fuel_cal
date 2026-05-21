@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/mock_data.dart';
 import 'package:fuel_cal/feature_pages.dart';
+import 'package:fuel_cal/services/theme_service.dart';
 
-const Color _neonColor = Color(0xFF00FF88);
-const Color _surfaceColor = Color(0xFF1E1E24);
-const Color _cardColor = Color(0xFF25252D);
-const Color _backgroundColor = Color(0xFF121217);
-const Color _mutedColor = Color(0xFFA1A1AA);
+Color get _neonColor => ThemeService.neonColor;
+Color get _surfaceColor => ThemeService.surfaceColor;
+Color get _cardColor => ThemeService.cardColor;
+Color get _backgroundColor => ThemeService.backgroundColor;
+Color get _mutedColor => ThemeService.mutedColor;
 
 class LogsPage extends StatelessWidget {
   const LogsPage({super.key});
@@ -47,22 +48,22 @@ class LogsPage extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Fuel logs',
+                  Text('Fuel logs',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: ThemeService.textColor,
                           fontSize: 24,
                           fontWeight: FontWeight.bold)),
                   Text('${mockFuelLogs.length} entries',
-                      style: const TextStyle(color: _mutedColor, fontSize: 12)),
+                      style: TextStyle(color: _mutedColor, fontSize: 12)),
                 ],
               ),
               Container(
                 width: 40,
                 height: 40,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                     color: _surfaceColor, shape: BoxShape.circle),
-                child: const Icon(Icons.filter_list,
-                    color: Colors.white, size: 20),
+                child: Icon(Icons.filter_list,
+                    color: ThemeService.textColor, size: 20),
               ),
             ],
           ),
@@ -72,15 +73,22 @@ class LogsPage extends StatelessWidget {
             decoration: BoxDecoration(
               color: _surfaceColor,
               borderRadius: BorderRadius.circular(16),
+              boxShadow: ThemeService.isDarkMode ? [] : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                )
+              ],
             ),
             child: Row(
               children: [
-                const Icon(Icons.search, color: _mutedColor, size: 20),
+                Icon(Icons.search, color: _mutedColor, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: const InputDecoration.collapsed(
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 14),
+                    decoration: InputDecoration.collapsed(
                       hintText: 'Search station name...',
                       hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
                     ),
@@ -107,7 +115,9 @@ class LogsPage extends StatelessWidget {
                   child: Text(
                     f,
                     style: TextStyle(
-                      color: isSelected ? Colors.black : _mutedColor,
+                      color: isSelected 
+                          ? (ThemeService.isDarkMode ? Colors.black : Colors.white)
+                          : _mutedColor,
                       fontSize: 12,
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal,
@@ -136,6 +146,13 @@ class LogsPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: _cardColor,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: ThemeService.isDarkMode ? [] : [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            )
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,8 +161,8 @@ class LogsPage extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [_neonColor, Color(0xFF00BFA5)]),
+                gradient: LinearGradient(
+                    colors: [_neonColor, const Color(0xFF00BFA5)]),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.local_gas_station,
@@ -160,20 +177,20 @@ class LogsPage extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(log['station'],
-                          style: const TextStyle(
-                              color: Colors.white,
+                          style: TextStyle(
+                              color: ThemeService.textColor,
                               fontSize: 14,
                               fontWeight: FontWeight.bold)),
                       Text('₹${log['amount']}',
-                          style: const TextStyle(
-                              color: Colors.white,
+                          style: TextStyle(
+                              color: ThemeService.textColor,
                               fontSize: 14,
                               fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text('${log['date']} • ODO ${log['odo']}',
-                      style: const TextStyle(color: _mutedColor, fontSize: 12)),
+                      style: TextStyle(color: _mutedColor, fontSize: 12)),
                   const SizedBox(height: 12),
                   Container(
                     padding:
@@ -187,11 +204,11 @@ class LogsPage extends StatelessWidget {
                         RichText(
                           text: TextSpan(
                             text: '${log['liters']}L ',
-                            style: const TextStyle(
-                                color: Colors.white,
+                            style: TextStyle(
+                                color: ThemeService.textColor,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold),
-                            children: const [
+                            children: [
                               TextSpan(
                                   text: 'filled',
                                   style: TextStyle(
@@ -201,12 +218,12 @@ class LogsPage extends StatelessWidget {
                           ),
                         ),
                         Text('${log['mileage']} KM/L',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: _neonColor,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500)),
                         Text('₹${log['pricePerL']}/L',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: _mutedColor, fontSize: 12)),
                       ],
                     ),

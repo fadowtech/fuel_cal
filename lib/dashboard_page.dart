@@ -1,38 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/providers/data_provider.dart';
+import 'package:fuel_cal/models/vehicle_model.dart';
+import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/mock_data.dart';
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/logs_page.dart';
 import 'package:fuel_cal/garage_page.dart';
 import 'package:fuel_cal/profile_page.dart';
+import 'package:fuel_cal/services/profile_service.dart';
 import 'dart:math';
 
-// Custom Colors from the React app
-const Color _neonColor =
-    Color(0xFF00FF88); // Approximation for oklch(0.85 0.22 145)
-const Color _surfaceColor = Color(0xFF1E1E24);
-const Color _cardColor = Color(0xFF25252D);
-const Color _backgroundColor = Color(0xFF121217);
-const Color _mutedColor = Color(0xFFA1A1AA);
-const Color _dangerColor = Color(0xFFFF4444);
-const Color _warningColor = Color(0xFFFFBB33);
-const Color _infoColor = Color(0xFF33B5E5);
+import 'package:fuel_cal/services/theme_service.dart';
 
-class DashboardPage extends StatefulWidget {
+Color get _neonColor => ThemeService.neonColor;
+Color get _surfaceColor => ThemeService.surfaceColor;
+Color get _cardColor => ThemeService.cardColor;
+Color get _backgroundColor => ThemeService.backgroundColor;
+Color get _mutedColor => ThemeService.mutedColor;
+Color get _dangerColor => ThemeService.dangerColor;
+Color get _warningColor => const Color(0xFFFFBB33);
+Color get _infoColor => const Color(0xFF33B5E5);
+Color get _textColor => ThemeService.textColor;
+
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  State<DashboardPage> createState() => _DashboardPageState();
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage>
+class _DashboardPageState extends ConsumerState<DashboardPage>
     with AutomaticKeepAliveClientMixin {
+  String _profileName = ProfileService.defaultName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await ProfileService.getProfile();
+    if (mounted) {
+      setState(() {
+        _profileName = profile['name']!;
+      });
+    }
+  }
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final vehicle = mockVehicles[0];
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final logsAsync = ref.watch(fuelLogsProvider);
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -44,14 +68,45 @@ class _DashboardPageState extends State<DashboardPage>
             children: [
               _buildHeader(),
               const SizedBox(height: 20),
-              _buildVehicleSelector(vehicle),
+              
+              // Handle Vehicles Data Loading
+              vehiclesAsync.when(
+                data: (vehicles) {
+                  if (vehicles.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Center(
+                        child: Text("No vehicles found. Add one in the Garage!"),
+                      ),
+                    );
+                  }
+                  return _buildVehicleSelector(vehicles.first);
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
+              ),
+              
               const SizedBox(height: 16),
               _buildFuelHeroCard(),
               const SizedBox(height: 16),
               _buildMetricCards(),
               const SizedBox(height: 24),
               _buildSectionTitle('Odometer'),
-              _buildOdometerCard(),
+              
+              // Handle Fuel Logs for Odometer
+              logsAsync.when(
+                data: (logs) {
+                  final totalCost = logs.fold(0.0, (sum, log) => sum + log.totalCost);
+                  return _buildOdometerCard(totalCost: totalCost);
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
+              ),
+              
               const SizedBox(height: 24),
               _buildSectionTitle(
                 'Upcoming alerts',
@@ -85,17 +140,23 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Widget _buildHeader() {
+    final name = (_profileName != null && (_profileName as dynamic) != null) ? _profileName : 'Tom Hardy';
+    final firstLetter = name.isNotEmpty
+        ? name.trim()[0].toUpperCase()
+        : 'T';
+    final displayName = name.split(' ')[0];
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text('Good morning 👋',
                 style: TextStyle(color: _mutedColor, fontSize: 12)),
-            Text('Hi, Tom',
+            Text('Hi, $displayName',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: _textColor,
                     fontSize: 24,
                     fontWeight: FontWeight.bold)),
           ],
@@ -114,15 +175,15 @@ class _DashboardPageState extends State<DashboardPage>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    const Icon(Icons.notifications_none,
-                        color: Colors.white, size: 20),
+                    Icon(Icons.notifications_none,
+                        color: _textColor, size: 20),
                     Positioned(
                       right: 10,
                       top: 10,
                       child: Container(
                         width: 8,
                         height: 8,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: _neonColor,
                           shape: BoxShape.circle,
                         ),
@@ -134,11 +195,17 @@ class _DashboardPageState extends State<DashboardPage>
             ),
             const SizedBox(width: 8),
             GestureDetector(
-              onTap: () => _openPage(const ProfilePage()),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+                );
+                _loadProfile();
+              },
               child: Container(
                 width: 40,
                 height: 40,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [_neonColor, Color(0xFF00BFA5)],
                     begin: Alignment.topLeft,
@@ -147,9 +214,9 @@ class _DashboardPageState extends State<DashboardPage>
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
-                child: const Text(
-                  'T',
-                  style: TextStyle(
+                child: Text(
+                  firstLetter,
+                  style: const TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -189,26 +256,26 @@ class _DashboardPageState extends State<DashboardPage>
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(v.image, style: const TextStyle(fontSize: 24)),
+              child: const Text('🚗', style: TextStyle(fontSize: 24)),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Selected vehicle',
+                  Text('Selected vehicle',
                       style: TextStyle(color: _mutedColor, fontSize: 12)),
-                  Text(v.name,
-                      style: const TextStyle(
-                          color: Colors.white,
+                  Text('${v.make} ${v.model}',
+                      style: TextStyle(
+                          color: _textColor,
                           fontSize: 16,
                           fontWeight: FontWeight.bold)),
-                  Text(v.plate,
-                      style: const TextStyle(color: _mutedColor, fontSize: 12)),
+                  Text('${v.year}',
+                      style: TextStyle(color: _mutedColor, fontSize: 12)),
                 ],
               ),
             ),
-            const Icon(Icons.keyboard_arrow_down, color: _mutedColor),
+            Icon(Icons.keyboard_arrow_down, color: _mutedColor),
           ],
         ),
       ),
@@ -230,17 +297,17 @@ class _DashboardPageState extends State<DashboardPage>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('FUEL TANK',
+                  Text('FUEL TANK',
                       style: TextStyle(
                           color: _mutedColor,
                           fontSize: 10,
                           letterSpacing: 1.5,
                           fontWeight: FontWeight.w600)),
                   RichText(
-                    text: const TextSpan(
+                    text: TextSpan(
                       text: '65',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: _textColor,
                           fontSize: 48,
                           fontWeight: FontWeight.bold),
                       children: [
@@ -262,11 +329,11 @@ class _DashboardPageState extends State<DashboardPage>
                     child: Container(
                       width: 56,
                       height: 56,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: _cardColor,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.local_gas_station,
+                      child: Icon(Icons.local_gas_station,
                           color: _neonColor, size: 28),
                     ),
                   ),
@@ -340,22 +407,22 @@ class _DashboardPageState extends State<DashboardPage>
               Icon(icon, color: _mutedColor, size: 16),
               const SizedBox(width: 8),
               Text(title,
-                  style: const TextStyle(color: _mutedColor, fontSize: 12)),
+                  style: TextStyle(color: _mutedColor, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 8),
           RichText(
             text: TextSpan(
               text: value,
-              style: const TextStyle(
-                  color: Colors.white,
+              style: TextStyle(
+                  color: _textColor,
                   fontSize: 24,
                   fontWeight: FontWeight.bold),
               children: [
                 if (unit.isNotEmpty)
                   TextSpan(
                       text: ' $unit',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: _mutedColor,
                           fontSize: 12,
                           fontWeight: FontWeight.normal)),
@@ -384,7 +451,7 @@ class _DashboardPageState extends State<DashboardPage>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title,
-              style: const TextStyle(
+              style: TextStyle(
                   color: _mutedColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w600)),
@@ -392,7 +459,7 @@ class _DashboardPageState extends State<DashboardPage>
             GestureDetector(
               onTap: onActionTap,
               child: Text(action,
-                  style: const TextStyle(color: _neonColor, fontSize: 12)),
+                  style: TextStyle(color: _neonColor, fontSize: 12)),
             ),
         ],
       ),
@@ -404,19 +471,19 @@ class _DashboardPageState extends State<DashboardPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
                 color: _mutedColor, fontSize: 10, letterSpacing: 1.0)),
         const SizedBox(height: 4),
         Text(value,
-            style: const TextStyle(
-                color: Colors.white,
+            style: TextStyle(
+                color: _textColor,
                 fontSize: 14,
                 fontWeight: FontWeight.bold)),
       ],
     );
   }
 
-  Widget _buildOdometerCard() {
+  Widget _buildOdometerCard({required double totalCost}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -428,7 +495,7 @@ class _DashboardPageState extends State<DashboardPage>
         children: [
           _buildStat('ODO', '45,220'),
           _buildStat('This month', '1,250 KM'),
-          _buildStat('Daily avg', '42 KM'),
+          _buildStat('Total Cost', '₹${totalCost.toStringAsFixed(2)}'),
         ],
       ),
     );
@@ -475,13 +542,13 @@ class _DashboardPageState extends State<DashboardPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(a.title,
-                        style: const TextStyle(
-                            color: Colors.white,
+                        style: TextStyle(
+                            color: _textColor,
                             fontSize: 14,
                             fontWeight: FontWeight.w500)),
                     Text(a.subtitle,
                         style:
-                            const TextStyle(color: _mutedColor, fontSize: 12)),
+                            TextStyle(color: _mutedColor, fontSize: 12)),
                   ],
                 ),
               ),
@@ -503,7 +570,7 @@ class _DashboardPageState extends State<DashboardPage>
         _buildQuickAction(Icons.location_on_outlined, 'Trip',
             page: const TripsPage()),
         _buildQuickAction(Icons.build_circle_outlined, 'Service',
-            page: const ExpensesPage()),
+            page: const ServicesPage()),
         _buildQuickAction(Icons.qr_code_scanner, 'Scan',
             page: const AddFuelPage()),
       ],
@@ -522,7 +589,7 @@ class _DashboardPageState extends State<DashboardPage>
             height: 50,
             decoration: BoxDecoration(
               gradient: highlight
-                  ? const LinearGradient(
+                  ? LinearGradient(
                       colors: [_neonColor, Color(0xFF00BFA5)])
                   : null,
               color: highlight ? null : _cardColor,
@@ -538,12 +605,12 @@ class _DashboardPageState extends State<DashboardPage>
                   : [],
             ),
             child: Icon(icon,
-                color: highlight ? Colors.black : Colors.white, size: 24),
+                color: highlight ? Colors.black : _textColor, size: 24),
           ),
           const SizedBox(height: 8),
           Text(label,
-              style: const TextStyle(
-                  color: Colors.white,
+              style: TextStyle(
+                  color: _textColor,
                   fontSize: 10,
                   fontWeight: FontWeight.w500)),
         ],
@@ -570,7 +637,7 @@ class _DashboardPageState extends State<DashboardPage>
                   color: _surfaceColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.local_activity_outlined,
+                child: Icon(Icons.local_activity_outlined,
                     color: _neonColor, size: 20),
               ),
               const SizedBox(width: 12),
@@ -579,13 +646,13 @@ class _DashboardPageState extends State<DashboardPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(a.title,
-                        style: const TextStyle(
-                            color: Colors.white,
+                        style: TextStyle(
+                            color: _textColor,
                             fontSize: 14,
                             fontWeight: FontWeight.w500)),
                     Text(a.subtitle,
                         style:
-                            const TextStyle(color: _mutedColor, fontSize: 12)),
+                            TextStyle(color: _mutedColor, fontSize: 12)),
                   ],
                 ),
               ),
@@ -593,12 +660,12 @@ class _DashboardPageState extends State<DashboardPage>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(a.amount,
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: _textColor,
                           fontSize: 14,
                           fontWeight: FontWeight.bold)),
                   Text(a.date,
-                      style: const TextStyle(color: _mutedColor, fontSize: 10)),
+                      style: TextStyle(color: _mutedColor, fontSize: 10)),
                 ],
               ),
             ],

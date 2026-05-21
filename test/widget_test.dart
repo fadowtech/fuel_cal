@@ -79,7 +79,7 @@ class FuelCalculatorApp extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         ),
         // Card theme with subtle shadow
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 8, // Increased elevation for card shadow
           shadowColor: Colors.black.withOpacity(0.1),
           shape: RoundedRectangleBorder(

@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
+import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/mock_data.dart';
+import 'package:fuel_cal/services/theme_service.dart';
 
-const Color _neonColor = Color(0xFF00FF88);
-const Color _surfaceColor = Color(0xFF1E1E24);
-const Color _cardColor = Color(0xFF25252D);
-const Color _backgroundColor = Color(0xFF121217);
-const Color _mutedColor = Color(0xFFA1A1AA);
-const Color _dangerColor = Color(0xFFFF4444);
-const Color _warningColor = Color(0xFFFFBB33);
-const Color _infoColor = Color(0xFF33B5E5);
+Color get _neonColor => ThemeService.neonColor;
+Color get _surfaceColor => ThemeService.surfaceColor;
+Color get _cardColor => ThemeService.cardColor;
+Color get _backgroundColor => ThemeService.backgroundColor;
+Color get _mutedColor => ThemeService.mutedColor;
+Color get _dangerColor => ThemeService.dangerColor;
+Color get _warningColor => const Color(0xFFFFBB33);
+Color get _infoColor => const Color(0xFF33B5E5);
+Color get _textColor => ThemeService.textColor;
 
 const List<Map<String, dynamic>> mockExpenses = [
   {
@@ -18,13 +23,6 @@ const List<Map<String, dynamic>> mockExpenses = [
     'title': 'Indian Oil refill',
     'amount': 2350,
     'date': '15 May'
-  },
-  {
-    'id': 'e2',
-    'category': 'Service',
-    'title': 'Oil Change',
-    'amount': 1800,
-    'date': '13 May'
   },
   {
     'id': 'e3',
@@ -63,6 +61,30 @@ const List<Map<String, dynamic>> mockExpenses = [
   },
 ];
 
+const List<Map<String, dynamic>> mockServices = [
+  {
+    'id': 's1',
+    'category': 'Engine',
+    'title': 'Oil Change & Filter',
+    'amount': 1800,
+    'date': '13 May'
+  },
+  {
+    'id': 's2',
+    'category': 'Suspension',
+    'title': 'Wheel Alignment',
+    'amount': 600,
+    'date': '15 Apr'
+  },
+  {
+    'id': 's3',
+    'category': 'General',
+    'title': 'General Inspection',
+    'amount': 500,
+    'date': '05 Apr'
+  },
+];
+
 const List<Map<String, dynamic>> mockTrips = [
   {
     'id': 't1',
@@ -93,19 +115,20 @@ const List<Map<String, dynamic>> mockTrips = [
   },
 ];
 
-class AddFuelPage extends StatefulWidget {
+class AddFuelPage extends ConsumerStatefulWidget {
   const AddFuelPage({super.key});
 
   @override
-  State<AddFuelPage> createState() => _AddFuelPageState();
+  ConsumerState<AddFuelPage> createState() => _AddFuelPageState();
 }
 
-class _AddFuelPageState extends State<AddFuelPage> {
-  final _liters = TextEditingController(text: '22');
-  final _price = TextEditingController(text: '106.8');
-  final _odo = TextEditingController(text: '45220');
-  final _station = TextEditingController(text: 'Indian Oil');
+class _AddFuelPageState extends ConsumerState<AddFuelPage> {
+  final _liters = TextEditingController();
+  final _price = TextEditingController();
+  final _odo = TextEditingController();
+  final _station = TextEditingController();
   bool _fullTank = true;
+  bool _isLoading = false;
 
   double get _total =>
       (double.tryParse(_liters.text) ?? 0) *
@@ -124,39 +147,97 @@ class _AddFuelPageState extends State<AddFuelPage> {
     super.dispose();
   }
 
+  Future<void> _saveFuelLog() async {
+    final liters = double.tryParse(_liters.text) ?? 0.0;
+    final price = double.tryParse(_price.text) ?? 0.0;
+    final odo = double.tryParse(_odo.text) ?? 0.0;
+    
+    if (liters == 0.0 || price == 0.0 || odo == 0.0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter valid quantities.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final apiService = ref.read(apiServiceProvider);
+    final success = await apiService.createFuelLog({
+      "fuel_quantity": liters,
+      "total_cost": _total,
+      "odometer": odo,
+    });
+
+    setState(() => _isLoading = false);
+
+    if (success && mounted) {
+      ref.invalidate(fuelLogsProvider);
+      Navigator.pop(context);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save fuel log.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return _FeatureScaffold(
       title: 'Add fuel',
-      subtitle: 'Toyota Innova',
+      subtitle: 'Log your entry',
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
           _HeroTotalCard(total: _total, mileage: _mileage),
           const SizedBox(height: 18),
           _Section('Fuel details', [
-            _InputTile(
-                label: 'Quantity (L)',
-                controller: _liters,
-                onChanged: (_) => setState(() {})),
-            _InputTile(
-                label: 'Price / L (₹)',
-                controller: _price,
-                onChanged: (_) => setState(() {})),
+            Row(
+              children: [
+                Expanded(
+                  child: _InputTile(
+                    label: 'Quantity (L)',
+                    controller: _liters,
+                    icon: Icons.opacity_rounded,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _InputTile(
+                    label: 'Price / L (₹)',
+                    controller: _price,
+                    icon: Icons.currency_rupee_rounded,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
           ]),
           _Section('Odometer', [
-            _InputTile(label: 'Current ODO (KM)', controller: _odo),
-            const _InfoTile(label: 'Trip distance', value: '370 KM'),
+            _InputTile(
+              label: 'Current ODO (KM)',
+              controller: _odo,
+              icon: Icons.speed_rounded,
+            ),
+            const _InfoTile(
+              label: 'Trip distance',
+              value: '- KM',
+              icon: Icons.alt_route_rounded,
+            ),
           ]),
           _Section('Station & date', [
             _InputTile(
-                label: 'Station name',
-                controller: _station,
-                keyboardType: TextInputType.text),
+              label: 'Station name',
+              controller: _station,
+              icon: Icons.local_gas_station_rounded,
+              keyboardType: TextInputType.text,
+            ),
             const _InfoTile(
-                label: 'Date & time',
-                value: 'Today, 9:14 AM',
-                icon: Icons.calendar_today_outlined),
+              label: 'Date & time',
+              value: 'Today',
+              icon: Icons.calendar_today_outlined,
+              showChevron: true,
+            ),
           ]),
           _ToggleTile(
             label: 'Full tank fill',
@@ -170,14 +251,10 @@ class _AddFuelPageState extends State<AddFuelPage> {
           Row(
             children: [
               Expanded(
-                  child:
-                      _ActionButton(label: 'Save & add another', onTap: () {})),
-              const SizedBox(width: 12),
-              Expanded(
                 child: _ActionButton(
-                  label: 'Save fuel',
+                  label: _isLoading ? 'Saving...' : 'Save fuel',
                   highlighted: true,
-                  onTap: () => Navigator.pop(context),
+                  onTap: _isLoading ? () {} : _saveFuelLog,
                 ),
               ),
             ],
@@ -209,7 +286,6 @@ class ExpensesPage extends StatelessWidget {
           _FilterChips(items: const [
             'All',
             'Fuel',
-            'Service',
             'Insurance',
             'Toll',
             'Parking',
@@ -219,6 +295,55 @@ class ExpensesPage extends StatelessWidget {
           ...mockExpenses.map((e) => _ExpenseTile(expense: e)),
         ],
       ),
+    );
+  }
+}
+
+class ServicesPage extends StatelessWidget {
+  const ServicesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = mockServices.fold<int>(
+      0,
+      (sum, item) => sum + (item['amount'] as int),
+    );
+    return _FeatureScaffold(
+      title: 'Services',
+      subtitle: 'Maintenance logs',
+      action: const Icon(Icons.add, color: Colors.black),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        children: [
+          _TotalSpendCard(total: total, count: mockServices.length),
+          const SizedBox(height: 16),
+          _FilterChips(items: const [
+            'All',
+            'Engine',
+            'Brakes',
+            'Suspension',
+            'General',
+          ]),
+          const SizedBox(height: 16),
+          ...mockServices.map((s) => _ServiceTile(service: s)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ServiceTile extends StatelessWidget {
+  final Map<String, dynamic> service;
+
+  const _ServiceTile({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return _ListTileShell(
+      icon: Icons.build_circle_outlined,
+      title: service['title'] as String,
+      subtitle: '${service['category']} - ${service['date']}',
+      trailing: '₹${service['amount']}',
     );
   }
 }
@@ -337,7 +462,7 @@ class LogDetailPage extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
                 color: _surfaceColor, borderRadius: BorderRadius.circular(18)),
-            child: const Text('Fuel bill image',
+            child: Text('Fuel bill image',
                 style: TextStyle(color: _mutedColor, fontSize: 13)),
           ),
           const SizedBox(height: 14),
@@ -384,13 +509,22 @@ class _FeatureScaffold extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.maybePop(context),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white, size: 18),
+                  GestureDetector(
+                    onTap: () => Navigator.maybePop(context),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        color: _surfaceColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.chevron_left_rounded,
+                          color: Colors.white, size: 24),
+                    ),
                   ),
                   Expanded(
                     child: Column(
@@ -399,10 +533,11 @@ class _FeatureScaffold extends StatelessWidget {
                         Text(title,
                             style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 24,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
                         Text(subtitle,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: _mutedColor, fontSize: 12)),
                       ],
                     ),
@@ -411,7 +546,7 @@ class _FeatureScaffold extends StatelessWidget {
                     Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         gradient: LinearGradient(
                             colors: [_neonColor, Color(0xFF00BFA5)]),
                         shape: BoxShape.circle,
@@ -437,48 +572,109 @@ class _HeroTotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final costPerKm = total > 0 ? total / 370 : 0.0;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [_neonColor, Color(0xFF00BFA5)]),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF0D5E42),
+            Color(0xFF147551),
+          ],
+          begin: Alignment.bottomLeft,
+          end: Alignment.topRight,
+        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: _neonColor.withValues(alpha: 0.25),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF00FF88).withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           )
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('TOTAL AMOUNT',
-              style: TextStyle(
-                  color: Colors.black54,
-                  fontSize: 10,
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.bold)),
-          Text('₹${total.toStringAsFixed(0)}',
-              style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 46,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.local_gas_station_rounded,
+                  color: Color(0xFF00FF88),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TOTAL AMOUNT',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '₹${total.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.1),
+          ),
+          const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
-                  child: _DarkStat(label: 'Mileage', value: '$mileage KM/L')),
-              const SizedBox(width: 8),
+                child: _DarkStat(
+                  icon: Icons.speed_rounded,
+                  label: 'Mileage',
+                  value: '$mileage KM/L',
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 32,
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
               Expanded(
-                  child: _DarkStat(
-                      label: 'Cost/KM',
-                      value: total > 0
-                          ? '₹${(total / 370).toStringAsFixed(2)}'
-                          : '-')),
-              const SizedBox(width: 8),
-              const Expanded(
-                  child: _DarkStat(label: 'Tank est.', value: '95%')),
+                child: _DarkStat(
+                  icon: Icons.currency_rupee_rounded,
+                  label: 'Cost/KM',
+                  value: total > 0 ? '₹${costPerKm.toStringAsFixed(2)}' : '-',
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 32,
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
+              Expanded(
+                child: _DarkStat(
+                  icon: Icons.local_gas_station_rounded,
+                  label: 'Tank est.',
+                  value: '95%',
+                ),
+              ),
             ],
           ),
         ],
@@ -502,7 +698,7 @@ class _TotalSpendCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('TOTAL SPENT',
+          Text('TOTAL SPENT',
               style: TextStyle(
                   color: _mutedColor,
                   fontSize: 10,
@@ -514,7 +710,7 @@ class _TotalSpendCard extends StatelessWidget {
                   fontSize: 38,
                   fontWeight: FontWeight.bold)),
           Text('across $count entries',
-              style: const TextStyle(color: _mutedColor, fontSize: 12)),
+              style: TextStyle(color: _mutedColor, fontSize: 12)),
         ],
       ),
     );
@@ -535,7 +731,7 @@ class _Section extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title.toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                   color: _mutedColor,
                   fontSize: 11,
                   letterSpacing: 1.1,
@@ -551,12 +747,14 @@ class _Section extends StatelessWidget {
 class _InputTile extends StatelessWidget {
   final String label;
   final TextEditingController controller;
+  final IconData icon;
   final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
 
   const _InputTile({
     required this.label,
     required this.controller,
+    required this.icon,
     this.keyboardType = TextInputType.number,
     this.onChanged,
   });
@@ -565,27 +763,96 @@ class _InputTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-          color: _surfaceColor, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.03),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(color: _mutedColor, fontSize: 12)),
-          TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            onChanged: onChanged,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
-            inputFormatters: keyboardType == TextInputType.number
-                ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))]
-                : null,
-            decoration: const InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                filled: false,
-                contentPadding: EdgeInsets.only(top: 4)),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.01),
+              border: Border.all(
+                color: const Color(0xFF00FF88).withValues(alpha: 0.25),
+                width: 1.5,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              color: const Color(0xFF00FF88),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(19),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.centerLeft,
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: keyboardType,
+                    onChanged: onChanged,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    inputFormatters: keyboardType == TextInputType.number
+                        ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))]
+                        : null,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -597,36 +864,76 @@ class _InfoTile extends StatelessWidget {
   final String label;
   final String value;
   final IconData? icon;
+  final bool showChevron;
 
-  const _InfoTile({required this.label, required this.value, this.icon});
+  const _InfoTile({
+    required this.label,
+    required this.value,
+    this.icon,
+    this.showChevron = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-          color: _surfaceColor, borderRadius: BorderRadius.circular(16)),
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.03),
+          width: 1,
+        ),
+      ),
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, color: _mutedColor, size: 18),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: const Color(0xFF00FF88).withValues(alpha: 0.8),
+                size: 18,
+              ),
+            ),
             const SizedBox(width: 12),
           ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: const TextStyle(color: _mutedColor, fontSize: 12)),
-                Text(value,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: _mutedColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
+          if (showChevron)
+            Icon(
+              Icons.chevron_right_rounded,
+              color: _mutedColor,
+              size: 20,
+            ),
         ],
       ),
     );
@@ -638,36 +945,68 @@ class _ToggleTile extends StatelessWidget {
   final bool value;
   final VoidCallback onTap;
 
-  const _ToggleTile(
-      {required this.label, required this.value, required this.onTap});
+  const _ToggleTile({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-            color: _surfaceColor, borderRadius: BorderRadius.circular(16)),
+          color: _surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.03),
+            width: 1,
+          ),
+        ),
         child: Row(
           children: [
             Expanded(
-                child: Text(label,
-                    style: const TextStyle(color: Colors.white, fontSize: 14))),
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                gradient: value
-                    ? const LinearGradient(
-                        colors: [_neonColor, Color(0xFF00BFA5)])
-                    : null,
-                color: value ? null : _mutedColor,
-                borderRadius: BorderRadius.circular(8),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              child: value
-                  ? const Icon(Icons.check, color: Colors.black, size: 16)
-                  : null,
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 48,
+              height: 28,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: value ? const Color(0xFF22C55E) : const Color(0xFF2D2D37),
+              ),
+              padding: const EdgeInsets.all(2),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: value
+                      ? const Icon(
+                          Icons.check,
+                          color: Color(0xFF22C55E),
+                          size: 16,
+                          weight: 800,
+                        )
+                      : null,
+                ),
+              ),
             ),
           ],
         ),
@@ -694,7 +1033,7 @@ class _DashedAction extends StatelessWidget {
         children: [
           Icon(icon, color: _mutedColor, size: 24),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(color: _mutedColor, fontSize: 13)),
+          Text(label, style: TextStyle(color: _mutedColor, fontSize: 13)),
         ],
       ),
     );
@@ -718,7 +1057,7 @@ class _ActionButton extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           gradient: highlighted
-              ? const LinearGradient(colors: [_neonColor, Color(0xFF00BFA5)])
+              ? LinearGradient(colors: [_neonColor, Color(0xFF00BFA5)])
               : null,
           color: highlighted ? null : _surfaceColor,
           borderRadius: BorderRadius.circular(16),
@@ -797,13 +1136,13 @@ class _TripTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.location_on_outlined,
+              Icon(Icons.location_on_outlined,
                   color: _neonColor, size: 18),
               const SizedBox(width: 8),
               Text('${trip['from']} ',
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w600)),
-              const Icon(Icons.navigation_outlined,
+              Icon(Icons.navigation_outlined,
                   color: _mutedColor, size: 14),
               Text(' ${trip['to']}',
                   style: const TextStyle(
@@ -812,7 +1151,7 @@ class _TripTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(trip['date'] as String,
-              style: const TextStyle(color: _mutedColor, fontSize: 12)),
+              style: TextStyle(color: _mutedColor, fontSize: 12)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -847,7 +1186,7 @@ class _StartTripButton extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient:
-              const LinearGradient(colors: [_neonColor, Color(0xFF00BFA5)]),
+              LinearGradient(colors: [_neonColor, Color(0xFF00BFA5)]),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -948,7 +1287,7 @@ class _LogSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('TOTAL PAID',
+          Text('TOTAL PAID',
               style: TextStyle(
                   color: _mutedColor,
                   fontSize: 10,
@@ -960,7 +1299,7 @@ class _LogSummaryCard extends StatelessWidget {
                   fontSize: 38,
                   fontWeight: FontWeight.bold)),
           Text('${log['liters']}L x ₹${log['pricePerL']}/L',
-              style: const TextStyle(color: _mutedColor, fontSize: 12)),
+              style: TextStyle(color: _mutedColor, fontSize: 12)),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -1026,7 +1365,7 @@ class _ListTileShell extends StatelessWidget {
                         fontSize: 14,
                         fontWeight: FontWeight.w600)),
                 Text(subtitle,
-                    style: const TextStyle(color: _mutedColor, fontSize: 12)),
+                    style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
             ),
           ),
@@ -1058,7 +1397,7 @@ class _StatBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: _mutedColor, fontSize: 10)),
+          Text(label, style: TextStyle(color: _mutedColor, fontSize: 10)),
           Text(value,
               style: TextStyle(
                   color: neon ? _neonColor : Colors.white,
@@ -1071,23 +1410,40 @@ class _StatBox extends StatelessWidget {
 }
 
 class _DarkStat extends StatelessWidget {
+  final IconData icon;
   final String label;
   final String value;
 
-  const _DarkStat({required this.label, required this.value});
+  const _DarkStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(label,
-            style: const TextStyle(color: Colors.black54, fontSize: 11)),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.black,
-                fontSize: 12,
-                fontWeight: FontWeight.bold)),
+        Icon(icon, color: const Color(0xFF00FF88).withValues(alpha: 0.8), size: 18),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500)),
+            const SizedBox(height: 2),
+            Text(value,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
       ],
     );
   }

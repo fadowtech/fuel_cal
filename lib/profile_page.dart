@@ -1,15 +1,82 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/feature_pages.dart';
+import 'package:fuel_cal/currency_selection_page.dart';
+import 'package:fuel_cal/services/currency_service.dart';
+import 'package:fuel_cal/services/profile_service.dart';
+import 'package:fuel_cal/profile_update_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fuel_cal/sign_in_page.dart';
 
-const Color _neonColor = Color(0xFF00FF88);
-const Color _surfaceColor = Color(0xFF1E1E24);
-const Color _cardColor = Color(0xFF25252D);
-const Color _backgroundColor = Color(0xFF121217);
-const Color _mutedColor = Color(0xFFA1A1AA);
-const Color _dangerColor = Color(0xFFFF4444);
+import 'package:fuel_cal/services/theme_service.dart';
 
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+Color get _neonColor => ThemeService.neonColor;
+Color get _surfaceColor => ThemeService.surfaceColor;
+Color get _cardColor => ThemeService.cardColor;
+Color get _backgroundColor => ThemeService.backgroundColor;
+Color get _mutedColor => ThemeService.mutedColor;
+Color get _dangerColor => ThemeService.dangerColor;
+
+class ProfilePage extends StatefulWidget {
+  final String? selectedCurrencyCode;
+  final VoidCallback? onCurrencyChanged;
+
+  const ProfilePage({
+    super.key,
+    this.selectedCurrencyCode,
+    this.onCurrencyChanged,
+  });
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  String _selectedCurrencyCode = 'INR';
+  String _profileName = ProfileService.defaultName;
+  String _profileEmail = ProfileService.defaultEmail;
+  String _profilePhone = ProfileService.defaultPhone;
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    if (widget.selectedCurrencyCode != null && widget.selectedCurrencyCode!.isNotEmpty) {
+      setState(() {
+        _selectedCurrencyCode = widget.selectedCurrencyCode!;
+      });
+    } else {
+      final currency = await CurrencyService.getCurrency();
+      if (currency != null && currency.isNotEmpty) {
+        setState(() {
+          _selectedCurrencyCode = currency;
+        });
+      }
+    }
+
+    final profile = await ProfileService.getProfile();
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _profileName = profile['name']!;
+      _profileEmail = profile['email']!;
+      _profilePhone = profile['phone']!;
+      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedCurrencyCode != oldWidget.selectedCurrencyCode &&
+        widget.selectedCurrencyCode != null && widget.selectedCurrencyCode!.isNotEmpty) {
+      setState(() {
+        _selectedCurrencyCode = widget.selectedCurrencyCode!;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +88,9 @@ class ProfilePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Profile & Settings',
+              Text('Profile & Settings',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: ThemeService.textColor,
                       fontSize: 24,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
@@ -32,18 +99,84 @@ class ProfilePage extends StatelessWidget {
               _buildUpgradeButton(),
               const SizedBox(height: 24),
               _buildGroup('APP', [
-                _buildRow(Icons.dark_mode_outlined, 'Dark mode', 'On'),
+                _buildRow(
+                  Icons.dark_mode_outlined,
+                  'Dark mode',
+                  ThemeService.isDarkMode ? 'On' : 'Off',
+                  suffixWidget: Transform.scale(
+                    scale: 0.7,
+                    alignment: Alignment.centerRight,
+                    child: Switch(
+                      value: ThemeService.isDarkMode,
+                      activeColor: _neonColor,
+                      activeTrackColor: _neonColor.withOpacity(0.3),
+                      inactiveThumbColor: _mutedColor,
+                      inactiveTrackColor: _surfaceColor,
+                      onChanged: (val) {
+                        ThemeService.toggleTheme();
+                      },
+                    ),
+                  ),
+                  onTap: () {
+                    ThemeService.toggleTheme();
+                  },
+                ),
                 _buildRow(Icons.language, 'Language', 'English'),
-                _buildRow(Icons.currency_rupee, 'Currency', 'INR'),
+                _buildRow(
+                  Icons.monetization_on_outlined,
+                  'Currency',
+                  _selectedCurrencyCode,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CurrencySelectionPage(
+                          onCurrencySelected: () async {
+                            if (widget.onCurrencyChanged != null) {
+                              widget.onCurrencyChanged!();
+                            }
+                            final currency = await CurrencyService.getCurrency();
+                            if (currency != null && currency.isNotEmpty) {
+                              setState(() {
+                                _selectedCurrencyCode = currency;
+                              });
+                            }
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 _buildRow(
                   Icons.notifications_none,
                   'Notifications',
-                  'Enabled',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const NotificationsPage()),
+                  _notificationsEnabled ? 'On' : 'Off',
+                  suffixWidget: Transform.scale(
+                    scale: 0.7,
+                    alignment: Alignment.centerRight,
+                    child: Switch(
+                      value: _notificationsEnabled,
+                      activeColor: _neonColor,
+                      activeTrackColor: _neonColor.withOpacity(0.3),
+                      inactiveThumbColor: _mutedColor,
+                      inactiveTrackColor: _surfaceColor,
+                      onChanged: (val) async {
+                        final prefs = await SharedPreferences.getInstance();
+                        setState(() {
+                          _notificationsEnabled = val;
+                        });
+                        await prefs.setBool('notifications_enabled', val);
+                      },
+                    ),
                   ),
+                  onTap: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    setState(() {
+                      _notificationsEnabled = !_notificationsEnabled;
+                    });
+                    await prefs.setBool('notifications_enabled', _notificationsEnabled);
+                  },
                 ),
               ]),
               const SizedBox(height: 24),
@@ -69,7 +202,7 @@ class ProfilePage extends StatelessWidget {
               const SizedBox(height: 24),
               _buildSignOutButton(),
               const SizedBox(height: 16),
-              const Center(
+              Center(
                   child: Text('FuelMate v1.0.0',
                       style: TextStyle(color: _mutedColor, fontSize: 10))),
               const SizedBox(height: 100), // padding for bottom nav
@@ -81,44 +214,67 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildProfileCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-          color: _cardColor, borderRadius: BorderRadius.circular(24)),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [_neonColor, Color(0xFF00BFA5)]),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: const Text('T',
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold)),
+    // Robust checks to handle hot-reloads and prevent any uninitialized/null state issues
+    final name = (_profileName != null && (_profileName as dynamic) != null) ? _profileName : 'Tom Hardy';
+    final email = (_profileEmail != null && (_profileEmail as dynamic) != null) ? _profileEmail : 'tom@fuelmate.app';
+    final phone = (_profilePhone != null && (_profilePhone as dynamic) != null) ? _profilePhone : '+91 98765 43210';
+
+    final firstLetter = name.isNotEmpty
+        ? name.trim()[0].toUpperCase()
+        : 'T';
+
+    return GestureDetector(
+      onTap: () async {
+        final updated = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProfileUpdatePage(),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('Tom Hardy',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-                Text('tom@fuelmate.app',
-                    style: TextStyle(color: _mutedColor, fontSize: 12)),
-                Text('+91 98765 43210',
-                    style: TextStyle(color: _mutedColor, fontSize: 12)),
-              ],
+        );
+        if (updated == true) {
+          _loadData();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            color: _cardColor, borderRadius: BorderRadius.circular(24)),
+        child: Row(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [_neonColor, const Color(0xFF00BFA5)]),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(firstLetter,
+                  style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold)),
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: TextStyle(
+                          color: ThemeService.textColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
+                  Text(email,
+                      style: TextStyle(color: _mutedColor, fontSize: 12)),
+                  Text(phone,
+                      style: TextStyle(color: _mutedColor, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: _mutedColor),
+          ],
+        ),
       ),
     );
   }
@@ -127,7 +283,7 @@ class ProfilePage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [_neonColor, Color(0xFF00BFA5)]),
+        gradient: LinearGradient(colors: [_neonColor, const Color(0xFF00BFA5)]),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -160,7 +316,7 @@ class ProfilePage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title,
-            style: const TextStyle(
+            style: TextStyle(
                 color: _mutedColor,
                 fontSize: 10,
                 letterSpacing: 1.5,
@@ -178,13 +334,13 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildRow(IconData icon, String label, String? trailing,
-      {VoidCallback? onTap}) {
+      {VoidCallback? onTap, Widget? suffixWidget}) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: _surfaceColor))),
         child: Row(
           children: [
@@ -197,12 +353,15 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
                 child: Text(label,
-                    style: const TextStyle(color: Colors.white, fontSize: 14))),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 14))),
             if (trailing != null)
               Text(trailing,
-                  style: const TextStyle(color: _mutedColor, fontSize: 12)),
+                  style: TextStyle(color: _mutedColor, fontSize: 12)),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: _mutedColor, size: 16),
+            if (suffixWidget != null)
+              suffixWidget
+            else
+              Icon(Icons.chevron_right, color: _mutedColor, size: 16),
           ],
         ),
       ),
@@ -210,24 +369,32 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildSignOutButton() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: _dangerColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.logout, color: _dangerColor, size: 16),
-          SizedBox(width: 8),
-          Text('Sign out',
-              style: TextStyle(
-                  color: _dangerColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold)),
-        ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SignInPage()),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: _dangerColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.logout, color: _dangerColor, size: 16),
+            const SizedBox(width: 8),
+            Text('Sign out',
+                style: TextStyle(
+                    color: _dangerColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }

@@ -1,13 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/main.dart'; // To access the calculator pages
+import 'package:fuel_cal/currency_selection_page.dart';
+import 'package:fuel_cal/services/currency_service.dart';
+import 'package:fuel_cal/services/theme_service.dart';
 
-const Color _surfaceColor = Color(0xFF1E1E24);
+Color get _surfaceColor => ThemeService.surfaceColor;
+Color get _neonColor => ThemeService.neonColor;
+Color get _mutedColor => ThemeService.mutedColor;
+Color get _backgroundColor => ThemeService.backgroundColor;
+Color get _textColor => ThemeService.textColor;
 
 
-class ToolsPage extends StatelessWidget {
+class ToolsPage extends StatefulWidget {
   final String selectedCurrencySymbol;
+  final String selectedCurrencyCode;
+  final VoidCallback onCurrencyChanged;
 
-  const ToolsPage({super.key, required this.selectedCurrencySymbol});
+  const ToolsPage({
+    super.key,
+    required this.selectedCurrencySymbol,
+    required this.selectedCurrencyCode,
+    required this.onCurrencyChanged,
+  });
+
+  @override
+  State<ToolsPage> createState() => _ToolsPageState();
+}
+
+class _ToolsPageState extends State<ToolsPage> {
+  late String _selectedCurrencySymbol;
+  late String _selectedCurrencyCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCurrencySymbol = widget.selectedCurrencySymbol;
+    _selectedCurrencyCode = widget.selectedCurrencyCode;
+  }
+
+  Future<void> _loadCurrency() async {
+    final currency = await CurrencyService.getCurrency();
+    if (currency != null && currency.isNotEmpty) {
+      setState(() {
+        _selectedCurrencyCode = currency;
+        _selectedCurrencySymbol = CurrencyService.getCurrencySymbol(currency);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,14 +62,14 @@ class ToolsPage extends StatelessWidget {
         'title': 'Trip Cost',
         'icon': Icons.directions_car_outlined,
         'color': const Color(0xFF00FF88),
-        'page': TripCostCalculatorPage(selectedCurrencySymbol: selectedCurrencySymbol),
+        'page': TripCostCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
         'description': 'Estimate the cost of your trip',
       },
       {
         'title': 'Fuel Needed',
         'icon': Icons.local_gas_station_outlined,
         'color': const Color(0xFF00FF88),
-        'page': FuelNeededCalculatorPage(selectedCurrencySymbol: selectedCurrencySymbol),
+        'page': FuelNeededCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
         'description': 'Calculate how much fuel you need',
       },
       {
@@ -51,18 +90,18 @@ class ToolsPage extends StatelessWidget {
         'title': 'Fuel Quantity',
         'icon': Icons.payments_outlined,
         'color': const Color(0xFF00FF88),
-        'page': FuelQuantityCalculatorPage(selectedCurrencySymbol: selectedCurrencySymbol),
+        'page': FuelQuantityCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
         'description': 'Convert between different fuel quantities',
       },
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0C0E14),
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: const Text('Calculators', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('Calculators', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: _textColor),
       ),
       body: SafeArea(
         child: GridView.builder(
@@ -82,15 +121,21 @@ class ToolsPage extends StatelessWidget {
                 color: _surfaceColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: const Color(0xFF00FF88),
+                  color: _neonColor,
                   width: 1.2,
                 ),
-                boxShadow: [
+                boxShadow: ThemeService.isDarkMode ? [
                   BoxShadow(
-                    color: const Color(0xFF00FF88).withValues(alpha: 0.08),
+                    color: _neonColor.withOpacity(0.08),
                     blurRadius: 10,
                     spreadRadius: 0,
                   ),
+                ] : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    spreadRadius: 0,
+                  )
                 ],
               ),
               child: ClipRRect(
@@ -113,8 +158,13 @@ class ToolsPage extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) => _CalculatorWrapper(
-                                initialIndex: index < 4 ? index : 4,
-                                selectedCurrencySymbol: selectedCurrencySymbol,
+                                initialIndex: index,
+                                selectedCurrencySymbol: _selectedCurrencySymbol,
+                                selectedCurrencyCode: _selectedCurrencyCode,
+                                onCurrencyChanged: () async {
+                                  widget.onCurrencyChanged();
+                                  await _loadCurrency();
+                                },
                               ),
                             ),
                           );
@@ -130,15 +180,15 @@ class ToolsPage extends StatelessWidget {
                                 width: 46,
                                 height: 46,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF171923),
+                                  color: ThemeService.isDarkMode ? const Color(0xFF171923) : const Color(0xFFECEFF1),
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: const Color(0xFF00FF88).withValues(alpha: 0.3),
+                                    color: _neonColor.withOpacity(0.3),
                                     width: 1,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF00FF88).withValues(alpha: 0.08),
+                                      color: _neonColor.withOpacity(0.08),
                                       blurRadius: 6,
                                       spreadRadius: 1,
                                     ),
@@ -147,15 +197,15 @@ class ToolsPage extends StatelessWidget {
                                 child: Icon(
                                   tool['icon'],
                                   size: 22,
-                                  color: const Color(0xFF00FF88),
+                                  color: _neonColor,
                                 ),
                               ),
                               const Spacer(),
                               // Title
                               Text(
                                 tool['title'],
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: _textColor,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -164,8 +214,8 @@ class ToolsPage extends StatelessWidget {
                               // Description
                               Text(
                                 tool['description'],
-                                style: const TextStyle(
-                                  color: Color(0xFF8E92A2),
+                                style: TextStyle(
+                                  color: _mutedColor,
                                   fontSize: 10.5,
                                   height: 1.3,
                                 ),
@@ -191,10 +241,14 @@ class ToolsPage extends StatelessWidget {
 class _CalculatorWrapper extends StatefulWidget {
   final int initialIndex;
   final String selectedCurrencySymbol;
+  final String selectedCurrencyCode;
+  final VoidCallback onCurrencyChanged;
 
   const _CalculatorWrapper({
     required this.initialIndex,
     required this.selectedCurrencySymbol,
+    required this.selectedCurrencyCode,
+    required this.onCurrencyChanged,
   });
 
   @override
@@ -203,198 +257,51 @@ class _CalculatorWrapper extends StatefulWidget {
 
 class _CalculatorWrapperState extends State<_CalculatorWrapper> {
   late int _currentIndex;
+  late String _selectedCurrencySymbol;
+  late String _selectedCurrencyCode;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _selectedCurrencySymbol = widget.selectedCurrencySymbol;
+    _selectedCurrencyCode = widget.selectedCurrencyCode;
   }
 
-  Widget _buildMorePage() {
-    final List<Map<String, dynamic>> moreTools = [
-      {
-        'title': 'Distance & Time',
-        'icon': Icons.timer_outlined,
-        'page': const DistanceTimeCalculatorPage(),
-        'description': 'Calculate distance and travel time',
-      },
-      {
-        'title': 'Fuel Quantity',
-        'icon': Icons.payments_outlined,
-        'page': FuelQuantityCalculatorPage(selectedCurrencySymbol: widget.selectedCurrencySymbol),
-        'description': 'Convert between different fuel quantities',
-      },
-    ];
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Additional Calculators',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.15,
-            ),
-            itemCount: moreTools.length,
-            itemBuilder: (context, index) {
-              final tool = moreTools[index];
-              return Container(
-                decoration: BoxDecoration(
-                  color: _surfaceColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF00FF88).withValues(alpha: 0.3),
-                    width: 1.0,
-                  ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: CustomPaint(
-                          painter: DotMatrixPainter(
-                            dotColor: const Color(0xFF00FF88),
-                          ),
-                        ),
-                      ),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => Scaffold(
-                                  backgroundColor: const Color(0xFF0C0E14),
-                                  appBar: AppBar(
-                                    title: Text(tool['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                    backgroundColor: Colors.transparent,
-                                    iconTheme: const IconThemeData(color: Color(0xFF00FF88)),
-                                    elevation: 0,
-                                  ),
-                                  body: tool['page'],
-                                ),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF171923),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(0xFF00FF88).withValues(alpha: 0.2),
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    tool['icon'],
-                                    size: 18,
-                                    color: const Color(0xFF00FF88),
-                                  ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  tool['title'],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  tool['description'],
-                                  style: const TextStyle(
-                                    color: Color(0xFF8E92A2),
-                                    fontSize: 9,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+  void _changeCurrency() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CurrencySelectionPage(
+          onCurrencySelected: () async {
+            widget.onCurrencyChanged();
+            final currency = await CurrencyService.getCurrency();
+            if (currency != null && currency.isNotEmpty) {
+              setState(() {
+                _selectedCurrencyCode = currency;
+                _selectedCurrencySymbol = CurrencyService.getCurrencySymbol(currency);
+              });
+            }
+            Navigator.pop(context);
+          },
+        ),
       ),
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050508),
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leadingWidth: 56,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: Center(
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF00FF88),
-                    Color(0xFF004D2C),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF00FF88).withValues(alpha: 0.45),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.local_gas_station_rounded,
-                  color: Color(0xFFFFB300),
-                  size: 20,
-                ),
-              ),
-            ),
-          ),
-        ),
         titleSpacing: 12,
-        title: const Text(
+        title: Text(
           'Fuel Calculator',
           style: TextStyle(
-            color: Colors.white,
+            color: _textColor,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -402,54 +309,34 @@ class _CalculatorWrapperState extends State<_CalculatorWrapper> {
         actions: [
           // Currency selection button styled like screenshot
           Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.white24,
-                  width: 1.0,
+            child: GestureDetector(
+              onTap: _changeCurrency,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _textColor.withOpacity(0.24),
+                    width: 1.0,
+                  ),
                 ),
-              ),
-              child: const Row(
-                children: [
-                  Text(
-                    'INR',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+                child: Row(
+                  children: [
+                    Text(
+                      _selectedCurrencyCode.isNotEmpty ? _selectedCurrencyCode : 'INR',
+                      style: TextStyle(
+                        color: _textColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(
-                    Icons.arrow_drop_down,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Swap icon button
-          Center(
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _surfaceColor,
-                border: Border.all(
-                  color: Colors.white12,
-                  width: 1.0,
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.swap_horiz_rounded,
-                  color: Colors.white,
-                  size: 18,
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      color: _textColor,
+                      size: 16,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -460,73 +347,12 @@ class _CalculatorWrapperState extends State<_CalculatorWrapper> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          const EfficiencyCalculatorPage(),
-          TripCostCalculatorPage(selectedCurrencySymbol: widget.selectedCurrencySymbol),
-          FuelNeededCalculatorPage(selectedCurrencySymbol: widget.selectedCurrencySymbol),
-          const MaxDistanceCalculatorPage(),
-          _buildMorePage(),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        color: const Color(0xFF050508),
-        padding: const EdgeInsets.only(bottom: 12, top: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildBottomNavItem(0, Icons.speed_rounded, 'Efficiency'),
-            _buildBottomNavItem(1, Icons.directions_car_outlined, 'Trip Cost'),
-            _buildBottomNavItem(2, Icons.local_gas_station_outlined, 'Fuel Needed'),
-            _buildBottomNavItem(3, Icons.map_outlined, 'Max Distance'),
-            _buildBottomNavItem(4, Icons.more_horiz_rounded, 'More'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(int index, IconData icon, String label) {
-    final isActive = _currentIndex == index;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 58,
-            height: 30,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              color: isActive
-                  ? const Color(0xFF00FF88).withValues(alpha: 0.08)
-                  : Colors.transparent,
-              border: Border.all(
-                color: isActive
-                    ? const Color(0xFF00FF88).withValues(alpha: 0.25)
-                    : Colors.transparent,
-                width: 1.0,
-              ),
-            ),
-            child: Icon(
-              icon,
-              color: isActive ? const Color(0xFF00FF88) : const Color(0xFF8E92A2),
-              size: 20,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? const Color(0xFF00FF88) : const Color(0xFF8E92A2),
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
+          EfficiencyCalculatorPage(),
+          TripCostCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
+          FuelNeededCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
+          MaxDistanceCalculatorPage(),
+          const DistanceTimeCalculatorPage(),
+          FuelQuantityCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
         ],
       ),
     );

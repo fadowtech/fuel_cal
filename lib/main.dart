@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/router/app_router.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import 'package:fuel_cal/currency_selection_page.dart';
@@ -10,7 +13,14 @@ import 'package:fuel_cal/stats_page.dart';
 import 'package:fuel_cal/garage_page.dart';
 import 'package:fuel_cal/profile_page.dart';
 import 'package:fuel_cal/feature_pages.dart';
-// No longer importing shared_preferences here as it's not used in this file for calculator page persistence
+import 'package:fuel_cal/services/theme_service.dart';
+
+Color get _neonColor => ThemeService.neonColor;
+Color get _surfaceColor => ThemeService.surfaceColor;
+Color get _cardColor => ThemeService.cardColor;
+Color get _backgroundColor => ThemeService.backgroundColor;
+Color get _mutedColor => ThemeService.mutedColor;
+Color get _textColor => ThemeService.textColor;
 
 // Helper function to format numbers
 String _formatNumber(double number) {
@@ -23,20 +33,26 @@ String _formatNumber(double number) {
   }
 }
 
-void main() {
+void main() async {
   // Ensure Flutter widgets are initialized before running the app
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const FuelCalculatorApp());
+  await ThemeService.init();
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    // Ignore error if .env doesn't exist
+  }
+  runApp(const ProviderScope(child: FuelCalculatorApp()));
 }
 
-class FuelCalculatorApp extends StatefulWidget {
+class FuelCalculatorApp extends ConsumerStatefulWidget {
   const FuelCalculatorApp({super.key});
 
   @override
-  State<FuelCalculatorApp> createState() => _FuelCalculatorAppState();
+  ConsumerState<FuelCalculatorApp> createState() => _FuelCalculatorAppState();
 }
 
-class _FuelCalculatorAppState extends State<FuelCalculatorApp> {
+class _FuelCalculatorAppState extends ConsumerState<FuelCalculatorApp> {
   bool _isFirstLaunch = true;
   String _selectedCurrencyCode = '';
   String _selectedCurrencySymbol = '';
@@ -72,83 +88,94 @@ class _FuelCalculatorAppState extends State<FuelCalculatorApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Fuel Calculator',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
-          titleLarge: TextStyle(
-              fontSize: 28.0,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87),
-          titleMedium: TextStyle(
-              fontSize: 22.0,
-              fontWeight: FontWeight.bold,
-              color: Colors.green), // Adjusted for result titles
-          bodyMedium: TextStyle(fontSize: 16.0, color: Colors.black87),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkModeNotifier,
+      builder: (context, isDarkMode, child) {
+        final router = ref.watch(routerProvider);
+        return MaterialApp.router(
+          routerConfig: router,
+          debugShowCheckedModeBanner: false,
+          title: 'Fuel Calculator',
+          theme: ThemeData(
+            brightness: Brightness.light,
+            primarySwatch: Colors.green,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+            scaffoldBackgroundColor: const Color(0xFFF4F6F8),
+            cardColor: const Color(0xFFFFFFFF),
+            textTheme: const TextTheme(
+              displayLarge: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
+              titleLarge: TextStyle(
+                  fontSize: 28.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87),
+              titleMedium: TextStyle(
+                  fontSize: 22.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green), // Adjusted for result titles
+              bodyMedium: TextStyle(fontSize: 16.0, color: Colors.black87),
             ),
-            textStyle: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-            backgroundColor: Colors
-                .transparent, // Set the background to transparent for gradient
-            shadowColor: Colors.black.withOpacity(0.3),
-            elevation: 8,
-          ).copyWith(
-            overlayColor: MaterialStateProperty.resolveWith<Color?>(
-                (Set<MaterialState> states) {
-              if (states.contains(MaterialState.pressed)) {
-                return Colors.green.shade700
-                    .withOpacity(0.2); // Darker on press
-              }
-              return null; // Defer to the widget's default.
-            }),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.green, width: 2.0),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
-          ),
-          labelStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
-          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14.0),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 8,
-          shadowColor: Colors.black.withOpacity(0.1),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-        ),
-      ),
-      home: _isFirstLaunch
-          ? CurrencySelectionPage(onCurrencySelected: _onCurrencySelected)
-          : FuelCalculatorHomePage(
-              selectedCurrencySymbol: _selectedCurrencySymbol,
-              selectedCurrencyCode: _selectedCurrencyCode,
-              onCurrencyChanged: _onCurrencySelected,
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                textStyle: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                backgroundColor: Colors
+                    .transparent, // Set the background to transparent for gradient
+                shadowColor: Colors.black.withOpacity(0.3),
+                elevation: 8,
+              ).copyWith(
+                overlayColor: MaterialStateProperty.resolveWith<Color?>(
+                    (Set<MaterialState> states) {
+                  if (states.contains(MaterialState.pressed)) {
+                    return Colors.green.shade700
+                        .withOpacity(0.2); // Darker on press
+                  }
+                  return null; // Defer to the widget's default.
+                }),
+              ),
             ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.green, width: 2.0),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300, width: 1.0),
+              ),
+              labelStyle: const TextStyle(color: Colors.grey, fontSize: 14.0),
+              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14.0),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            ),
+            cardTheme: CardThemeData(
+              elevation: 8,
+              shadowColor: Colors.black.withOpacity(0.1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+            ),
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.green,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+            scaffoldBackgroundColor: const Color(0xFF121217),
+            cardColor: const Color(0xFF25252D),
+          ),
+          themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+        );
+      },
     );
   }
 }
@@ -180,20 +207,12 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
 
   final PageController _pageController = PageController();
 
-  late final List<Widget> _pages;
   late final List<String>
       _pageTitles; // This will now mostly be for internal logic/tooltips
 
   @override
   void initState() {
     super.initState();
-    _pages = <Widget>[
-      const DashboardPage(),
-      const LogsPage(),
-      const StatsPage(),
-      const GaragePage(),
-      const ProfilePage(),
-    ];
   }
 
   void _navigateToCurrencySelection() async {
@@ -209,9 +228,25 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final pages = <Widget>[
+      DashboardPage(),
+      LogsPage(),
+      StatsPage(),
+      GaragePage(),
+      ToolsPage(
+        selectedCurrencySymbol: widget.selectedCurrencySymbol,
+        selectedCurrencyCode: widget.selectedCurrencyCode,
+        onCurrencyChanged: widget.onCurrencyChanged,
+      ),
+      ProfilePage(
+        selectedCurrencyCode: widget.selectedCurrencyCode,
+        onCurrencyChanged: widget.onCurrencyChanged,
+      ),
+    ];
+
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFF121217), // Match background color
+      backgroundColor: ThemeService.backgroundColor, // Match background color
       extendBody: true, // Allow body to flow under bottom nav
       body: PageView(
         controller: _pageController,
@@ -223,7 +258,7 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
           FocusManager.instance.primaryFocus?.unfocus();
         },
         physics: const NeverScrollableScrollPhysics(),
-        children: _pages,
+        children: pages,
       ),
       bottomNavigationBar: _buildCustomBottomNav(),
     );
@@ -244,22 +279,24 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
               child: Container(
                 height: 96,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [
-                      Color(0xFF171820),
-                      Color(0xFF20212B),
+                      ThemeService.cardColor,
+                      ThemeService.surfaceColor,
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(48),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.white10,
+                    color: ThemeService.isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.06),
                     width: 1,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.45),
+                      color: ThemeService.isDarkMode 
+                          ? Colors.black.withOpacity(0.45) 
+                          : Colors.black.withOpacity(0.04),
                       blurRadius: 22,
                       offset: const Offset(0, 10),
                     ),
@@ -272,10 +309,10 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
                     _buildNavItem(Icons.grid_view_rounded, 'Home', 0),
                     _buildNavItem(Icons.receipt_long_outlined, 'Logs', 1),
                     _buildNavItem(Icons.bar_chart_rounded, 'Stats', 2),
-                    const SizedBox(width: 74),
+                    const SizedBox(width: 62),
                     _buildNavItem(Icons.directions_car_outlined, 'Garage', 3),
-                    _buildNavItem(Icons.calculate_outlined, 'Calculator', null),
-                    _buildNavItem(Icons.person_outline_rounded, 'Profile', 4),
+                    _buildNavItem(Icons.calculate_outlined, 'Fuel Cal', 4),
+                    _buildNavItem(Icons.person_outline_rounded, 'Profile', 5),
                   ],
                 ),
               ),
@@ -296,8 +333,8 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
         );
       },
       child: Container(
-        width: 76,
-        height: 76,
+        width: 64,
+        height: 64,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF34FF7A), Color(0xFF00D99A)],
@@ -308,40 +345,28 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF00FF88).withValues(alpha: 0.42),
-              blurRadius: 26,
-              spreadRadius: 4,
-              offset: const Offset(0, 8),
+              blurRadius: 22,
+              spreadRadius: 3,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: const Icon(
           Icons.add_rounded,
           color: Colors.black,
-          size: 46,
-          weight: 700,
+          size: 35,
+          weight: 600,
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int? index) {
-    final isActive = index != null && _bottomNavIndex == index;
-    final color = isActive ? const Color(0xFF00FF88) : const Color(0xFFA1A1AA);
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isActive = _bottomNavIndex == index;
+    final color = isActive ? ThemeService.neonColor : ThemeService.mutedColor;
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          if (index == null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ToolsPage(
-                  selectedCurrencySymbol: widget.selectedCurrencySymbol,
-                ),
-              ),
-            );
-            return;
-          }
-
           setState(() {
             _selectedIndex = index;
             _bottomNavIndex = index;
@@ -373,6 +398,142 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CalculatorInputTile extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final IconData icon;
+  final String suffix;
+  final String hintText;
+
+  const _CalculatorInputTile({
+    required this.label,
+    required this.controller,
+    required this.icon,
+    required this.suffix,
+    required this.hintText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _textColor.withOpacity(0.06),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _textColor.withOpacity(0.01),
+              border: Border.all(
+                color: _neonColor.withOpacity(0.25),
+                width: 1.5,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              color: _neonColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: _textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: ThemeService.isDarkMode 
+                        ? Colors.black.withOpacity(0.18) 
+                        : _textColor.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(19),
+                    border: Border.all(
+                      color: _textColor.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: controller,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(
+                            color: _textColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            filled: false,
+                            fillColor: Colors.transparent,
+                            hintText: hintText,
+                            hintStyle: TextStyle(
+                              color: _textColor.withOpacity(0.4),
+                              fontSize: 13,
+                              fontWeight: FontWeight.normal,
+                            ),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 1,
+                        height: 16,
+                        color: _textColor.withOpacity(0.1),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        suffix,
+                        style: TextStyle(
+                          color: _textColor.withOpacity(0.7),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -473,10 +634,10 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                 children: [
                   Expanded(
                     child: RichText(
-                      text: const TextSpan(
+                      text: TextSpan(
                         text: 'Fuel Efficiency ',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: _textColor,
                           fontSize: 24.0,
                           fontWeight: FontWeight.bold,
                         ),
@@ -484,7 +645,7 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                           TextSpan(
                             text: 'Calculator',
                             style: TextStyle(
-                              color: Color(0xFF00FF88),
+                              color: _neonColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -493,311 +654,128 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(
+                  Icon(
                     Icons.speed_rounded,
-                    color: Color(0xFF00FF88),
+                    color: _neonColor,
                     size: 30,
                   ),
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Calculate kilometers per liter of fuel.',
-                style: TextStyle(fontSize: 12.0, color: Color(0xFF8E92A2)),
+                style: TextStyle(fontSize: 12.0, color: _mutedColor),
               ),
             ],
           ),
           const SizedBox(height: 24),
 
           // Main Input & Buttons Card
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: const Color(0xFFE5E7EB),
-                width: 1.0,
+          _CalculatorInputTile(
+            label: 'Distance Traveled (KM)',
+            controller: _distanceController,
+            icon: Icons.alt_route,
+            suffix: 'KM',
+            hintText: 'Enter distance',
+          ),
+          _CalculatorInputTile(
+            label: 'Fuel Used (Liters)',
+            controller: _fuelUsedController,
+            icon: Icons.local_gas_station_rounded,
+            suffix: 'Liters',
+            hintText: 'Enter fuel used',
+          ),
+          const SizedBox(height: 12),
+          // Calculate Button
+          GestureDetector(
+            onTap: _calculateEfficiency,
+            child: Container(
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF109246), _neonColor],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [
+                  BoxShadow(
+                    color: _neonColor.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(width: 24),
+                  Icon(
+                    Icons.calculate_rounded,
+                    color: _textColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Calculate Efficiency',
+                    style: TextStyle(
+                      color: _textColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF04190E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: _neonColor,
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // Distance Traveled Section
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.alt_route,
-                          color: Color(0xFF22C55E),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Distance Traveled (KM)',
-                          style: TextStyle(
-                            color: Color(0xFF4B5563),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(27),
-                        border: Border.all(
-                          color: const Color(0xFFD1D5DB),
-                          width: 1.0,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _distanceController,
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(
-                                color: Color(0xFF1F2937),
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                                filled: false,
-                                fillColor: Colors.transparent,
-                                hintText: 'Enter distance',
-                                hintStyle: TextStyle(
-                                  color: Color(0xFF9CA3AF),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.normal,
-                                ),
-                              ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}')),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 1,
-                            height: 20,
-                            color: const Color(0xFFE5E7EB),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'KM',
-                            style: TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          ),
+          const SizedBox(height: 12),
+          // Reset Button
+          GestureDetector(
+            onTap: _clearFields,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFFFF3333),
+                  width: 1.5,
                 ),
-                const SizedBox(height: 20),
-
-                // Fuel Used Section
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.local_gas_station_rounded,
-                          color: Color(0xFF22C55E),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Fuel Used (Liters)',
-                          style: TextStyle(
-                            color: Color(0xFF4B5563),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(27),
-                        border: Border.all(
-                          color: const Color(0xFFD1D5DB),
-                          width: 1.0,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _fuelUsedController,
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(
-                                color: Color(0xFF1F2937),
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                                filled: false,
-                                fillColor: Colors.transparent,
-                                hintText: 'Enter fuel used',
-                                hintStyle: TextStyle(
-                                  color: Color(0xFF9CA3AF),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.normal,
-                                ),
-                              ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}')),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 1,
-                            height: 20,
-                            color: const Color(0xFFE5E7EB),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Liters',
-                            style: TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Calculate Button
-                GestureDetector(
-                  onTap: _calculateEfficiency,
-                  child: Container(
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF109246), Color(0xFF00FF88)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(26),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              const Color(0xFF00FF88).withValues(alpha: 0.25),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(width: 24),
-                        const Icon(
-                          Icons.calculate_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Calculate Efficiency',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          width: 36,
-                          height: 36,
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF04190E),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Color(0xFF00FF88),
-                            size: 18,
-                          ),
-                        ),
-                      ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.refresh_rounded,
+                    color: Color(0xFFFF3333),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Reset',
+                    style: TextStyle(
+                      color: Color(0xFFFF3333),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-
-                // Reset Button
-                GestureDetector(
-                  onTap: _clearFields,
-                  child: Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: const Color(0xFFFF3333),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.refresh_rounded,
-                          color: Color(0xFFFF3333),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Reset',
-                          style: TextStyle(
-                            color: Color(0xFFFF3333),
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -816,15 +794,15 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
             },
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF151821),
+                color: _cardColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: const Color(0xFF00FF88).withValues(alpha: 0.3),
+                  color: _neonColor.withValues(alpha: 0.3),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF00FF88).withValues(alpha: 0.05),
+                    color: _neonColor.withValues(alpha: 0.05),
                     blurRadius: 10,
                   ),
                 ],
@@ -839,16 +817,16 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF171923),
+                            color: _surfaceColor,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: const Color(0xFF00FF88)
+                              color: _neonColor
                                   .withValues(alpha: 0.2),
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.local_gas_station_rounded,
-                            color: Color(0xFF00FF88),
+                            color: _neonColor,
                             size: 20,
                           ),
                         ),
@@ -857,10 +835,10 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Your Fuel Efficiency',
                                 style: TextStyle(
-                                  color: Color(0xFF8E92A2),
+                                  color: _mutedColor,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -874,18 +852,18 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                                     _fuelEfficiency > 0.0
                                         ? _formatNumber(_fuelEfficiency)
                                         : '---',
-                                    style: const TextStyle(
-                                      color: Color(0xFF00FF88),
+                                    style: TextStyle(
+                                      color: _neonColor,
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 1.0,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  const Text(
+                                  Text(
                                     'KM/L',
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: _textColor,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -900,7 +878,7 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                                   style: TextStyle(
                                     color: _efficiencyRating
                                             .contains('Excellent')
-                                        ? const Color(0xFF00FF88)
+                                        ? _neonColor
                                         : _efficiencyRating.contains('optimize')
                                             ? Colors.orangeAccent
                                             : Colors.blueAccent,
@@ -974,7 +952,7 @@ class SpeedometerPainter extends CustomPainter {
 
     // Background arc (dark color)
     final bgPaint = Paint()
-      ..color = const Color(0xFF00FF88).withValues(alpha: 0.1)
+      ..color = _neonColor.withValues(alpha: 0.1)
       ..strokeWidth = 6
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -994,8 +972,8 @@ class SpeedometerPainter extends CustomPainter {
     final progress = (value / maxValue).clamp(0.0, 1.0);
     if (progress > 0) {
       final activePaint = Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0xFF05B050), Color(0xFF00FF88)],
+        ..shader = LinearGradient(
+          colors: [Color(0xFF05B050), _neonColor],
         ).createShader(Rect.fromCircle(center: center, radius: radius))
         ..strokeWidth = 6
         ..style = PaintingStyle.stroke
@@ -1012,7 +990,7 @@ class SpeedometerPainter extends CustomPainter {
 
     // Draw tick marks along the arc
     final tickPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.15)
+      ..color = _textColor.withValues(alpha: 0.15)
       ..strokeWidth = 1.5;
 
     const int tickCount = 10;
@@ -1038,7 +1016,7 @@ class SpeedometerPainter extends CustomPainter {
     final double needleSin = math.sin(needleAngle);
 
     final needlePaint = Paint()
-      ..color = const Color(0xFF00FF88)
+      ..color = _neonColor
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
@@ -1055,7 +1033,7 @@ class SpeedometerPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final hubBorderPaint = Paint()
-      ..color = const Color(0xFF00FF88)
+      ..color = _neonColor
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
@@ -1190,10 +1168,10 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage>
             children: [
               RichText(
                 textAlign: TextAlign.center,
-                text: const TextSpan(
+                text: TextSpan(
                   text: 'Trip Cost ',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: _textColor,
                     fontSize: 24.0,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1201,7 +1179,7 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage>
                     TextSpan(
                       text: 'Calculator',
                       style: TextStyle(
-                        color: Color(0xFF00FF88),
+                        color: _neonColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1210,547 +1188,260 @@ class _TripCostCalculatorPageState extends State<TripCostCalculatorPage>
                       child: Padding(
                         padding: EdgeInsets.only(left: 8.0),
                         child: Icon(Icons.attach_money,
-                            size: 28.0, color: Color(0xFF00FF88)),
+                            size: 28.0, color: _neonColor),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Text(
+              Text(
                 'Calculate the total fuel cost for your journey.',
-                style: TextStyle(fontSize: 12.0, color: Color(0xFF8E92A2)),
+                style: TextStyle(fontSize: 12.0, color: _mutedColor),
                 textAlign: TextAlign.center,
               ),
             ],
           ),
           const SizedBox(height: 30),
-          Card(
+          _CalculatorInputTile(
+            label: 'Trip Distance (KM)',
+            controller: _tripDistanceController,
+            icon: Icons.alt_route,
+            suffix: 'KM',
+            hintText: 'Enter trip distance',
+          ),
+          _CalculatorInputTile(
+            label: 'Fuel Price per Liter (${widget.selectedCurrencySymbol})',
+            controller: _fuelPriceController,
+            icon: Icons.payments_outlined,
+            suffix: widget.selectedCurrencySymbol,
+            hintText: 'Enter fuel price per liter',
+          ),
+          _CalculatorInputTile(
+            label: 'Vehicle Mileage (KM/L)',
+            controller: _vehicleEfficiencyController,
+            icon: Icons.local_gas_station_outlined,
+            suffix: 'KM/L',
+            hintText: 'Enter vehicle mileage',
+          ),
+          _CalculatorInputTile(
+            label: 'Number of People (Optional)',
+            controller: _numberOfPeopleController,
+            icon: Icons.people_alt_outlined,
+            suffix: 'People',
+            hintText: 'e.g., 2, 3 (for per-person cost)',
+          ),
+          const SizedBox(height: 12),
+          // Calculate Button
+          GestureDetector(
+            onTap: _calculateTripCost,
             child: Container(
+              height: 52,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  colors: [Color(0xFF109246), _neonColor],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(26),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    spreadRadius: 3,
-                    blurRadius: 7,
-                    offset: const Offset(0, 3),
+                    color: _neonColor.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Trip Distance Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.alt_route,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Trip Distance (KM)',
-                            style: TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _tripDistanceController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'Enter trip distance',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d+\.?\d{0,2}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'KM',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 24),
+                  Icon(
+                    Icons.calculate_rounded,
+                    color: _textColor,
+                    size: 20,
                   ),
-                  const SizedBox(height: 20),
-
-                  // Fuel Price Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.payments_outlined,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Fuel Price per Liter (${widget.selectedCurrencySymbol})',
-                            style: const TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _fuelPriceController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'Enter fuel price per liter',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d+\.?\d{0,2}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              widget.selectedCurrencySymbol,
-                              style: const TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Text(
+                    'Calculate Cost',
+                    style: TextStyle(
+                      color: _textColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 20),
-
-                  // Vehicle Mileage Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.local_gas_station_outlined,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Vehicle Mileage (KM/L)',
-                            style: TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _vehicleEfficiencyController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'Enter vehicle mileage',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d+\.?\d{0,2}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'KM/L',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Number of People Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.people_alt_outlined,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Number of People (Optional)',
-                            style: TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _numberOfPeopleController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'e.g., 2, 3 (for per-person cost)',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^[1-9]\d*')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'People',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            gradient: const LinearGradient(
-                              colors: [Colors.green, Colors.lightGreen],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withOpacity(0.4),
-                                spreadRadius: 2,
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _calculateTripCost,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 8),
-                            ),
-                            child: const Text(
-                              'Calculate Cost',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      SizedBox(
-                        width: 45,
-                        height: 45,
-                        child: ElevatedButton(
-                          onPressed: _clearFields,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade800,
-                            shadowColor: Colors.black.withOpacity(0.2),
-                            shape: const CircleBorder(),
-                            padding: EdgeInsets.zero,
-                            elevation: 4,
-                          ),
-                          child: const Icon(
-                            Icons.refresh,
-                            size: 24,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Spacer(),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF04190E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: _neonColor,
+                      size: 18,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 12),
+          // Reset Button
+          GestureDetector(
+            onTap: _clearFields,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFFFF3333),
+                  width: 1.5,
+                ),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.refresh_rounded,
+                    color: Color(0xFFFF3333),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Reset',
+                    style: TextStyle(
+                      color: Color(0xFFFF3333),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           // Show results or error only after a calculation attempt
-          if (_totalTripCost > 0.0 || _errorMessage.isNotEmpty)
-            Card(
-              color: Colors.green.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Trip Cost',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium!
-                                .copyWith(fontSize: 18, color: Colors.black87)),
-                        if (_totalTripCost >
-                            0.0) // Only show copy button if results are valid
-                          IconButton(
-                            icon: const Icon(Icons.copy, color: Colors.grey),
-                            onPressed: () {
-                              String output = 'Trip Cost Calculation:\n'
-                                  '  Trip Distance: ${_tripDistanceController.text} KM\n'
-                                  '  Fuel Price per Liter: ${widget.selectedCurrencySymbol}${_fuelPriceController.text}\n'
-                                  '  Vehicle Mileage: ${_vehicleEfficiencyController.text} KM/L\n';
-                              if (_numberOfPeopleController.text.isNotEmpty &&
-                                  _numberOfPeople > 0) {
-                                output +=
-                                    '  Number of People: ${_numberOfPeopleController.text}\n';
-                              }
-                              output +=
-                                  '  Total Trip Cost: ${widget.selectedCurrencySymbol}${_formatNumber(_totalTripCost)}\n'
-                                  '  Fuel needed: ${_formatNumber(_fuelNeeded)} L\n'
-                                  '  Cost per KM: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerKM)}';
-                              if (_numberOfPeople > 0) {
-                                output +=
-                                    '\n  Cost per Person: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerPerson)}';
-                              }
-                              _copyToClipboard(output);
-                            },
-                            tooltip: 'Copy All Results',
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '${widget.selectedCurrencySymbol}${_formatNumber(_totalTripCost)}',
-                      style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green),
-                    ),
-                    const SizedBox(height: 15),
-                    Text(
-                      'Trip Details',
-                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                            fontSize: 18,
-                            color: Colors.blue.shade800,
-                          ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '• Fuel needed: ${_formatNumber(_fuelNeeded)} L',
-                      style:
-                          TextStyle(fontSize: 16, color: Colors.blue.shade700),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '• Cost per KM: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerKM)}',
-                      style:
-                          TextStyle(fontSize: 16, color: Colors.blue.shade700),
-                    ),
-                    if (_numberOfPeople >
-                        0) // Display cost per person only if valid number of people entered
-                      const SizedBox(height: 5),
-                    if (_numberOfPeople > 0)
+          if (_totalTripCost > 0.0)
+            Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _neonColor.withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _neonColor.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Text(
-                        '• Cost per Person: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerPerson)}',
+                        'Trip Cost',
                         style: TextStyle(
-                            fontSize: 16, color: Colors.blue.shade700),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _textColor,
+                        ),
                       ),
+                      IconButton(
+                        icon: Icon(Icons.copy, color: _textColor.withOpacity(0.6)),
+                        onPressed: () {
+                          String output = 'Trip Cost Calculation:\n'
+                              '  Trip Distance: ${_tripDistanceController.text} KM\n'
+                              '  Fuel Price per Liter: ${widget.selectedCurrencySymbol}${_fuelPriceController.text}\n'
+                              '  Vehicle Mileage: ${_vehicleEfficiencyController.text} KM/L\n';
+                          if (_numberOfPeopleController.text.isNotEmpty &&
+                              _numberOfPeople > 0) {
+                            output +=
+                                '  Number of People: ${_numberOfPeopleController.text}\n';
+                          }
+                          output +=
+                              '  Total Trip Cost: ${widget.selectedCurrencySymbol}${_formatNumber(_totalTripCost)}\n'
+                              '  Fuel needed: ${_formatNumber(_fuelNeeded)} L\n'
+                              '  Cost per KM: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerKM)}';
+                          if (_numberOfPeople > 0) {
+                            output +=
+                                '\n  Cost per Person: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerPerson)}';
+                          }
+                          _copyToClipboard(output);
+                        },
+                        tooltip: 'Copy All Results',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${widget.selectedCurrencySymbol}${_formatNumber(_totalTripCost)}',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: _neonColor,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    'Trip Details',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _textColor.withOpacity(0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '• Fuel needed: ${_formatNumber(_fuelNeeded)} L',
+                    style: TextStyle(fontSize: 15, color: _textColor),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '• Cost per KM: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerKM)}',
+                    style: TextStyle(fontSize: 15, color: _textColor),
+                  ),
+                  if (_numberOfPeople > 0) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      '• Cost per Person: ${widget.selectedCurrencySymbol}${_formatNumber(_costPerPerson)}',
+                      style: TextStyle(fontSize: 15, color: _textColor),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
-          if (_errorMessage.isNotEmpty)
-            Card(
-              color: Colors.red.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Text(
-                  _errorMessage,
-                  style: const TextStyle(fontSize: 18, color: Colors.red),
-                  textAlign: TextAlign.center,
+          if (_errorMessage.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C1318),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFFF3333).withValues(alpha: 0.3),
                 ),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(
+                _errorMessage,
+                style: const TextStyle(
+                  color: Color(0xFFFF5555),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
+          ],
         ],
       ),
     );
@@ -1855,10 +1546,10 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage>
             children: [
               RichText(
                 textAlign: TextAlign.center,
-                text: const TextSpan(
+                text: TextSpan(
                   text: 'Fuel Required ',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: _textColor,
                     fontSize: 24.0,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1866,7 +1557,7 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage>
                     TextSpan(
                       text: 'Calculator',
                       style: TextStyle(
-                        color: Color(0xFF00FF88),
+                        color: _neonColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1875,480 +1566,272 @@ class _FuelNeededCalculatorPageState extends State<FuelNeededCalculatorPage>
                       child: Padding(
                         padding: EdgeInsets.only(left: 8.0),
                         child: Icon(Icons.local_gas_station,
-                            size: 28.0, color: Color(0xFF00FF88)),
+                            size: 28.0, color: _neonColor),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Text(
+              Text(
                 'Calculate how much fuel you need for a specific distance.',
-                style: TextStyle(fontSize: 12.0, color: Color(0xFF8E92A2)),
+                style: TextStyle(fontSize: 12.0, color: _mutedColor),
                 textAlign: TextAlign.center,
               ),
             ],
           ),
           const SizedBox(height: 30),
-          Card(
+          _CalculatorInputTile(
+            label: 'Planned Distance (KM)',
+            controller: _plannedDistanceController,
+            icon: Icons.alt_route,
+            suffix: 'KM',
+            hintText: 'Enter planned distance',
+          ),
+          _CalculatorInputTile(
+            label: 'Vehicle Mileage (KM/L)',
+            controller: _vehicleEfficiencyController,
+            icon: Icons.local_gas_station_outlined,
+            suffix: 'KM/L',
+            hintText: 'Enter vehicle mileage',
+          ),
+          _CalculatorInputTile(
+            label: 'Fuel Price per Liter (Optional) (${widget.selectedCurrencySymbol})',
+            controller: _fuelPriceController,
+            icon: Icons.payments_outlined,
+            suffix: widget.selectedCurrencySymbol,
+            hintText: 'Enter fuel price per liter',
+          ),
+          const SizedBox(height: 12),
+          // Calculate Button
+          GestureDetector(
+            onTap: _calculateFuelNeeded,
             child: Container(
+              height: 52,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  colors: [Color(0xFF109246), _neonColor],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(26),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    spreadRadius: 3,
-                    blurRadius: 7,
-                    offset: const Offset(0, 3),
+                    color: _neonColor.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Planned Distance Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.alt_route,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Planned Distance (KM)',
-                            style: TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _plannedDistanceController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'Enter planned distance',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d+\.?\d{0,2}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'KM',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 24),
+                  Icon(
+                    Icons.calculate_rounded,
+                    color: _textColor,
+                    size: 20,
                   ),
-                  const SizedBox(height: 20),
-
-                  // Vehicle Mileage Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.local_gas_station_outlined,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Vehicle Mileage (KM/L)',
-                            style: TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _vehicleEfficiencyController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'Enter vehicle mileage',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d+\.?\d{0,2}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'KM/L',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Text(
+                    'Calculate Fuel Needed',
+                    style: TextStyle(
+                      color: _textColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 20),
-
-                  // Fuel Price Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.payments_outlined,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Fuel Price per Liter (Optional) (${widget.selectedCurrencySymbol})',
-                            style: const TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _fuelPriceController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'Enter fuel price per liter',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d+\.?\d{0,2}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              widget.selectedCurrencySymbol,
-                              style: const TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            gradient: const LinearGradient(
-                              colors: [Colors.green, Colors.lightGreen],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withOpacity(0.4),
-                                spreadRadius: 2,
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _calculateFuelNeeded,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 8),
-                            ),
-                            child: const Text(
-                              'Calculate Fuel Needed',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      SizedBox(
-                        width: 45,
-                        height: 45,
-                        child: ElevatedButton(
-                          onPressed: _clearFields,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade800,
-                            shadowColor: Colors.black.withOpacity(0.2),
-                            shape: const CircleBorder(),
-                            padding: EdgeInsets.zero,
-                            elevation: 4,
-                          ),
-                          child: const Icon(
-                            Icons.refresh,
-                            size: 24,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Spacer(),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF04190E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: _neonColor,
+                      size: 18,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 12),
+          // Reset Button
+          GestureDetector(
+            onTap: _clearFields,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFFFF3333),
+                  width: 1.5,
+                ),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.refresh_rounded,
+                    color: Color(0xFFFF3333),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Reset',
+                    style: TextStyle(
+                      color: Color(0xFFFF3333),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           // Show results or error only after a calculation attempt
-          if (_fuelRequired > 0.0 || _errorMessage.isNotEmpty)
-            Card(
-              color: Colors.green.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Fuel Required',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium!
-                                .copyWith(fontSize: 18, color: Colors.black87)),
-                        if (_fuelRequired >
-                            0.0) // Only show copy button if results are valid
-                          IconButton(
-                            icon: const Icon(Icons.copy, color: Colors.grey),
-                            onPressed: () {
-                              String output = 'Fuel Required Calculation:\n'
-                                  '  Planned Distance: ${_plannedDistanceController.text} KM\n'
-                                  '  Vehicle Mileage: ${_vehicleEfficiencyController.text} KM/L\n';
+          if (_fuelRequired > 0.0)
+            Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _neonColor.withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _neonColor.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Fuel Required',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _textColor,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.copy, color: _textColor.withOpacity(0.6)),
+                        onPressed: () {
+                          String output = 'Fuel Required Calculation:\n'
+                              '  Planned Distance: ${_plannedDistanceController.text} KM\n'
+                              '  Vehicle Mileage: ${_vehicleEfficiencyController.text} KM/L\n';
 
-                              if (_fuelPriceController.text.isNotEmpty &&
-                                  double.tryParse(_fuelPriceController.text) !=
-                                      null &&
-                                  double.parse(_fuelPriceController.text) > 0) {
-                                output +=
-                                    '  Fuel Price per Liter: ${widget.selectedCurrencySymbol}${_fuelPriceController.text}\n';
-                              }
+                          if (_fuelPriceController.text.isNotEmpty &&
+                              double.tryParse(_fuelPriceController.text) != null &&
+                              double.parse(_fuelPriceController.text) > 0) {
+                            output +=
+                                '  Fuel Price per Liter: ${widget.selectedCurrencySymbol}${_fuelPriceController.text}\n';
+                          }
 
-                              output +=
-                                  '  Fuel Required: ${_formatNumber(_fuelRequired)} Liters';
+                          output +=
+                              '  Fuel Required: ${_formatNumber(_fuelRequired)} Liters';
 
-                              if (_totalAmount > 0) {
-                                output +=
-                                    '\n  Total Amount: ${widget.selectedCurrencySymbol}${_formatNumber(_totalAmount)}';
-                              }
-                              _copyToClipboard(output);
-                            },
-                            tooltip: 'Copy All Results',
-                          ),
-                      ],
+                          if (_totalAmount > 0) {
+                            output +=
+                                '\n  Total Amount: ${widget.selectedCurrencySymbol}${_formatNumber(_totalAmount)}';
+                          }
+                          _copyToClipboard(output);
+                        },
+                        tooltip: 'Copy All Results',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${_formatNumber(_fuelRequired)} Liters',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: _neonColor,
+                    ),
+                  ),
+                  if (_totalAmount > 0) ...[
+                    const SizedBox(height: 15),
+                    Text(
+                      'Total Amount',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _textColor,
+                      ),
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      '${_formatNumber(_fuelRequired)} Liters',
-                      style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green),
+                      '${widget.selectedCurrencySymbol}${_formatNumber(_totalAmount)}',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: _neonColor,
+                      ),
                     ),
                     const SizedBox(height: 15),
-                    if (_totalAmount > 0)
-                      Text('Total Amount',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium!
-                              .copyWith(fontSize: 18, color: Colors.black87)),
-                    if (_totalAmount > 0) const SizedBox(height: 5),
-                    if (_totalAmount > 0)
-                      Text(
-                        '${widget.selectedCurrencySymbol}${_formatNumber(_totalAmount)}',
-                        style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green),
+                    Text(
+                      'Cost Breakdown',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _textColor.withOpacity(0.7),
                       ),
-                    const SizedBox(height: 15),
-                    if (_totalAmount > 0)
-                      Text(
-                        'Cost Breakdown',
-                        style:
-                            Theme.of(context).textTheme.titleMedium!.copyWith(
-                                  fontSize: 18,
-                                  color: Colors.orange.shade800,
-                                ),
-                      ),
-                    if (_totalAmount > 0) const SizedBox(height: 10),
-                    if (_totalAmount > 0)
-                      Text(
-                        '• Fuel needed: ${_formatNumber(_fuelRequired)} L',
-                        style: TextStyle(
-                            fontSize: 16, color: Colors.orange.shade700),
-                      ),
-                    if (_totalAmount > 0) const SizedBox(height: 5),
-                    if (_totalAmount > 0)
-                      Text(
-                        '• Price per liter: ${widget.selectedCurrencySymbol}${_formatNumber(double.tryParse(_fuelPriceController.text) ?? 0.0)}',
-                        style: TextStyle(
-                            fontSize: 16, color: Colors.orange.shade700),
-                      ),
-                    if (_totalAmount > 0) const SizedBox(height: 5),
-                    if (_totalAmount > 0)
-                      Text(
-                        '• Total cost: ${widget.selectedCurrencySymbol}${_formatNumber(_totalAmount)}',
-                        style: TextStyle(
-                            fontSize: 16, color: Colors.orange.shade700),
-                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '• Fuel needed: ${_formatNumber(_fuelRequired)} L',
+                      style: TextStyle(fontSize: 15, color: _textColor),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '• Price per liter: ${widget.selectedCurrencySymbol}${_formatNumber(double.tryParse(_fuelPriceController.text) ?? 0.0)}',
+                      style: TextStyle(fontSize: 15, color: _textColor),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '• Total cost: ${widget.selectedCurrencySymbol}${_formatNumber(_totalAmount)}',
+                      style: TextStyle(fontSize: 15, color: _textColor),
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
-          if (_errorMessage.isNotEmpty)
-            Card(
-              color: Colors.red.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Text(
-                  _errorMessage,
-                  style: const TextStyle(fontSize: 18, color: Colors.red),
-                  textAlign: TextAlign.center,
+          if (_errorMessage.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C1318),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFFF3333).withValues(alpha: 0.3),
                 ),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(
+                _errorMessage,
+                style: const TextStyle(
+                  color: Color(0xFFFF5555),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
+          ],
         ],
       ),
     );
@@ -2439,10 +1922,10 @@ class _MaxDistanceCalculatorPageState extends State<MaxDistanceCalculatorPage>
             children: [
               RichText(
                 textAlign: TextAlign.center,
-                text: const TextSpan(
+                text: TextSpan(
                   text: 'Maximum Distance ',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: _textColor,
                     fontSize: 24.0,
                     fontWeight: FontWeight.bold,
                   ),
@@ -2450,7 +1933,7 @@ class _MaxDistanceCalculatorPageState extends State<MaxDistanceCalculatorPage>
                     TextSpan(
                       text: 'Calculator',
                       style: TextStyle(
-                        color: Color(0xFF00FF88),
+                        color: _neonColor,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -2459,328 +1942,207 @@ class _MaxDistanceCalculatorPageState extends State<MaxDistanceCalculatorPage>
                       child: Padding(
                         padding: EdgeInsets.only(left: 8.0),
                         child: Icon(Icons.location_on,
-                            size: 28.0, color: Color(0xFF00FF88)),
+                            size: 28.0, color: _neonColor),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Text(
+              Text(
                 'Calculate how far you can travel with available fuel.',
-                style: TextStyle(fontSize: 12.0, color: Color(0xFF8E92A2)),
+                style: TextStyle(fontSize: 12.0, color: _mutedColor),
                 textAlign: TextAlign.center,
               ),
             ],
           ),
           const SizedBox(height: 30),
-          Card(
+          _CalculatorInputTile(
+            label: 'Available Fuel (Liters)',
+            controller: _availableFuelController,
+            icon: Icons.local_gas_station,
+            suffix: 'Liters',
+            hintText: 'Enter available fuel',
+          ),
+          _CalculatorInputTile(
+            label: 'Vehicle Mileage (KM/L)',
+            controller: _vehicleEfficiencyController,
+            icon: Icons.local_gas_station_outlined,
+            suffix: 'KM/L',
+            hintText: 'Enter vehicle mileage',
+          ),
+          const SizedBox(height: 12),
+          // Calculate Button
+          GestureDetector(
+            onTap: _calculateMaxDistance,
             child: Container(
+              height: 52,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  colors: [Color(0xFF109246), _neonColor],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(26),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    spreadRadius: 3,
-                    blurRadius: 7,
-                    offset: const Offset(0, 3),
+                    color: _neonColor.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Available Fuel Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.local_gas_station,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Available Fuel (Liters)',
-                            style: TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _availableFuelController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'Enter available fuel',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d+\.?\d{0,2}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'Liters',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 24),
+                  Icon(
+                    Icons.calculate_rounded,
+                    color: _textColor,
+                    size: 20,
                   ),
-                  const SizedBox(height: 20),
-
-                  // Vehicle Mileage Section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.local_gas_station_outlined,
-                            color: Color(0xFF22C55E),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Vehicle Mileage (KM/L)',
-                            style: TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(27),
-                          border: Border.all(
-                            color: const Color(0xFFD1D5DB),
-                            width: 1.0,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _vehicleEfficiencyController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(
-                                  color: Color(0xFF1F2937),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  hintText: 'Enter vehicle mileage',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF9CA3AF),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d+\.?\d{0,2}')),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 1,
-                              height: 20,
-                              color: const Color(0xFFE5E7EB),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'KM/L',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Text(
+                    'Calculate Max Distance',
+                    style: TextStyle(
+                      color: _textColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 30),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            gradient: const LinearGradient(
-                              colors: [Colors.green, Colors.lightGreen],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withOpacity(0.4),
-                                spreadRadius: 2,
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _calculateMaxDistance,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 8),
-                            ),
-                            child: const Text(
-                              'Calculate Max Distance',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      SizedBox(
-                        width: 45,
-                        height: 45,
-                        child: ElevatedButton(
-                          onPressed: _clearFields,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade800,
-                            shadowColor: Colors.black.withOpacity(0.2),
-                            shape: const CircleBorder(),
-                            padding: EdgeInsets.zero,
-                            elevation: 4,
-                          ),
-                          child: const Icon(
-                            Icons.refresh,
-                            size: 24,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Spacer(),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF04190E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: _neonColor,
+                      size: 18,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 12),
+          // Reset Button
+          GestureDetector(
+            onTap: _clearFields,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFFFF3333),
+                  width: 1.5,
+                ),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.refresh_rounded,
+                    color: Color(0xFFFF3333),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Reset',
+                    style: TextStyle(
+                      color: Color(0xFFFF3333),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           // Show results or error only after a calculation attempt
-          if (_maximumDistance > 0.0 || _errorMessage.isNotEmpty)
-            Card(
-              color: Colors.green.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Maximum Distance',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        if (_maximumDistance >
-                            0.0) // Only show copy button if results are valid
-                          IconButton(
-                            icon: const Icon(Icons.copy, color: Colors.grey),
-                            onPressed: () {
-                              String output = 'Maximum Distance Calculation:\n'
-                                  '  Available Fuel: ${_availableFuelController.text} Liters\n'
-                                  '  Vehicle Mileage: ${_vehicleEfficiencyController.text} KM/L\n'
-                                  '  Maximum Distance: ${_formatNumber(_maximumDistance)} KM';
-                              _copyToClipboard(output);
-                            },
-                            tooltip: 'Copy All Results',
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '${_formatNumber(_maximumDistance)} KM',
-                      style: const TextStyle(
-                          fontSize: 28,
+          if (_maximumDistance > 0.0)
+            Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _neonColor.withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _neonColor.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Maximum Distance',
+                        style: TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.green),
+                          color: _textColor,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.copy, color: _textColor.withOpacity(0.6)),
+                        onPressed: () {
+                          String output = 'Maximum Distance Calculation:\n'
+                              '  Available Fuel: ${_availableFuelController.text} Liters\n'
+                              '  Vehicle Mileage: ${_vehicleEfficiencyController.text} KM/L\n'
+                              '  Maximum Distance: ${_formatNumber(_maximumDistance)} KM';
+                          _copyToClipboard(output);
+                        },
+                        tooltip: 'Copy All Results',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${_formatNumber(_maximumDistance)} KM',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: _neonColor,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          if (_errorMessage.isNotEmpty)
-            Card(
-              color: Colors.red.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Text(
-                  _errorMessage,
-                  style: const TextStyle(fontSize: 18, color: Colors.red),
-                  textAlign: TextAlign.center,
+          if (_errorMessage.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C1318),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFFF3333).withValues(alpha: 0.3),
                 ),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(
+                _errorMessage,
+                style: const TextStyle(
+                  color: Color(0xFFFF5555),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
+          ],
         ],
       ),
     );
@@ -2861,7 +2223,7 @@ class _DistanceTimeCalculatorPageState extends State<DistanceTimeCalculatorPage>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF050508),
+      backgroundColor: _backgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -2871,10 +2233,10 @@ class _DistanceTimeCalculatorPageState extends State<DistanceTimeCalculatorPage>
               children: [
                 RichText(
                   textAlign: TextAlign.center,
-                  text: const TextSpan(
+                  text: TextSpan(
                     text: 'Distance & Time ',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: _textColor,
                       fontSize: 24.0,
                       fontWeight: FontWeight.bold,
                     ),
@@ -2882,7 +2244,7 @@ class _DistanceTimeCalculatorPageState extends State<DistanceTimeCalculatorPage>
                       TextSpan(
                         text: 'Calculator',
                         style: TextStyle(
-                          color: Color(0xFF00FF88),
+                          color: _neonColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -2891,328 +2253,207 @@ class _DistanceTimeCalculatorPageState extends State<DistanceTimeCalculatorPage>
                         child: Padding(
                           padding: EdgeInsets.only(left: 8.0),
                           child: Icon(Icons.timer,
-                              size: 28.0, color: Color(0xFF00FF88)),
+                              size: 28.0, color: _neonColor),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Text(
+                Text(
                   'Estimate travel time based on distance and average speed.',
-                  style: TextStyle(fontSize: 12.0, color: Color(0xFF8E92A2)),
+                  style: TextStyle(fontSize: 12.0, color: _mutedColor),
                   textAlign: TextAlign.center,
                 ),
               ],
             ),
             const SizedBox(height: 30),
-            Card(
+            _CalculatorInputTile(
+              label: 'Distance (KM)',
+              controller: _distanceController,
+              icon: Icons.alt_route,
+              suffix: 'KM',
+              hintText: 'Enter distance',
+            ),
+            _CalculatorInputTile(
+              label: 'Average Speed (KM/H)',
+              controller: _speedController,
+              icon: Icons.speed,
+              suffix: 'KM/H',
+              hintText: 'Enter average speed',
+            ),
+            const SizedBox(height: 12),
+            // Calculate Button
+            GestureDetector(
+              onTap: _calculateTime,
               child: Container(
+                height: 52,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF109246), _neonColor],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(26),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 3,
-                      blurRadius: 7,
-                      offset: const Offset(0, 3),
+                      color: _neonColor.withValues(alpha: 0.25),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Distance Section
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.alt_route,
-                              color: Color(0xFF22C55E),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Distance (KM)',
-                              style: TextStyle(
-                                color: Color(0xFF4B5563),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 54,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(27),
-                            border: Border.all(
-                              color: const Color(0xFFD1D5DB),
-                              width: 1.0,
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 28),
-                          alignment: Alignment.centerLeft,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _distanceController,
-                                  keyboardType: TextInputType.number,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1F2937),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    filled: false,
-                                    fillColor: Colors.transparent,
-                                    hintText: 'Enter distance',
-                                    hintStyle: TextStyle(
-                                      color: Color(0xFF9CA3AF),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d+\.?\d{0,2}')),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 1,
-                                height: 20,
-                                color: const Color(0xFFE5E7EB),
-                              ),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'KM',
-                                style: TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 24),
+                    Icon(
+                      Icons.calculate_rounded,
+                      color: _textColor,
+                      size: 20,
                     ),
-                    const SizedBox(height: 20),
-
-                    // Average Speed Section
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.speed,
-                              color: Color(0xFF22C55E),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Average Speed (KM/H)',
-                              style: TextStyle(
-                                color: Color(0xFF4B5563),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 54,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(27),
-                            border: Border.all(
-                              color: const Color(0xFFD1D5DB),
-                              width: 1.0,
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 28),
-                          alignment: Alignment.centerLeft,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _speedController,
-                                  keyboardType: TextInputType.number,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1F2937),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    filled: false,
-                                    fillColor: Colors.transparent,
-                                    hintText: 'Enter average speed',
-                                    hintStyle: TextStyle(
-                                      color: Color(0xFF9CA3AF),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d+\.?\d{0,2}')),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 1,
-                                height: 20,
-                                color: const Color(0xFFE5E7EB),
-                              ),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'KM/H',
-                                style: TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    Text(
+                      'Calculate Time',
+                      style: TextStyle(
+                        color: _textColor,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(height: 30),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              gradient: const LinearGradient(
-                                colors: [Colors.green, Colors.lightGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.green.withOpacity(0.4),
-                                  spreadRadius: 2,
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: _calculateTime,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 15, vertical: 8),
-                              ),
-                              child: const Text(
-                                'Calculate Time',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 15),
-                        SizedBox(
-                          width: 45,
-                          height: 45,
-                          child: ElevatedButton(
-                            onPressed: _clearFields,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade800,
-                              shadowColor: Colors.black.withOpacity(0.2),
-                              shape: const CircleBorder(),
-                              padding: EdgeInsets.zero,
-                              elevation: 4,
-                            ),
-                            child: const Icon(
-                              Icons.refresh,
-                              size: 24,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
+                  const Spacer(),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF04190E),
+                      shape: BoxShape.circle,
                     ),
-                  ],
-                ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: _neonColor,
+                      size: 18,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 30),
-            // Show results or error only after a calculation attempt
-            if (_timeResult.isNotEmpty || _errorMessage.isNotEmpty)
-              Card(
-                color: Colors.purple.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          const SizedBox(height: 12),
+          // Reset Button
+          GestureDetector(
+            onTap: _clearFields,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFFFF3333),
+                  width: 1.5,
+                ),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.refresh_rounded,
+                    color: Color(0xFFFF3333),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Reset',
+                    style: TextStyle(
+                      color: Color(0xFFFF3333),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Show results or error only after a calculation attempt
+          if (_timeResult.isNotEmpty)
+            Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _neonColor.withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _neonColor.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Estimated Travel Time',
-                              style: Theme.of(context).textTheme.titleMedium),
-                          if (_timeResult
-                              .isNotEmpty) // Only show copy button if results are valid
-                            IconButton(
-                              icon: const Icon(Icons.copy, color: Colors.grey),
-                              onPressed: () {
-                                String output = 'Distance & Time Calculation:\n'
-                                    '  Distance: ${_distanceController.text} KM\n'
-                                    '  Average Speed: ${_speedController.text} KM/H\n'
-                                    '  Estimated Travel Time: ${_timeResult}';
-                                _copyToClipboard(output);
-                              },
-                              tooltip: 'Copy All Results',
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
                       Text(
-                        _timeResult,
-                        style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.purple),
+                        'Estimated Travel Time',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _textColor,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.copy, color: _textColor.withOpacity(0.6)),
+                        onPressed: () {
+                          String output = 'Distance & Time Calculation:\n'
+                              '  Distance: ${_distanceController.text} KM\n'
+                              '  Average Speed: ${_speedController.text} KM/H\n'
+                              '  Estimated Travel Time: ${_timeResult}';
+                          _copyToClipboard(output);
+                        },
+                        tooltip: 'Copy All Results',
                       ),
                     ],
                   ),
-                ),
-              ),
-            if (_errorMessage.isNotEmpty)
-              Card(
-                color: Colors.red.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Text(
-                    _errorMessage,
-                    style: const TextStyle(fontSize: 18, color: Colors.red),
-                    textAlign: TextAlign.center,
+                  const SizedBox(height: 10),
+                  Text(
+                    _timeResult,
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: _neonColor,
+                    ),
                   ),
+                ],
+              ),
+            ),
+          if (_errorMessage.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C1318),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFFFF3333).withValues(alpha: 0.3),
                 ),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(
+                _errorMessage,
+                style: const TextStyle(
+                  color: Color(0xFFFF5555),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
           ],
         ),
       ),
@@ -3293,7 +2534,7 @@ class _FuelQuantityCalculatorPageState extends State<FuelQuantityCalculatorPage>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF050508),
+      backgroundColor: _backgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -3303,10 +2544,10 @@ class _FuelQuantityCalculatorPageState extends State<FuelQuantityCalculatorPage>
               children: [
                 RichText(
                   textAlign: TextAlign.center,
-                  text: const TextSpan(
+                  text: TextSpan(
                     text: 'Fuel Quantity ',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: _textColor,
                       fontSize: 24.0,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3314,7 +2555,7 @@ class _FuelQuantityCalculatorPageState extends State<FuelQuantityCalculatorPage>
                       TextSpan(
                         text: 'Calculator',
                         style: TextStyle(
-                          color: Color(0xFF00FF88),
+                          color: _neonColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -3323,333 +2564,212 @@ class _FuelQuantityCalculatorPageState extends State<FuelQuantityCalculatorPage>
                         child: Padding(
                           padding: EdgeInsets.only(left: 8.0),
                           child: Icon(Icons.payments_outlined,
-                              size: 28.0, color: Color(0xFF00FF88)),
+                              size: 28.0, color: _neonColor),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Text(
+                Text(
                   'Calculate how much fuel you can get for a given amount of money.',
-                  style: TextStyle(fontSize: 12.0, color: Color(0xFF8E92A2)),
+                  style: TextStyle(fontSize: 12.0, color: _mutedColor),
                   textAlign: TextAlign.center,
                 ),
               ],
             ),
             const SizedBox(height: 30),
-            Card(
+            _CalculatorInputTile(
+              label: 'Total Amount (${widget.selectedCurrencySymbol})',
+              controller: _totalAmountController,
+              icon: Icons.payments_outlined,
+              suffix: widget.selectedCurrencySymbol,
+              hintText: 'Enter total amount',
+            ),
+            _CalculatorInputTile(
+              label: 'Fuel Price per Liter (${widget.selectedCurrencySymbol})',
+              controller: _fuelPriceController,
+              icon: Icons.payments_outlined,
+              suffix: widget.selectedCurrencySymbol,
+              hintText: 'Enter fuel price per liter',
+            ),
+            const SizedBox(height: 12),
+            // Calculate Button
+            GestureDetector(
+              onTap: _calculateFuelQuantity,
               child: Container(
+                height: 52,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF109246), _neonColor],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(26),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 3,
-                      blurRadius: 7,
-                      offset: const Offset(0, 3),
+                      color: _neonColor.withValues(alpha: 0.25),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Total Amount Section
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.payments_outlined,
-                              color: Color(0xFF22C55E),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Total Amount (${widget.selectedCurrencySymbol})',
-                              style: const TextStyle(
-                                color: Color(0xFF4B5563),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 54,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(27),
-                            border: Border.all(
-                              color: const Color(0xFFD1D5DB),
-                              width: 1.0,
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 28),
-                          alignment: Alignment.centerLeft,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _totalAmountController,
-                                  keyboardType: TextInputType.number,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1F2937),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    filled: false,
-                                    fillColor: Colors.transparent,
-                                    hintText: 'Enter total amount',
-                                    hintStyle: TextStyle(
-                                      color: Color(0xFF9CA3AF),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d+\.?\d{0,2}')),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 1,
-                                height: 20,
-                                color: const Color(0xFFE5E7EB),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                widget.selectedCurrencySymbol,
-                                style: const TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 24),
+                    Icon(
+                      Icons.calculate_rounded,
+                      color: _textColor,
+                      size: 20,
                     ),
-                    const SizedBox(height: 20),
-
-                    // Fuel Price Section
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.payments_outlined,
-                              color: Color(0xFF22C55E),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Fuel Price per Liter (${widget.selectedCurrencySymbol})',
-                              style: const TextStyle(
-                                color: Color(0xFF4B5563),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 54,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(27),
-                            border: Border.all(
-                              color: const Color(0xFFD1D5DB),
-                              width: 1.0,
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 28),
-                          alignment: Alignment.centerLeft,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _fuelPriceController,
-                                  keyboardType: TextInputType.number,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1F2937),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    filled: false,
-                                    fillColor: Colors.transparent,
-                                    hintText: 'Enter fuel price per liter',
-                                    hintStyle: TextStyle(
-                                      color: Color(0xFF9CA3AF),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d+\.?\d{0,2}')),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 1,
-                                height: 20,
-                                color: const Color(0xFFE5E7EB),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                widget.selectedCurrencySymbol,
-                                style: const TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    Text(
+                      'Calculate Fuel Quantity',
+                      style: TextStyle(
+                        color: _textColor,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(height: 30),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              gradient: const LinearGradient(
-                                colors: [Colors.green, Colors.lightGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.green.withOpacity(0.4),
-                                  spreadRadius: 2,
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: _calculateFuelQuantity,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 15, vertical: 8),
-                              ),
-                              child: const Text(
-                                'Calculate Fuel Quantity',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 15),
-                        SizedBox(
-                          width: 45,
-                          height: 45,
-                          child: ElevatedButton(
-                            onPressed: _clearFields,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade800,
-                              shadowColor: Colors.black.withOpacity(0.2),
-                              shape: const CircleBorder(),
-                              padding: EdgeInsets.zero,
-                              elevation: 4,
-                            ),
-                            child: const Icon(
-                              Icons.refresh,
-                              size: 24,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const Spacer(),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF04190E),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        color: _neonColor,
+                        size: 18,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 30),
-            // Show results or error only after a calculation attempt
-            if (_fuelQuantity > 0.0 || _errorMessage.isNotEmpty)
-              Card(
-                color: Colors.teal.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Fuel Quantity',
-                              style: Theme.of(context).textTheme.titleMedium),
-                          if (_fuelQuantity >
-                              0.0) // Only show copy button if results are valid
-                            IconButton(
-                              icon: const Icon(Icons.copy, color: Colors.grey),
-                              onPressed: () {
-                                String output = 'Fuel Quantity Calculation:\n'
-                                    '  Total Amount: ${widget.selectedCurrencySymbol}${_totalAmountController.text}\n'
-                                    '  Fuel Price per Liter: ${widget.selectedCurrencySymbol}${_fuelPriceController.text}\n'
-                                    '  Fuel Quantity: ${_formatNumber(_fuelQuantity)} L';
-                                _copyToClipboard(output);
-                              },
-                              tooltip: 'Copy All Results',
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '${_formatNumber(_fuelQuantity)} L',
-                        style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal),
-                      ),
-                    ],
+            const SizedBox(height: 12),
+            // Reset Button
+            GestureDetector(
+              onTap: _clearFields,
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFFFF3333),
+                    width: 1.5,
                   ),
                 ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.refresh_rounded,
+                      color: Color(0xFFFF3333),
+                      size: 18,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Reset',
+                      style: TextStyle(
+                        color: Color(0xFFFF3333),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            if (_errorMessage.isNotEmpty)
-              Card(
-                color: Colors.red.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Text(
-                    _errorMessage,
-                    style: const TextStyle(fontSize: 18, color: Colors.red),
-                    textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // Show results or error only after a calculation attempt
+            if (_fuelQuantity > 0.0)
+              Container(
+                decoration: BoxDecoration(
+                  color: _cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: _neonColor.withValues(alpha: 0.3),
+                    width: 1.2,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _neonColor.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Fuel Quantity',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _textColor,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.copy, color: _textColor.withOpacity(0.6)),
+                          onPressed: () {
+                            String output = 'Fuel Quantity Calculation:\n'
+                                '  Total Amount: ${widget.selectedCurrencySymbol}${_totalAmountController.text}\n'
+                                '  Fuel Price per Liter: ${widget.selectedCurrencySymbol}${_fuelPriceController.text}\n'
+                                '  Fuel Quantity: ${_formatNumber(_fuelQuantity)} L';
+                            _copyToClipboard(output);
+                          },
+                          tooltip: 'Copy All Results',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${_formatNumber(_fuelQuantity)} L',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: _neonColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (_errorMessage.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C1318),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFFF3333).withValues(alpha: 0.3),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Text(
+                  _errorMessage,
+                  style: const TextStyle(
+                    color: Color(0xFFFF5555),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
           ],
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // --- NEW About Page ---

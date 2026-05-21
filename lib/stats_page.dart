@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/mock_data.dart';
+import 'package:fuel_cal/services/theme_service.dart';
 
-const Color _neonColor = Color(0xFF00FF88);
-const Color _surfaceColor = Color(0xFF1E1E24);
-const Color _cardColor = Color(0xFF25252D);
-const Color _backgroundColor = Color(0xFF121217);
-const Color _mutedColor = Color(0xFFA1A1AA);
-const Color _dangerColor = Color(0xFFFF4444);
+Color get _neonColor => ThemeService.neonColor;
+Color get _surfaceColor => ThemeService.surfaceColor;
+Color get _cardColor => ThemeService.cardColor;
+Color get _backgroundColor => ThemeService.backgroundColor;
+Color get _mutedColor => ThemeService.mutedColor;
+Color get _dangerColor => ThemeService.dangerColor;
 
 class StatsPage extends StatefulWidget {
   const StatsPage({super.key});
@@ -42,7 +43,7 @@ class _StatsPageState extends State<StatsPage> {
               const SizedBox(height: 16),
               _buildExpenseBreakdown(),
               const SizedBox(height: 24),
-              const Text('SMART INSIGHTS', style: TextStyle(color: _mutedColor, fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
+              Text('SMART INSIGHTS', style: TextStyle(color: _mutedColor, fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               _buildInsight('Mileage dropped by 8% this month — consider checking tire pressure.'),
               _buildInsight('Fuel spending increased by ₹1,200 vs last month.'),
@@ -58,8 +59,8 @@ class _StatsPageState extends State<StatsPage> {
   Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text('Analytics', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+      children: [
+        Text('Analytics', style: TextStyle(color: ThemeService.textColor, fontSize: 24, fontWeight: FontWeight.bold)),
         Text('Insights & trends', style: TextStyle(color: _mutedColor, fontSize: 12)),
       ],
     );
@@ -81,14 +82,16 @@ class _StatsPageState extends State<StatsPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  gradient: isSelected ? const LinearGradient(colors: [_neonColor, Color(0xFF00BFA5)]) : null,
+                  gradient: isSelected ? LinearGradient(colors: [_neonColor, const Color(0xFF00BFA5)]) : null,
                   borderRadius: BorderRadius.circular(30),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   t,
                   style: TextStyle(
-                    color: isSelected ? Colors.black : _mutedColor,
+                    color: isSelected 
+                        ? (ThemeService.isDarkMode ? Colors.black : Colors.white)
+                        : _mutedColor,
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
@@ -121,14 +124,24 @@ class _StatsPageState extends State<StatsPage> {
   Widget _buildKpi(String label, String value, String delta, bool up) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _cardColor, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: _cardColor, 
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: ThemeService.isDarkMode ? [] : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(color: _mutedColor, fontSize: 12)),
+          Text(label, style: TextStyle(color: _mutedColor, fontSize: 12)),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(value, style: TextStyle(color: ThemeService.textColor, fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -145,11 +158,21 @@ class _StatsPageState extends State<StatsPage> {
   Widget _buildCard(String title, Widget child) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _cardColor, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: _cardColor, 
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: ThemeService.isDarkMode ? [] : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(title, style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           child,
         ],
@@ -165,7 +188,7 @@ class _StatsPageState extends State<StatsPage> {
         color: _surfaceColor,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Center(
+      child: Center(
         child: Text('Chart Placeholder', style: TextStyle(color: _mutedColor)),
       ),
     );
@@ -184,7 +207,7 @@ class _StatsPageState extends State<StatsPage> {
               alignment: Alignment.center,
               children: [
                 CircularProgressIndicator(value: 1.0, color: _surfaceColor, strokeWidth: 10),
-                const CircularProgressIndicator(value: 0.6, color: _neonColor, strokeWidth: 10),
+                CircularProgressIndicator(value: 0.6, color: _neonColor, strokeWidth: 10),
               ],
             ),
           ),
@@ -203,10 +226,10 @@ class _StatsPageState extends State<StatsPage> {
                         children: [
                           Container(width: 8, height: 8, decoration: BoxDecoration(color: colors[idx % colors.length], shape: BoxShape.circle)),
                           const SizedBox(width: 8),
-                          Text(e.name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                          Text(e.name, style: TextStyle(color: ThemeService.textColor, fontSize: 12)),
                         ],
                       ),
-                      Text('₹${e.value}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text('₹${e.value}', style: TextStyle(color: ThemeService.textColor, fontSize: 12, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 );
@@ -222,16 +245,26 @@ class _StatsPageState extends State<StatsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: _cardColor, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: _cardColor, 
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: ThemeService.isDarkMode ? [] : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(color: _neonColor.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.lightbulb_outline, color: _neonColor, size: 16),
+            child: Icon(Icons.lightbulb_outline, color: _neonColor, size: 16),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4))),
+          Expanded(child: Text(text, style: TextStyle(color: ThemeService.textColor, fontSize: 12, height: 1.4))),
         ],
       ),
     );
