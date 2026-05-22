@@ -14,6 +14,7 @@ _$FuelLogImpl _$$FuelLogImplFromJson(Map<String, dynamic> json) =>
       odometer: (json['odometer'] as num).toDouble(),
       fuelQuantity: (json['fuel_quantity'] as num).toDouble(),
       totalCost: (json['total_cost'] as num).toDouble(),
+      stationName: json['station_name'] as String?,
       date:
           json['date'] == null ? null : DateTime.parse(json['date'] as String),
     );
@@ -26,5 +27,6 @@ Map<String, dynamic> _$$FuelLogImplToJson(_$FuelLogImpl instance) =>
       'odometer': instance.odometer,
       'fuel_quantity': instance.fuelQuantity,
       'total_cost': instance.totalCost,
+      'station_name': instance.stationName,
       'date': instance.date?.toIso8601String(),
     };

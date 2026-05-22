@@ -30,6 +30,8 @@ mixin _$FuelLog {
   double get fuelQuantity => throw _privateConstructorUsedError;
   @JsonKey(name: 'total_cost')
   double get totalCost => throw _privateConstructorUsedError;
+  @JsonKey(name: 'station_name')
+  String? get stationName => throw _privateConstructorUsedError;
   DateTime? get date => throw _privateConstructorUsedError;
 
   /// Serializes this FuelLog to a JSON map.
@@ -53,6 +55,7 @@ abstract class $FuelLogCopyWith<$Res> {
       double odometer,
       @JsonKey(name: 'fuel_quantity') double fuelQuantity,
       @JsonKey(name: 'total_cost') double totalCost,
+      @JsonKey(name: 'station_name') String? stationName,
       DateTime? date});
 }
 
@@ -77,6 +80,7 @@ class _$FuelLogCopyWithImpl<$Res, $Val extends FuelLog>
     Object? odometer = null,
     Object? fuelQuantity = null,
     Object? totalCost = null,
+    Object? stationName = freezed,
     Object? date = freezed,
   }) {
     return _then(_value.copyWith(
@@ -104,6 +108,10 @@ class _$FuelLogCopyWithImpl<$Res, $Val extends FuelLog>
           ? _value.totalCost
           : totalCost // ignore: cast_nullable_to_non_nullable
               as double,
+      stationName: freezed == stationName
+          ? _value.stationName
+          : stationName // ignore: cast_nullable_to_non_nullable
+              as String?,
       date: freezed == date
           ? _value.date
           : date // ignore: cast_nullable_to_non_nullable
@@ -126,6 +134,7 @@ abstract class _$$FuelLogImplCopyWith<$Res> implements $FuelLogCopyWith<$Res> {
       double odometer,
       @JsonKey(name: 'fuel_quantity') double fuelQuantity,
       @JsonKey(name: 'total_cost') double totalCost,
+      @JsonKey(name: 'station_name') String? stationName,
       DateTime? date});
 }
 
@@ -148,6 +157,7 @@ class __$$FuelLogImplCopyWithImpl<$Res>
     Object? odometer = null,
     Object? fuelQuantity = null,
     Object? totalCost = null,
+    Object? stationName = freezed,
     Object? date = freezed,
   }) {
     return _then(_$FuelLogImpl(
@@ -175,6 +185,10 @@ class __$$FuelLogImplCopyWithImpl<$Res>
           ? _value.totalCost
           : totalCost // ignore: cast_nullable_to_non_nullable
               as double,
+      stationName: freezed == stationName
+          ? _value.stationName
+          : stationName // ignore: cast_nullable_to_non_nullable
+              as String?,
       date: freezed == date
           ? _value.date
           : date // ignore: cast_nullable_to_non_nullable
@@ -193,6 +207,7 @@ class _$FuelLogImpl implements _FuelLog {
       required this.odometer,
       @JsonKey(name: 'fuel_quantity') required this.fuelQuantity,
       @JsonKey(name: 'total_cost') required this.totalCost,
+      @JsonKey(name: 'station_name') this.stationName,
       this.date});
 
   factory _$FuelLogImpl.fromJson(Map<String, dynamic> json) =>
@@ -215,11 +230,14 @@ class _$FuelLogImpl implements _FuelLog {
   @JsonKey(name: 'total_cost')
   final double totalCost;
   @override
+  @JsonKey(name: 'station_name')
+  final String? stationName;
+  @override
   final DateTime? date;
 
   @override
   String toString() {
-    return 'FuelLog(id: $id, userId: $userId, vehicleId: $vehicleId, odometer: $odometer, fuelQuantity: $fuelQuantity, totalCost: $totalCost, date: $date)';
+    return 'FuelLog(id: $id, userId: $userId, vehicleId: $vehicleId, odometer: $odometer, fuelQuantity: $fuelQuantity, totalCost: $totalCost, stationName: $stationName, date: $date)';
   }
 
   @override
@@ -237,13 +255,15 @@ class _$FuelLogImpl implements _FuelLog {
                 other.fuelQuantity == fuelQuantity) &&
             (identical(other.totalCost, totalCost) ||
                 other.totalCost == totalCost) &&
+            (identical(other.stationName, stationName) ||
+                other.stationName == stationName) &&
             (identical(other.date, date) || other.date == date));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, userId, vehicleId, odometer,
-      fuelQuantity, totalCost, date);
+      fuelQuantity, totalCost, stationName, date);
 
   /// Create a copy of FuelLog
   /// with the given fields replaced by the non-null parameter values.
@@ -269,6 +289,7 @@ abstract class _FuelLog implements FuelLog {
       required final double odometer,
       @JsonKey(name: 'fuel_quantity') required final double fuelQuantity,
       @JsonKey(name: 'total_cost') required final double totalCost,
+      @JsonKey(name: 'station_name') final String? stationName,
       final DateTime? date}) = _$FuelLogImpl;
 
   factory _FuelLog.fromJson(Map<String, dynamic> json) = _$FuelLogImpl.fromJson;
@@ -289,6 +310,9 @@ abstract class _FuelLog implements FuelLog {
   @override
   @JsonKey(name: 'total_cost')
   double get totalCost;
+  @override
+  @JsonKey(name: 'station_name')
+  String? get stationName;
   @override
   DateTime? get date;
 

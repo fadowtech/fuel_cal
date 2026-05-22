@@ -12,6 +12,7 @@ class FuelLog with _$FuelLog {
     required double odometer,
     @JsonKey(name: 'fuel_quantity') required double fuelQuantity,
     @JsonKey(name: 'total_cost') required double totalCost,
+    @JsonKey(name: 'station_name') String? stationName,
     DateTime? date,
   }) = _FuelLog;
 

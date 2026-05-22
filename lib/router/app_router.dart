@@ -6,6 +6,8 @@ import '../sign_in_page.dart';
 import '../sign_up_page.dart';
 import '../dashboard_page.dart';
 import '../providers/auth_provider.dart';
+import '../services/currency_service.dart';
+import '../main.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -37,8 +39,48 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/dashboard',
-        builder: (context, state) => const DashboardPage(), // Will need to be wrapped to handle the full structure
+        builder: (context, state) => const MainDashboardWrapper(),
       ),
     ],
   );
 });
+
+class MainDashboardWrapper extends StatefulWidget {
+  const MainDashboardWrapper({super.key});
+
+  @override
+  State<MainDashboardWrapper> createState() => _MainDashboardWrapperState();
+}
+
+class _MainDashboardWrapperState extends State<MainDashboardWrapper> {
+  String _selectedCurrencyCode = '';
+  String _selectedCurrencySymbol = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrency();
+  }
+
+  Future<void> _loadCurrency() async {
+    String? currency = await CurrencyService.getCurrency();
+    if (mounted) {
+      setState(() {
+        _selectedCurrencyCode = currency ?? '';
+        _selectedCurrencySymbol = currency != null ? CurrencyService.getCurrencySymbol(currency) : '';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return FuelCalculatorHomePage(
+      selectedCurrencySymbol: _selectedCurrencySymbol,
+      selectedCurrencyCode: _selectedCurrencyCode,
+      onCurrencyChanged: _loadCurrency,
+    );
+  }
+}

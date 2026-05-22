@@ -40,6 +40,7 @@ class FuelLog(Base):
     odometer = Column(Float)
     fuel_quantity = Column(Float)
     total_cost = Column(Float)
+    station_name = Column(String, nullable=True)
     
     user = relationship("User", back_populates="logs")
     vehicle = relationship("Vehicle", back_populates="logs")

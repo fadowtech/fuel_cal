@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_cal/mock_data.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/providers/data_provider.dart';
+import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:intl/intl.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -9,35 +12,70 @@ Color get _cardColor => ThemeService.cardColor;
 Color get _backgroundColor => ThemeService.backgroundColor;
 Color get _mutedColor => ThemeService.mutedColor;
 
-class LogsPage extends StatelessWidget {
+class LogsPage extends ConsumerWidget {
   const LogsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fuelLogsAsync = ref.watch(fuelLogsProvider);
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: ListView.builder(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                itemCount: mockFuelLogs.length,
-                itemBuilder: (context, index) {
-                  final log = mockFuelLogs[index];
-                  return _buildLogCard(context, log);
-                },
-              ),
-            ),
-          ],
+        child: fuelLogsAsync.when(
+          data: (logs) {
+            // Sort logs by date descending
+            final sortedLogs = List<FuelLog>.from(logs)
+              ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
+
+            return Column(
+              children: [
+                _buildHeader(sortedLogs.length),
+                Expanded(
+                  child: sortedLogs.isEmpty
+                      ? Center(
+                          child: Text(
+                            "No fuel logs yet. Add one!",
+                            style: TextStyle(color: ThemeService.textColor),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          itemCount: sortedLogs.length,
+                          itemBuilder: (context, index) {
+                            final log = sortedLogs[index];
+                            // Calculate mileage if we have a previous log
+                            double mileage = 0.0;
+                            if (index < sortedLogs.length - 1) {
+                              final prevLog = sortedLogs[index + 1];
+                              final distance = log.odometer - prevLog.odometer;
+                              if (distance > 0 && prevLog.fuelQuantity > 0) {
+                                mileage = distance / prevLog.fuelQuantity;
+                              }
+                            }
+                            return _buildLogCard(context, log, mileage);
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+          loading: () => Column(
+            children: [
+              _buildHeader(0),
+              const Expanded(child: Center(child: CircularProgressIndicator())),
+            ],
+          ),
+          error: (err, stack) => Center(
+              child: Text('Error: $err',
+                  style: TextStyle(color: ThemeService.dangerColor))),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(int count) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
@@ -53,7 +91,7 @@ class LogsPage extends StatelessWidget {
                           color: ThemeService.textColor,
                           fontSize: 24,
                           fontWeight: FontWeight.bold)),
-                  Text('${mockFuelLogs.length} entries',
+                  Text('$count entries',
                       style: TextStyle(color: _mutedColor, fontSize: 12)),
                 ],
               ),
@@ -132,12 +170,24 @@ class LogsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildLogCard(BuildContext context, Map<String, dynamic> log) {
+  Widget _buildLogCard(BuildContext context, FuelLog log, double mileage) {
+    final dateFormat = DateFormat('yyyy-MM-dd');
+    final dateStr = log.date != null ? dateFormat.format(log.date!) : 'Unknown Date';
+    final pricePerL = log.fuelQuantity > 0 ? (log.totalCost / log.fuelQuantity).toStringAsFixed(1) : '0.0';
+
     return GestureDetector(
       onTap: () {
+        // Mock log for detail page
+        final mockLog = {
+          'station': log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station',
+          'date': dateStr,
+          'amount': log.totalCost,
+          'liters': log.fuelQuantity,
+          'odo': log.odometer,
+        };
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => LogDetailPage(log: log)),
+          MaterialPageRoute(builder: (context) => LogDetailPage(log: mockLog)),
         );
       },
       child: Container(
@@ -176,12 +226,12 @@ class LogsPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(log['station'],
+                      Text(log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station',
                           style: TextStyle(
                               color: ThemeService.textColor,
                               fontSize: 14,
                               fontWeight: FontWeight.bold)),
-                      Text('₹${log['amount']}',
+                      Text('₹${log.totalCost.toStringAsFixed(0)}',
                           style: TextStyle(
                               color: ThemeService.textColor,
                               fontSize: 14,
@@ -189,7 +239,7 @@ class LogsPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('${log['date']} • ODO ${log['odo']}',
+                  Text('$dateStr • ODO ${log.odometer.toStringAsFixed(0)}',
                       style: TextStyle(color: _mutedColor, fontSize: 12)),
                   const SizedBox(height: 12),
                   Container(
@@ -203,7 +253,7 @@ class LogsPage extends StatelessWidget {
                       children: [
                         RichText(
                           text: TextSpan(
-                            text: '${log['liters']}L ',
+                            text: '${log.fuelQuantity.toStringAsFixed(1)}L ',
                             style: TextStyle(
                                 color: ThemeService.textColor,
                                 fontSize: 12,
@@ -217,12 +267,12 @@ class LogsPage extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Text('${log['mileage']} KM/L',
+                        Text('${mileage > 0 ? mileage.toStringAsFixed(1) : '-'} KM/L',
                             style: TextStyle(
                                 color: _neonColor,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500)),
-                        Text('₹${log['pricePerL']}/L',
+                        Text('₹$pricePerL/L',
                             style: TextStyle(
                                 color: _mutedColor, fontSize: 12)),
                       ],

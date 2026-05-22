@@ -166,6 +166,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       "fuel_quantity": liters,
       "total_cost": _total,
       "odometer": odo,
+      "station_name": _station.text.trim().isEmpty ? null : _station.text.trim(),
     });
 
     setState(() => _isLoading = false);
