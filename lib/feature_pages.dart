@@ -1638,12 +1638,19 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
-class _ExpenseTile extends StatelessWidget {
+class _ExpenseTile extends StatefulWidget {
   final Expense expense;
   final VoidCallback? onTap;
   final Future<bool> Function()? onDelete;
 
-  const _ExpenseTile({required this.expense, this.onTap, this.onDelete});
+  const _ExpenseTile({required this.expense, this.onTap, this.onDelete, Key? key}) : super(key: key);
+
+  @override
+  State<_ExpenseTile> createState() => _ExpenseTileState();
+}
+
+class _ExpenseTileState extends State<_ExpenseTile> {
+  bool _isExpanded = false;
 
   String _getMonth(int month) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1653,23 +1660,113 @@ class _ExpenseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = _ListTileShell(
-      icon: _categoryIcon(expense.category),
-      title: expense.title,
-      subtitle: '${expense.category} - ${expense.date != null ? '${expense.date!.day} ${_getMonth(expense.date!.month)}' : 'Today'}',
-      trailing: '₹${expense.amount.toStringAsFixed(0)}',
-      margin: EdgeInsets.zero,
+    Widget child = GestureDetector(
+      onTap: () {
+        setState(() {
+          _isExpanded = !_isExpanded;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: _surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.03),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _categoryIcon(widget.expense.category),
+                color: _neonColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.expense.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${widget.expense.category} • ${widget.expense.date != null ? '${widget.expense.date!.day} ${_getMonth(widget.expense.date!.month)}' : 'Today'}',
+                    style: TextStyle(
+                      color: _mutedColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (_isExpanded) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.receipt_long_outlined, size: 14, color: _mutedColor),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            (widget.expense.notes != null && widget.expense.notes!.trim().isNotEmpty)
+                                ? widget.expense.notes!
+                                : 'no notes',
+                            style: TextStyle(color: _mutedColor, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '₹${widget.expense.amount.toStringAsFixed(0)}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (widget.expense.notes != null && widget.expense.notes!.trim().isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: _mutedColor,
+                size: 20,
+              ),
+            ] else ...[
+              const SizedBox(width: 28),
+            ],
+          ],
+        ),
+      ),
     );
 
     child = Slidable(
-      key: ValueKey(expense.id),
+      key: ValueKey(widget.expense.id),
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         extentRatio: 0.45,
         children: [
           CustomSlidableAction(
             onPressed: (context) {
-              if (onTap != null) onTap!();
+              if (widget.onTap != null) widget.onTap!();
             },
             backgroundColor: const Color(0xFF3B3B45),
             foregroundColor: Colors.white,
@@ -1688,7 +1785,7 @@ class _ExpenseTile extends StatelessWidget {
           ),
           CustomSlidableAction(
             onPressed: (context) async {
-              if (onDelete != null) await onDelete!();
+              if (widget.onDelete != null) await widget.onDelete!();
             },
             backgroundColor: const Color(0xFFEF4444),
             foregroundColor: Colors.white,

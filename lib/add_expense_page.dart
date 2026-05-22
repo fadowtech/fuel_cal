@@ -103,7 +103,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       Navigator.pop(context);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save expense.')),
+        SnackBar(content: Text(widget.existingExpense != null ? 'Failed to update expense.' : 'Failed to save expense.')),
       );
     }
   }
@@ -358,7 +358,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                         children: [
                           const Icon(Icons.save_outlined, color: Colors.black, size: 22),
                           const SizedBox(width: 8),
-                          Text(_isLoading ? 'Saving...' : 'Save Expense',
+                          Text(_isLoading ? 'Saving...' : (widget.existingExpense != null ? 'Update Expense' : 'Save Expense'),
                               style: const TextStyle(
                                   color: Colors.black,
                                   fontSize: 16,
