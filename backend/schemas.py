@@ -69,6 +69,7 @@ class ExpenseBase(BaseModel):
     title: str
     amount: float
     date: Optional[datetime] = None
+    notes: Optional[str] = None
 
 class ExpenseCreate(ExpenseBase):
     pass

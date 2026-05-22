@@ -7,6 +7,9 @@ import 'package:fuel_cal/mock_data.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/models/expense_model.dart';
 import 'package:fuel_cal/add_expense_page.dart';
+import 'dart:math' as math;
+import 'package:intl/intl.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -268,69 +271,391 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   }
 }
 
-class ExpensesPage extends ConsumerWidget {
+class ExpensesPage extends ConsumerStatefulWidget {
   const ExpensesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final expensesAsync = ref.watch(expensesProvider);
+  ConsumerState<ExpensesPage> createState() => _ExpensesPageState();
+}
 
-    return _FeatureScaffold(
-      title: 'Expenses',
-      subtitle: 'All entries',
-      action: GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
-        child: const Icon(Icons.add, color: Colors.black),
-      ),
-      child: expensesAsync.when(
-        data: (expenses) {
-          final total = expenses.fold<double>(
-            0.0,
-            (sum, item) => sum + item.amount,
-          ).toInt();
+class _ExpensesPageState extends ConsumerState<ExpensesPage> {
+  String _selectedFilter = 'All';
+  DateTime _selectedMonth = DateTime.now();
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickMonthOnly() async {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final selectedIndex = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: _surfaceColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _TotalSpendCard(total: total, count: expenses.length),
+              const Text('Select Month', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  childAspectRatio: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: 12,
+                itemBuilder: (context, index) {
+                  final isSelected = _selectedMonth.month == index + 1;
+                  final isFutureMonth = _selectedMonth.year == DateTime.now().year && (index + 1) > DateTime.now().month;
+                  
+                  return GestureDetector(
+                    onTap: isFutureMonth ? null : () => Navigator.pop(context, index + 1),
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected ? _neonColor : Colors.white.withValues(alpha: isFutureMonth ? 0.02 : 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        months[index], 
+                        style: TextStyle(
+                          color: isSelected ? Colors.black : (isFutureMonth ? Colors.white.withValues(alpha: 0.2) : Colors.white), 
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 13
+                        )
+                      ),
+                    ),
+                  );
+                },
+              ),
               const SizedBox(height: 16),
-              _FilterChips(items: const [
-                'All',
-                'Fuel',
-                'Insurance',
-                'Toll',
-                'Parking',
-                'Washing'
-              ]),
-              const SizedBox(height: 16),
-              if (expenses.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Text('No expenses yet. Add one!', style: TextStyle(color: _mutedColor)),
-                  ),
-                )
-              else
-                ...expenses.map((e) => _ExpenseTile(expense: e)),
             ],
-          );
-        },
-        loading: () => Center(child: CircularProgressIndicator(color: _neonColor)),
-        error: (e, st) => const Center(child: Text('Failed to load expenses', style: TextStyle(color: Colors.white))),
+          ),
+        );
+      }
+    );
+
+    if (selectedIndex != null) {
+      setState(() {
+        _selectedMonth = DateTime(_selectedMonth.year, selectedIndex, 1);
+      });
+    }
+  }
+
+  Future<void> _pickYearOnly() async {
+    final currentYear = DateTime.now().year;
+    final startYear = 1990;
+    final endYear = currentYear;
+    final years = List.generate(endYear - startYear + 1, (index) => endYear - index);
+    
+    final selectedYear = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: _surfaceColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Column(
+            children: [
+              const Text('Select Year', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              Expanded(
+                child: GridView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 2.2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: years.length,
+                itemBuilder: (context, index) {
+                  final year = years[index];
+                  final isSelected = _selectedMonth.year == year;
+                  return GestureDetector(
+                    onTap: () => Navigator.pop(context, year),
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected ? _neonColor : Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(year.toString(), style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                    ),
+                  );
+                },
+              ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      }
+    );
+
+    if (selectedYear != null) {
+      setState(() {
+        _selectedMonth = DateTime(selectedYear, _selectedMonth.month, 1);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final expensesAsync = ref.watch(expensesProvider);
+    final monthFormat = DateFormat('MMM yyyy');
+
+    return Scaffold(
+      backgroundColor: _backgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.maybePop(context),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: _surfaceColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.chevron_left_rounded,
+                          color: Colors.white, size: 24),
+                    ),
+                  ),
+                  if (_isSearching)
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        autofocus: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: 'Search expenses...',
+                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                          border: InputBorder.none,
+                        ),
+                        onChanged: (val) => setState(() {}),
+                      ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('Expenses', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: _pickMonthOnly,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                    child: Row(
+                                      children: [
+                                        Text(DateFormat('MMM').format(_selectedMonth), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: _pickYearOnly,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                    child: Row(
+                                      children: [
+                                        Text(DateFormat('yyyy').format(_selectedMonth), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                        const SizedBox(width: 4),
+                                        const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  if (!_isSearching) const Spacer(),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        if (_isSearching) {
+                          _isSearching = false;
+                          _searchController.clear();
+                        } else {
+                          _isSearching = true;
+                        }
+                      });
+                    },
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: _surfaceColor, shape: BoxShape.circle),
+                      child: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white, size: 20),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: _neonColor, shape: BoxShape.circle),
+                      child: const Icon(Icons.add, color: Colors.black),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: expensesAsync.when(
+                data: (expenses) {
+                  var monthFiltered = expenses.where((e) {
+                     final d = e.date ?? DateTime.now();
+                     return d.year == _selectedMonth.year && d.month == _selectedMonth.month;
+                  }).toList();
+
+                  final query = _searchController.text.trim().toLowerCase();
+                  if (query.isNotEmpty) {
+                    monthFiltered = monthFiltered.where((e) {
+                      return e.title.toLowerCase().contains(query) || 
+                             e.category.toLowerCase().contains(query) ||
+                             e.amount.toString().contains(query);
+                    }).toList();
+                  }
+
+                  final filteredExpenses = _selectedFilter == 'All' 
+                      ? monthFiltered 
+                      : monthFiltered.where((e) => e.category == _selectedFilter).toList();
+                  
+                  filteredExpenses.sort((a, b) {
+                    final dateA = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+                    final dateB = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+                    final dateComp = dateB.compareTo(dateA);
+                    if (dateComp != 0) return dateComp;
+                    return b.id.compareTo(a.id);
+                  });
+
+                  final total = filteredExpenses.fold<double>(
+                    0.0,
+                    (sum, item) => sum + item.amount,
+                  ).toInt();
+
+                  int prevMonthTotal = 0;
+                  final prevMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
+                  final prevMonthExpenses = expenses.where((e) {
+                     final d = e.date ?? DateTime.now();
+                     return d.year == prevMonth.year && d.month == prevMonth.month;
+                  });
+                  prevMonthTotal = prevMonthExpenses.fold<double>(
+                    0.0,
+                    (sum, item) => sum + item.amount,
+                  ).toInt();
+
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                    children: [
+                      _TotalSpendDonutCard(
+                        total: total, 
+                        previousTotal: prevMonthTotal, 
+                        selectedMonth: _selectedMonth, 
+                        expenses: filteredExpenses
+                      ),
+                      const SizedBox(height: 16),
+                      _FilterChips(
+                        items: const [
+                          'All',
+                          'Fuel',
+                          'Insurance',
+                          'Toll',
+                          'Parking',
+                          'Washing',
+                          'Tires',
+                          'Service',
+                          'Other'
+                        ],
+                        selectedItem: _selectedFilter,
+                        onSelected: (val) => setState(() => _selectedFilter = val),
+                      ),
+                      const SizedBox(height: 16),
+                      if (filteredExpenses.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Text('No expenses found.', style: TextStyle(color: _mutedColor)),
+                          ),
+                        )
+                      else
+                        ...filteredExpenses.map((e) => _ExpenseTile(
+                          expense: e,
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: e)));
+                          },
+                          onDelete: () async {
+                            final success = await ref.read(apiServiceProvider).deleteExpense(e.id);
+                            if (success) {
+                              ref.invalidate(expensesProvider);
+                            }
+                            return success;
+                          },
+                        )),
+                    ],
+                  );
+                },
+                loading: () => Center(child: CircularProgressIndicator(color: _neonColor)),
+                error: (e, st) => const Center(child: Text('Failed to load expenses', style: TextStyle(color: Colors.white))),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class ServicesPage extends StatelessWidget {
+class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});
 
   @override
+  State<ServicesPage> createState() => _ServicesPageState();
+}
+
+class _ServicesPageState extends State<ServicesPage> {
+  String _selectedFilter = 'All';
+
+  @override
   Widget build(BuildContext context) {
-    final total = mockServices.fold<int>(
+    final filteredServices = _selectedFilter == 'All'
+        ? mockServices
+        : mockServices.where((s) => s['category'] == _selectedFilter).toList();
+
+    final total = filteredServices.fold<int>(
       0,
       (sum, item) => sum + (item['amount'] as int),
     );
+
     return _FeatureScaffold(
       title: 'Services',
       subtitle: 'Maintenance logs',
@@ -338,17 +663,21 @@ class ServicesPage extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         children: [
-          _TotalSpendCard(total: total, count: mockServices.length),
+          _TotalSpendCard(total: total, count: filteredServices.length),
           const SizedBox(height: 16),
-          _FilterChips(items: const [
-            'All',
-            'Engine',
-            'Brakes',
-            'Suspension',
-            'General',
-          ]),
+          _FilterChips(
+            items: const [
+              'All',
+              'Engine',
+              'Brakes',
+              'Suspension',
+              'General',
+            ],
+            selectedItem: _selectedFilter,
+            onSelected: (val) => setState(() => _selectedFilter = val),
+          ),
           const SizedBox(height: 16),
-          ...mockServices.map((s) => _ServiceTile(service: s)),
+          ...filteredServices.map((s) => _ServiceTile(service: s)),
         ],
       ),
     );
@@ -704,6 +1033,180 @@ class _HeroTotalCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TotalSpendDonutCard extends StatelessWidget {
+  final int total;
+  final int previousTotal;
+  final DateTime selectedMonth;
+  final List<Expense> expenses;
+
+  const _TotalSpendDonutCard({
+    required this.total, 
+    required this.previousTotal, 
+    required this.selectedMonth, 
+    required this.expenses
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final diff = total - previousTotal;
+    final percentChange = previousTotal > 0 ? (diff / previousTotal * 100).abs() : 0.0;
+    final isIncrease = diff >= 0;
+    final prevMonthFormat = DateFormat('MMM yyyy').format(DateTime(selectedMonth.year, selectedMonth.month - 1));
+
+    final categoryTotals = <String, double>{};
+    for (var expense in expenses) {
+      categoryTotals[expense.category] = (categoryTotals[expense.category] ?? 0) + expense.amount;
+    }
+    
+    final sortedCategories = categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+      
+    final colors = [
+      const Color(0xFF00FF88),
+      const Color(0xFF3399FF),
+      const Color(0xFFFF9933),
+      const Color(0xFF9933FF),
+      const Color(0xFFFFD700),
+      const Color(0xFF00E5FF),
+      const Color(0xFFFF0055),
+    ];
+
+    final breakdown = <Map<String, dynamic>>[];
+    for (int i = 0; i < sortedCategories.length && i < 6; i++) {
+      final entry = sortedCategories[i];
+      final percent = total > 0 ? (entry.value / total) * 100 : 0.0;
+      if (percent > 0) {
+        breakdown.add({
+          'name': entry.key,
+          'percent': percent,
+          'color': colors[i % colors.length],
+        });
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: _cardColor, borderRadius: BorderRadius.circular(24)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('TOTAL SPENT', style: TextStyle(color: _mutedColor, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text('₹$total', style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                if (previousTotal > 0)
+                  Row(
+                    children: [
+                      Icon(isIncrease ? Icons.arrow_upward : Icons.arrow_downward, color: isIncrease ? const Color(0xFF00FF88) : const Color(0xFFFF0055), size: 12),
+                      const SizedBox(width: 2),
+                      Text('${percentChange.toStringAsFixed(0)}%', style: TextStyle(color: isIncrease ? const Color(0xFF00FF88) : const Color(0xFFFF0055), fontSize: 10, fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 4),
+                      Text('vs $prevMonthFormat', style: TextStyle(color: _mutedColor, fontSize: 10)),
+                    ],
+                  )
+                else
+                  Text('No prior data', style: TextStyle(color: _mutedColor, fontSize: 10)),
+              ],
+            ),
+          ),
+          
+          Expanded(
+            flex: 3,
+            child: Center(
+              child: SizedBox(
+                width: 80, height: 80,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CustomPaint(
+                      size: const Size(80, 80),
+                      painter: _DonutChartPainter(
+                        percentages: breakdown.map((e) => e['percent'] as double).toList(),
+                        colors: breakdown.map((e) => e['color'] as Color).toList(),
+                        strokeWidth: 12,
+                      ),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('₹$total', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text('Total', style: TextStyle(color: _mutedColor, fontSize: 9)),
+                      ],
+                    )
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          Expanded(
+            flex: 3,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: breakdown.map((item) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Container(width: 6, height: 6, decoration: BoxDecoration(color: item['color'] as Color, shape: BoxShape.circle)),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(item['name'] as String, style: const TextStyle(color: Colors.white, fontSize: 10), overflow: TextOverflow.ellipsis)),
+                      Text('${(item['percent'] as double).toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class _DonutChartPainter extends CustomPainter {
+  final List<double> percentages;
+  final List<Color> colors;
+  final double strokeWidth;
+
+  _DonutChartPainter({required this.percentages, required this.colors, this.strokeWidth = 14});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - strokeWidth / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    double startAngle = -math.pi / 2;
+    for (int i = 0; i < percentages.length; i++) {
+      final sweepAngle = (percentages[i] / 100) * 2 * math.pi;
+      
+      final paint = Paint()
+        ..color = colors[i]
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.butt;
+      
+      if (percentages[i] > 0) {
+        final drawSweep = sweepAngle > 0.1 ? sweepAngle - 0.05 : sweepAngle;
+        canvas.drawArc(rect, startAngle, drawSweep, false, paint);
+      }
+      
+      startAngle += sweepAngle;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 class _TotalSpendCard extends StatelessWidget {
@@ -1097,28 +1600,37 @@ class _ActionButton extends StatelessWidget {
 
 class _FilterChips extends StatelessWidget {
   final List<String> items;
+  final String selectedItem;
+  final Function(String) onSelected;
 
-  const _FilterChips({required this.items});
+  const _FilterChips({
+    required this.items,
+    required this.selectedItem,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: items.asMap().entries.map((entry) {
-          final selected = entry.key == 0;
-          return Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-                color: selected ? _neonColor : _surfaceColor,
-                borderRadius: BorderRadius.circular(20)),
-            child: Text(entry.value,
-                style: TextStyle(
-                    color: selected ? Colors.black : _mutedColor,
-                    fontSize: 12,
-                    fontWeight:
-                        selected ? FontWeight.bold : FontWeight.normal)),
+        children: items.map((item) {
+          final selected = item == selectedItem;
+          return GestureDetector(
+            onTap: () => onSelected(item),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                  color: selected ? _neonColor : _surfaceColor,
+                  borderRadius: BorderRadius.circular(20)),
+              child: Text(item,
+                  style: TextStyle(
+                      color: selected ? Colors.black : _mutedColor,
+                      fontSize: 12,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.normal)),
+            ),
           );
         }).toList(),
       ),
@@ -1128,8 +1640,10 @@ class _FilterChips extends StatelessWidget {
 
 class _ExpenseTile extends StatelessWidget {
   final Expense expense;
+  final VoidCallback? onTap;
+  final Future<bool> Function()? onDelete;
 
-  const _ExpenseTile({required this.expense});
+  const _ExpenseTile({required this.expense, this.onTap, this.onDelete});
 
   String _getMonth(int month) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1139,11 +1653,66 @@ class _ExpenseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ListTileShell(
+    Widget child = _ListTileShell(
       icon: _categoryIcon(expense.category),
       title: expense.title,
       subtitle: '${expense.category} - ${expense.date != null ? '${expense.date!.day} ${_getMonth(expense.date!.month)}' : 'Today'}',
       trailing: '₹${expense.amount.toStringAsFixed(0)}',
+      margin: EdgeInsets.zero,
+    );
+
+    child = Slidable(
+      key: ValueKey(expense.id),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.45,
+        children: [
+          CustomSlidableAction(
+            onPressed: (context) {
+              if (onTap != null) onTap!();
+            },
+            backgroundColor: const Color(0xFF3B3B45),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(18),
+              bottomLeft: Radius.circular(18),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.edit_outlined, size: 20),
+                SizedBox(height: 4),
+                Text('Edit', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          CustomSlidableAction(
+            onPressed: (context) async {
+              if (onDelete != null) await onDelete!();
+            },
+            backgroundColor: const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(18),
+              bottomRight: Radius.circular(18),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.delete_outline, size: 20),
+                SizedBox(height: 4),
+                Text('Delete', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+      child: child,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: child,
     );
   }
 }
@@ -1357,6 +1926,7 @@ class _ListTileShell extends StatelessWidget {
   final String subtitle;
   final String? trailing;
   final IconData? trailingIcon;
+  final EdgeInsetsGeometry margin;
 
   const _ListTileShell({
     required this.icon,
@@ -1365,12 +1935,13 @@ class _ListTileShell extends StatelessWidget {
     this.iconColor,
     this.trailing,
     this.trailingIcon,
+    this.margin = const EdgeInsets.only(bottom: 10),
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: margin,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
           color: _cardColor, borderRadius: BorderRadius.circular(18)),

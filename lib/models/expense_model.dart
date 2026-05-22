@@ -13,6 +13,7 @@ class Expense with _$Expense {
     required String title,
     required double amount,
     DateTime? date,
+    String? notes,
   }) = _Expense;
 
   factory Expense.fromJson(Map<String, dynamic> json) => _$ExpenseFromJson(json);

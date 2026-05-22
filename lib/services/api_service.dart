@@ -113,6 +113,24 @@ class ApiService {
       return false;
     }
   }
+
+  Future<bool> updateExpense(int id, Map<String, dynamic> data) async {
+    try {
+      await _dio.put('/expenses/$id', data: data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteExpense(int id) async {
+    try {
+      await _dio.delete('/expenses/$id');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }
 
 

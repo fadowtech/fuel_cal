@@ -55,6 +55,7 @@ class Expense(Base):
     title = Column(String)
     amount = Column(Float)
     date = Column(DateTime, default=datetime.datetime.utcnow)
+    notes = Column(String, nullable=True)
     
     user = relationship("User")
     vehicle = relationship("Vehicle")
