@@ -123,7 +123,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 action: 'View all',
                 onActionTap: () => _openPage(const LogsPage()),
               ),
-              _buildRecentActivityList(),
+              logsAsync.when(
+                data: (logs) {
+                  final sortedLogs = List<FuelLog>.from(logs)
+                    ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
+                  final recentLogs = sortedLogs.take(4).toList();
+                  if (recentLogs.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Center(
+                        child: Text("No recent activity."),
+                      ),
+                    );
+                  }
+                  return _buildRecentActivityList(recentLogs);
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
+              ),
               const SizedBox(height: 40), // Bottom padding
             ],
           ),
@@ -618,9 +639,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildRecentActivityList() {
+  Widget _buildRecentActivityList(List<FuelLog> logs) {
     return Column(
-      children: mockRecentActivity.map((a) {
+      children: logs.map((log) {
+        final stationName = log.stationName?.isNotEmpty == true ? log.stationName : 'Gas Station';
+        final liters = log.fuelQuantity.toStringAsFixed(1);
+        final dateStr = log.date != null ? "${log.date!.year}-${log.date!.month.toString().padLeft(2, '0')}-${log.date!.day.toString().padLeft(2, '0')}" : 'Unknown';
+        
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
@@ -637,7 +662,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   color: _surfaceColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.local_activity_outlined,
+                child: Icon(Icons.local_gas_station_outlined,
                     color: _neonColor, size: 20),
               ),
               const SizedBox(width: 12),
@@ -645,12 +670,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(a.title,
+                    Text('Fuel Added',
                         style: TextStyle(
                             color: _textColor,
                             fontSize: 14,
                             fontWeight: FontWeight.w500)),
-                    Text(a.subtitle,
+                    Text('$stationName • ${liters}L',
                         style:
                             TextStyle(color: _mutedColor, fontSize: 12)),
                   ],
@@ -659,13 +684,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(a.amount,
+                  Text('₹${log.totalCost.toStringAsFixed(0)}',
                       style: TextStyle(
                           color: _textColor,
                           fontSize: 14,
                           fontWeight: FontWeight.bold)),
-                  Text(a.date,
-                      style: TextStyle(color: _mutedColor, fontSize: 10)),
+                  Text(dateStr,
+                      style:
+                          TextStyle(color: _mutedColor, fontSize: 12)),
                 ],
               ),
             ],
