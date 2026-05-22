@@ -21,7 +21,7 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - DATABASE_URL=postgresql://fuel_user:Fuel@2026Secure@db:5432/fuel_db
+      - DATABASE_URL=postgresql://fuel_user:Fuel%402026Secure@db:5432/fuel_db
     depends_on:
       - db
 
