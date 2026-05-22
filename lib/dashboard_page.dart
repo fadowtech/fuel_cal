@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/models/fuel_log_model.dart';
-import 'package:fuel_cal/mock_data.dart';
+import 'package:fuel_cal/mock_data.dart' hide Vehicle, FuelLog;
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/logs_page.dart';
 import 'package:fuel_cal/garage_page.dart';

@@ -19,7 +19,7 @@ services:
     container_name: fuel_backend
     restart: always
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - DATABASE_URL=postgresql://fuel_user:Fuel@2026Secure@db:5432/fuel_db
     depends_on:
