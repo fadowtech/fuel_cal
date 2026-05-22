@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 import models, schemas, database
-from routers.auth_router import get_current_user
+from auth import get_current_user
 
 router = APIRouter(
     prefix="/expenses",
