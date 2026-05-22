@@ -44,3 +44,17 @@ class FuelLog(Base):
     
     user = relationship("User", back_populates="logs")
     vehicle = relationship("Vehicle", back_populates="logs")
+
+class Expense(Base):
+    __tablename__ = "expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
+    category = Column(String)
+    title = Column(String)
+    amount = Column(Float)
+    date = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    user = relationship("User")
+    vehicle = relationship("Vehicle")

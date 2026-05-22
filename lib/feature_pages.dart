@@ -5,6 +5,8 @@ import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/mock_data.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/models/expense_model.dart';
+import 'package:fuel_cal/add_expense_page.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -127,7 +129,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   final _price = TextEditingController();
   final _odo = TextEditingController();
   final _station = TextEditingController();
-  bool _fullTank = true;
+  bool _fullTank = false;
   bool _isLoading = false;
 
   double get _total =>
@@ -266,35 +268,55 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   }
 }
 
-class ExpensesPage extends StatelessWidget {
+class ExpensesPage extends ConsumerWidget {
   const ExpensesPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final total = mockExpenses.fold<int>(
-      0,
-      (sum, item) => sum + (item['amount'] as int),
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expensesAsync = ref.watch(expensesProvider);
+
     return _FeatureScaffold(
       title: 'Expenses',
-      subtitle: 'May 2026',
-      action: const Icon(Icons.add, color: Colors.black),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        children: [
-          _TotalSpendCard(total: total, count: mockExpenses.length),
-          const SizedBox(height: 16),
-          _FilterChips(items: const [
-            'All',
-            'Fuel',
-            'Insurance',
-            'Toll',
-            'Parking',
-            'Washing'
-          ]),
-          const SizedBox(height: 16),
-          ...mockExpenses.map((e) => _ExpenseTile(expense: e)),
-        ],
+      subtitle: 'All entries',
+      action: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
+        child: const Icon(Icons.add, color: Colors.black),
+      ),
+      child: expensesAsync.when(
+        data: (expenses) {
+          final total = expenses.fold<double>(
+            0.0,
+            (sum, item) => sum + item.amount,
+          ).toInt();
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            children: [
+              _TotalSpendCard(total: total, count: expenses.length),
+              const SizedBox(height: 16),
+              _FilterChips(items: const [
+                'All',
+                'Fuel',
+                'Insurance',
+                'Toll',
+                'Parking',
+                'Washing'
+              ]),
+              const SizedBox(height: 16),
+              if (expenses.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Text('No expenses yet. Add one!', style: TextStyle(color: _mutedColor)),
+                  ),
+                )
+              else
+                ...expenses.map((e) => _ExpenseTile(expense: e)),
+            ],
+          );
+        },
+        loading: () => Center(child: CircularProgressIndicator(color: _neonColor)),
+        error: (e, st) => const Center(child: Text('Failed to load expenses', style: TextStyle(color: Colors.white))),
       ),
     );
   }
@@ -1105,17 +1127,23 @@ class _FilterChips extends StatelessWidget {
 }
 
 class _ExpenseTile extends StatelessWidget {
-  final Map<String, dynamic> expense;
+  final Expense expense;
 
   const _ExpenseTile({required this.expense});
+
+  String _getMonth(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (month >= 1 && month <= 12) return months[month - 1];
+    return '';
+  }
 
   @override
   Widget build(BuildContext context) {
     return _ListTileShell(
-      icon: _categoryIcon(expense['category'] as String),
-      title: expense['title'] as String,
-      subtitle: '${expense['category']} - ${expense['date']}',
-      trailing: '₹${expense['amount']}',
+      icon: _categoryIcon(expense.category),
+      title: expense.title,
+      subtitle: '${expense.category} - ${expense.date != null ? '${expense.date!.day} ${_getMonth(expense.date!.month)}' : 'Today'}',
+      trailing: '₹${expense.amount.toStringAsFixed(0)}',
     );
   }
 }

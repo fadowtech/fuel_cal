@@ -62,3 +62,20 @@ class FuelLog(FuelLogBase):
 
     class Config:
         from_attributes = True
+
+class ExpenseBase(BaseModel):
+    vehicle_id: Optional[int] = None
+    category: str
+    title: str
+    amount: float
+    date: Optional[datetime] = None
+
+class ExpenseCreate(ExpenseBase):
+    pass
+
+class Expense(ExpenseBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True

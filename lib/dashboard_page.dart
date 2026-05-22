@@ -90,18 +90,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
               ),
               
-              const SizedBox(height: 16),
-              _buildFuelHeroCard(),
-              const SizedBox(height: 16),
-              _buildMetricCards(),
-              const SizedBox(height: 24),
-              _buildSectionTitle('Odometer'),
-              
-              // Handle Fuel Logs for Odometer
               logsAsync.when(
                 data: (logs) {
                   final totalCost = logs.fold(0.0, (sum, log) => sum + log.totalCost);
-                  return _buildOdometerCard(totalCost: totalCost);
+                  
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      _buildFuelHeroCard(logs, vehiclesAsync),
+                      const SizedBox(height: 16),
+                      _buildMetricCards(logs),
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('Odometer'),
+                      _buildOdometerCard(totalCost: totalCost),
+                    ],
+                  );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
@@ -303,7 +307,64 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildFuelHeroCard() {
+  Widget _buildFuelHeroCard(List<FuelLog> logs, AsyncValue<List<Vehicle>> vehiclesAsync) {
+    double tankCapacity = 50.0;
+    vehiclesAsync.whenData((vehicles) {
+      if (vehicles.isNotEmpty && vehicles.first.tankCapacity > 0) {
+        tankCapacity = vehicles.first.tankCapacity;
+      }
+    });
+
+    double lastFillCost = 0.0;
+    double avgMileage = 15.0; // Fallback
+    double fuelPercent = 0.0;
+    double remainingL = 0.0;
+    double rangeKM = 0.0;
+
+    if (logs.isNotEmpty) {
+      final sortedLogs = List<FuelLog>.from(logs)
+        ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
+        
+      lastFillCost = sortedLogs.first.totalCost;
+      
+      // Calculate avg mileage
+      double totalDistance = 0.0;
+      double totalFuelUsed = 0.0;
+      final ascLogs = List<FuelLog>.from(logs)
+        ..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+      for (int i = 1; i < ascLogs.length; i++) {
+        final distance = ascLogs[i].odometer - ascLogs[i - 1].odometer;
+        if (distance > 0 && ascLogs[i - 1].fuelQuantity > 0) {
+          totalDistance += distance;
+          totalFuelUsed += ascLogs[i - 1].fuelQuantity;
+        }
+      }
+      if (totalFuelUsed > 0) {
+        avgMileage = totalDistance / totalFuelUsed;
+      }
+
+      // Estimate remaining fuel assuming tank was completely filled on last log
+      final lastLog = sortedLogs.first;
+      final daysSinceLastLog = DateTime.now().difference(lastLog.date ?? DateTime.now()).inDays.clamp(0, 30);
+      
+      double avgDailyDistance = 0;
+      if (ascLogs.length > 1) {
+        final totalDays = (ascLogs.last.date ?? DateTime.now()).difference(ascLogs.first.date ?? DateTime.now()).inDays;
+        if (totalDays > 0) {
+          avgDailyDistance = totalDistance / totalDays;
+        }
+      } else {
+        avgDailyDistance = 30.0; // Fallback estimate
+      }
+      
+      double estimatedDistanceSinceLastLog = avgDailyDistance * daysSinceLastLog;
+      double estimatedFuelUsed = estimatedDistanceSinceLastLog / avgMileage;
+      
+      remainingL = (tankCapacity - estimatedFuelUsed).clamp(0.0, tankCapacity);
+      fuelPercent = (remainingL / tankCapacity) * 100;
+      rangeKM = remainingL * avgMileage;
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -326,7 +387,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                           fontWeight: FontWeight.w600)),
                   RichText(
                     text: TextSpan(
-                      text: '65',
+                      text: fuelPercent.toStringAsFixed(0),
                       style: TextStyle(
                           color: _textColor,
                           fontSize: 48,
@@ -345,7 +406,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 height: 80,
                 child: CustomPaint(
                   painter:
-                      _ConicGradientPainter(percentage: 65, color: _neonColor),
+                      _ConicGradientPainter(percentage: fuelPercent, color: _neonColor),
                   child: Center(
                     child: Container(
                       width: 56,
@@ -366,9 +427,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStat('Remaining', '28L'),
-              _buildStat('Range', '340 KM'),
-              _buildStat('Last fill', '₹2,350'),
+              _buildStat('Remaining', '${remainingL.toStringAsFixed(1)}L'),
+              _buildStat('Range', '${rangeKM.toStringAsFixed(0)} KM'),
+              _buildStat('Last fill', '₹${lastFillCost.toStringAsFixed(0)}'),
             ],
           ),
         ],
@@ -376,17 +437,50 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildMetricCards() {
+  Widget _buildMetricCards(List<FuelLog> logs) {
+    double bestMileage = 0.0;
+    double totalDistance = 0.0;
+    double totalFuelUsed = 0.0;
+    double thisMonthTotal = 0.0;
+    
+    final now = DateTime.now();
+    
+    final sortedLogs = List<FuelLog>.from(logs)
+      ..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
+
+    for (int i = 1; i < sortedLogs.length; i++) {
+      final prevLog = sortedLogs[i - 1];
+      final currentLog = sortedLogs[i];
+      
+      final distance = currentLog.odometer - prevLog.odometer;
+      if (distance > 0 && prevLog.fuelQuantity > 0) {
+        final mileage = distance / prevLog.fuelQuantity;
+        if (mileage > bestMileage) {
+          bestMileage = mileage;
+        }
+        totalDistance += distance;
+        totalFuelUsed += prevLog.fuelQuantity;
+      }
+    }
+    
+    final avgMileage = totalFuelUsed > 0 ? (totalDistance / totalFuelUsed) : 0.0;
+    
+    for (final log in logs) {
+      if (log.date != null && log.date!.year == now.year && log.date!.month == now.month) {
+        thisMonthTotal += log.totalCost;
+      }
+    }
+
     return Row(
       children: [
         Expanded(
           child: _buildMetricCard(
             icon: Icons.speed,
             title: 'Mileage',
-            value: '18',
+            value: avgMileage > 0 ? avgMileage.toStringAsFixed(1) : '-',
             unit: 'KM/L',
             footerIcon: Icons.trending_up,
-            footerText: 'Best 22',
+            footerText: bestMileage > 0 ? 'Best ${bestMileage.toStringAsFixed(1)}' : 'No data',
             footerColor: _neonColor,
           ),
         ),
@@ -395,10 +489,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           child: _buildMetricCard(
             icon: Icons.account_balance_wallet_outlined,
             title: 'This month',
-            value: '₹8,900',
+            value: '₹${thisMonthTotal.toStringAsFixed(0)}',
             unit: '',
             footerIcon: Icons.trending_down,
-            footerText: '+₹1.2k',
+            footerText: 'Total spent',
             footerColor: _dangerColor,
           ),
         ),

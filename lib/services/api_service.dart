@@ -95,6 +95,24 @@ class ApiService {
       return false;
     }
   }
+
+  Future<List<dynamic>> getExpenses() async {
+    try {
+      final response = await _dio.get('/expenses/');
+      return response.data as List<dynamic>;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<bool> createExpense(Map<String, dynamic> data) async {
+    try {
+      await _dio.post('/expenses/', data: data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }
 
 
