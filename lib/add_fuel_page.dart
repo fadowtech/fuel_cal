@@ -37,6 +37,15 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   final List<String> _stations = ['Shell', 'BP', 'Mobil', 'Exxon', 'Local Station'];
   final List<String> _paymentMethods = ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Other'];
 
+  // Base mock values for the Current Status calculations
+  final double _baseFuelLeft = 10.0; // Assume 10L already in tank
+  final double _avgMileage = 17.5; // 17.5 KM/L average
+  final double _tankCapacity = 50.0; // Assume 50L tank capacity
+  
+  double _currentFuelLeft = 10.0;
+  double _estimatedRange = 175.0; // 10.0 * 17.5
+  double _tankLevelPercent = 0.2; // 10.0 / 50.0
+
   @override
   void dispose() {
     _fuelLitersController.dispose();
@@ -52,9 +61,18 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   void _calculateTotal() {
     final liters = double.tryParse(_fuelLitersController.text) ?? 0;
     final price = double.tryParse(_fuelPriceController.text) ?? 0;
-    if (liters > 0 && price > 0) {
-      _totalAmountController.text = (liters * price).toStringAsFixed(2);
-    }
+    
+    setState(() {
+      if (liters > 0 && price > 0) {
+        _totalAmountController.text = (liters * price).toStringAsFixed(2);
+      } else {
+        _totalAmountController.text = '';
+      }
+      
+      _currentFuelLeft = _baseFuelLeft + liters;
+      _estimatedRange = _currentFuelLeft * _avgMileage;
+      _tankLevelPercent = (_currentFuelLeft / _tankCapacity).clamp(0.0, 1.0);
+    });
   }
 
   Future<void> _pickDate() async {
@@ -250,7 +268,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text('390', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                    Text('${_estimatedRange.toStringAsFixed(0)}', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
                     const SizedBox(width: 4),
                     Text('KM', style: TextStyle(color: _neonColor, fontSize: 14)),
                   ],
@@ -259,7 +277,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 Row(
                   children: [
                     Text('Fuel left: ', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                    Text('21.43 L', style: TextStyle(color: _neonColor, fontSize: 12)),
+                    Text('${_currentFuelLeft.toStringAsFixed(2)} L', style: TextStyle(color: _neonColor, fontSize: 12)),
                   ],
                 ),
               ],
@@ -273,7 +291,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               children: [
                 Text('Mileage (avg.)', style: TextStyle(color: _mutedColor, fontSize: 12)),
                 const SizedBox(height: 4),
-                Text('17.5 KM/L', style: TextStyle(color: _neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('${_avgMileage.toStringAsFixed(1)} KM/L', style: TextStyle(color: _neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 Text('Tank level', style: TextStyle(color: _mutedColor, fontSize: 12)),
                 const SizedBox(height: 8),
@@ -283,7 +301,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: 0.72,
+                          value: _tankLevelPercent,
                           backgroundColor: _surfaceColor,
                           valueColor: AlwaysStoppedAnimation<Color>(_neonColor),
                           minHeight: 6,
@@ -291,7 +309,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text('72%', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    Text('${(_tankLevelPercent * 100).toStringAsFixed(0)}%', style: const TextStyle(color: Colors.white, fontSize: 12)),
                   ],
                 ),
               ],

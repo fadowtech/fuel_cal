@@ -351,15 +351,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       for (int i = 1; i < ascLogs.length; i++) {
         final distance = ascLogs[i].odometer - ascLogs[i - 1].odometer;
         if (distance > 0 && ascLogs[i - 1].fuelQuantity > 0) {
-          totalDistance += distance;
-          totalFuelUsed += ascLogs[i - 1].fuelQuantity;
+          if (ascLogs[i].isFullTank) {
+            totalDistance += distance;
+            totalFuelUsed += ascLogs[i - 1].fuelQuantity;
+          } else {
+             // Basic fallback
+             totalDistance += distance;
+             totalFuelUsed += ascLogs[i - 1].fuelQuantity;
+          }
         }
       }
       if (totalFuelUsed > 0) {
         avgMileage = totalDistance / totalFuelUsed;
       }
 
-      // Estimate remaining fuel assuming tank was completely filled on last log
       final lastLog = sortedLogs.first;
       final daysSinceLastLog = DateTime.now().difference(lastLog.date ?? DateTime.now()).inDays.clamp(0, 30);
       
@@ -376,9 +381,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       double estimatedDistanceSinceLastLog = avgDailyDistance * daysSinceLastLog;
       double estimatedFuelUsed = estimatedDistanceSinceLastLog / avgMileage;
       
-      remainingL = (tankCapacity - estimatedFuelUsed).clamp(0.0, tankCapacity);
+      // Use the newly added remaining_range if available!
+      if (lastLog.remainingRange != null && lastLog.remainingRange! > 0) {
+          double estimatedCurrentRange = lastLog.remainingRange! - estimatedDistanceSinceLastLog;
+          rangeKM = estimatedCurrentRange > 0 ? estimatedCurrentRange : 0.0;
+          remainingL = (rangeKM / avgMileage).clamp(0.0, tankCapacity);
+      } else {
+          // Fallback to old logic
+          double startingFuel = lastLog.isFullTank ? tankCapacity : (lastLog.fuelQuantity > 0 ? lastLog.fuelQuantity : tankCapacity);
+          remainingL = (startingFuel - estimatedFuelUsed).clamp(0.0, tankCapacity);
+          rangeKM = remainingL * avgMileage;
+      }
+      
       fuelPercent = (remainingL / tankCapacity) * 100;
-      rangeKM = remainingL * avgMileage;
     }
 
     return Container(
@@ -470,12 +485,22 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       
       final distance = currentLog.odometer - prevLog.odometer;
       if (distance > 0 && prevLog.fuelQuantity > 0) {
-        final mileage = distance / prevLog.fuelQuantity;
-        if (mileage > bestMileage) {
-          bestMileage = mileage;
+        if (currentLog.isFullTank) {
+          final mileage = distance / prevLog.fuelQuantity;
+          if (mileage > bestMileage) {
+            bestMileage = mileage;
+          }
+          totalDistance += distance;
+          totalFuelUsed += prevLog.fuelQuantity;
+        } else {
+           // Basic fallback for non-full tanks
+           final mileage = distance / prevLog.fuelQuantity;
+           if (mileage > bestMileage) {
+             bestMileage = mileage;
+           }
+           totalDistance += distance;
+           totalFuelUsed += prevLog.fuelQuantity;
         }
-        totalDistance += distance;
-        totalFuelUsed += prevLog.fuelQuantity;
       }
     }
     

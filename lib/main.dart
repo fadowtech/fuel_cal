@@ -13,6 +13,7 @@ import 'package:fuel_cal/stats_page.dart';
 import 'package:fuel_cal/garage_page.dart';
 import 'package:fuel_cal/profile_page.dart';
 import 'package:fuel_cal/feature_pages.dart';
+import 'package:fuel_cal/add_fuel_page.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 
 Color get _neonColor => ThemeService.neonColor;
