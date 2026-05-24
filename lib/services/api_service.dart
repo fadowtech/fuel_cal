@@ -231,6 +231,11 @@ class ApiService {
       await _dio.delete('/logs/$id');
       return true;
     } catch (e) {
+      if (e is DioException) {
+        print('deleteFuelLog error response: ${e.response?.data}');
+      } else {
+        print('deleteFuelLog error: $e');
+      }
       return false;
     }
   }
