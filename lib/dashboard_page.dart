@@ -5,6 +5,7 @@ import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/mock_data.dart' hide Vehicle, FuelLog;
 import 'package:fuel_cal/feature_pages.dart';
+import 'package:fuel_cal/reminders_page.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
 import 'package:fuel_cal/logs_page.dart';
 import 'package:fuel_cal/garage_page.dart';
@@ -149,7 +150,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 _buildSectionTitle(
                   'Upcoming alerts',
                   action: 'See all',
-                  onActionTap: () => _openPage(const NotificationsPage()),
+                  onActionTap: () => _openPage(const RemindersPage()),
                 ),
                 _buildAlertsList(),
                 const SizedBox(height: 24),
@@ -241,7 +242,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         Row(
           children: [
             GestureDetector(
-              onTap: () => _openPage(const NotificationsPage()),
+              onTap: () => _openPage(const RemindersPage()),
               child: Container(
                 width: 40,
                 height: 40,
@@ -325,56 +326,66 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         
       lastFillCost = sortedLogs.first.totalCost;
       
-      // Calculate avg mileage
-      double totalDistance = 0.0;
-      double totalFuelUsed = 0.0;
+      // Chronological calculation
       final ascLogs = List<FuelLog>.from(logs)
         ..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
-      for (int i = 1; i < ascLogs.length; i++) {
-        final distance = ascLogs[i].odometer - ascLogs[i - 1].odometer;
-        if (distance > 0 && ascLogs[i - 1].fuelQuantity > 0) {
-          if (ascLogs[i].isFullTank) {
-            totalDistance += distance;
-            totalFuelUsed += ascLogs[i - 1].fuelQuantity;
-          } else {
-             // Basic fallback
-             totalDistance += distance;
-             totalFuelUsed += ascLogs[i - 1].fuelQuantity;
+        
+      double currentFuel = 0.0;
+      double currentRange = 0.0;
+      double currentMileage = 15.0; // Fallback mileage
+      
+      for (int i = 0; i < ascLogs.length; i++) {
+        final log = ascLogs[i];
+        double logFuelAdded = log.fuelQuantity;
+        double logRangeInput = log.remainingRange ?? 0.0;
+        
+        if (i == 0) {
+          // First entry: input range is treated as Range AFTER fill
+          currentFuel = logFuelAdded;
+          currentRange = logRangeInput > 0 ? logRangeInput : (currentFuel * currentMileage);
+          if (logFuelAdded > 0) {
+             currentMileage = currentRange / logFuelAdded;
           }
+        } else {
+          // Subsequent entries: input range is treated as Range BEFORE fill
+          double rangeBeforeFill = logRangeInput;
+          double remainingFuelBeforeRefill = 0.0;
+          
+          if (currentRange > 0) {
+            remainingFuelBeforeRefill = (rangeBeforeFill / currentRange) * currentFuel;
+          }
+          
+          // Update tank status after filling
+          currentFuel = remainingFuelBeforeRefill + logFuelAdded;
+          currentRange = currentFuel * currentMileage;
         }
       }
-      if (totalFuelUsed > 0) {
-        avgMileage = totalDistance / totalFuelUsed;
-      }
+      
+      double remainingFuelAtLastFill = currentFuel;
+      double rangeAtLastFill = currentRange;
+      avgMileage = currentMileage;
 
+      // Apply time/distance decay since the last log
       final lastLog = sortedLogs.first;
       final daysSinceLastLog = DateTime.now().difference(lastLog.date ?? DateTime.now()).inDays.clamp(0, 30);
       
       double avgDailyDistance = 0;
       if (ascLogs.length > 1) {
+        double totalDistance = ascLogs.last.odometer - ascLogs.first.odometer;
         final totalDays = (ascLogs.last.date ?? DateTime.now()).difference(ascLogs.first.date ?? DateTime.now()).inDays;
         if (totalDays > 0) {
           avgDailyDistance = totalDistance / totalDays;
+        } else {
+          avgDailyDistance = 30.0; // Fallback
         }
       } else {
-        avgDailyDistance = 30.0; // Fallback estimate
+        avgDailyDistance = 30.0;
       }
       
       double estimatedDistanceSinceLastLog = avgDailyDistance * daysSinceLastLog;
-      double estimatedFuelUsed = estimatedDistanceSinceLastLog / avgMileage;
       
-      // Use the newly added remaining_range if available!
-      if (lastLog.remainingRange != null && lastLog.remainingRange! > 0) {
-          double estimatedCurrentRange = lastLog.remainingRange! - estimatedDistanceSinceLastLog;
-          rangeKM = estimatedCurrentRange > 0 ? estimatedCurrentRange : 0.0;
-          remainingL = (rangeKM / avgMileage).clamp(0.0, tankCapacity);
-      } else {
-          // Fallback to old logic
-          double startingFuel = lastLog.isFullTank ? tankCapacity : (lastLog.fuelQuantity > 0 ? lastLog.fuelQuantity : tankCapacity);
-          remainingL = (startingFuel - estimatedFuelUsed).clamp(0.0, tankCapacity);
-          rangeKM = remainingL * avgMileage;
-      }
-      
+      rangeKM = (rangeAtLastFill - estimatedDistanceSinceLastLog).clamp(0.0, 9999.0);
+      remainingL = (rangeKM / avgMileage).clamp(0.0, tankCapacity);
       fuelPercent = (remainingL / tankCapacity) * 100;
     }
 
@@ -739,9 +750,27 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   }
 
   Widget _buildQuickAction(IconData icon, String label,
-      {bool highlight = false, Widget? page}) {
+      {bool highlight = false, Widget? page, VoidCallback? onTap}) {
     return GestureDetector(
-      onTap: page == null ? null : () => _openPage(page),
+      onTap: () {
+        final vehicles = ref.read(vehiclesProvider).value ?? [];
+        if (vehicles.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please add a vehicle to your Garage first.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+
+        if (onTap != null) {
+          onTap();
+        } else if (page != null) {
+          _openPage(page);
+        }
+      },
       behavior: HitTestBehavior.opaque,
       child: Column(
         children: [

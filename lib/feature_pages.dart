@@ -571,26 +571,6 @@ class TripsPage extends StatelessWidget {
   }
 }
 
-class NotificationsPage extends StatelessWidget {
-  const NotificationsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return _FeatureScaffold(
-      title: 'Notifications',
-      subtitle: '${mockAlerts.length} reminders',
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        children: [
-          ...mockAlerts.map((alert) => _AlertTile(alert: alert)),
-          const SizedBox(height: 8),
-          const _DashedAction(
-              icon: Icons.warning_amber_rounded, label: "You're all caught up"),
-        ],
-      ),
-    );
-  }
-}
 
 class ReportsPage extends StatelessWidget {
   const ReportsPage({super.key});
@@ -649,6 +629,11 @@ class LogDetailPage extends ConsumerWidget {
         children: [
           _LogSummaryCard(log: log),
           const SizedBox(height: 14),
+          if (log['remainingRange'] != null && log['remainingRange'] > 0)
+            _InfoTile(
+                label: 'Distance to Empty',
+                value: '${log['remainingRange']} KM',
+                icon: Icons.compare_arrows_rounded),
           _InfoTile(
               label: 'Payment', value: log['payment'] ?? 'Not specified', icon: Icons.credit_card_outlined),
           _InfoTile(
@@ -692,18 +677,18 @@ class LogDetailPage extends ConsumerWidget {
                       onTap: () {
                         showDialog(
                           context: context,
-                          builder: (context) => AlertDialog(
+                          builder: (dialogContext) => AlertDialog(
                             backgroundColor: _cardColor,
                             title: const Text('Delete Log?', style: TextStyle(color: Colors.white)),
                             content: const Text('Are you sure you want to delete this log? This cannot be undone.', style: TextStyle(color: Colors.white70)),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: () => Navigator.pop(dialogContext),
                                 child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
                               ),
                               TextButton(
                                 onPressed: () async {
-                                  Navigator.pop(context); // pop dialog
+                                  Navigator.pop(dialogContext); // pop dialog
                                   
                                   if (log['id'] == null) {
                                     if (context.mounted) {
@@ -718,7 +703,7 @@ class LogDetailPage extends ConsumerWidget {
                                   final success = await api.deleteFuelLog(log['id'] as int);
                                   
                                   if (success) {
-                                    ref.invalidate(fuelLogsProvider);
+                                    ref.refresh(fuelLogsProvider);
                                     if (context.mounted) Navigator.pop(context); // pop page
                                   } else {
                                     if (context.mounted) {

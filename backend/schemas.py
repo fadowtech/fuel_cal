@@ -96,3 +96,23 @@ class Expense(ExpenseBase):
 
     class Config:
         from_attributes = True
+
+class ReminderBase(BaseModel):
+    category: str
+    title: str
+    due_date: Optional[datetime] = None
+    due_km: Optional[float] = None
+    notes: Optional[str] = None
+    repeat: Optional[bool] = False
+    notify_before_days: Optional[str] = None
+    priority: Optional[str] = "High"
+
+class ReminderCreate(ReminderBase):
+    pass
+
+class Reminder(ReminderBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True

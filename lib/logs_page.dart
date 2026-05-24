@@ -12,20 +12,56 @@ Color get _cardColor => ThemeService.cardColor;
 Color get _backgroundColor => ThemeService.backgroundColor;
 Color get _mutedColor => ThemeService.mutedColor;
 
-class LogsPage extends ConsumerWidget {
+class LogsPage extends ConsumerStatefulWidget {
   const LogsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LogsPage> createState() => _LogsPageState();
+}
+
+class _LogsPageState extends ConsumerState<LogsPage> {
+  String _searchQuery = '';
+  String _selectedFilter = 'All';
+
+  @override
+  Widget build(BuildContext context) {
     final fuelLogsAsync = ref.watch(fuelLogsProvider);
+    final vehiclesAsync = ref.watch(vehiclesProvider);
 
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: fuelLogsAsync.when(
           data: (logs) {
+            final vehicles = vehiclesAsync.valueOrNull ?? [];
+            final vehiclesMap = {for (var v in vehicles) v.id: v};
+
+            // Filter
+            var filteredLogs = logs.where((log) {
+              if (_searchQuery.isNotEmpty) {
+                final stationMatch = log.stationName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
+                if (!stationMatch) return false;
+              }
+
+              if (_selectedFilter == "This month") {
+                if (log.date == null) return false;
+                final now = DateTime.now();
+                if (log.date!.year != now.year || log.date!.month != now.month) return false;
+              } else if (_selectedFilter == "Petrol") {
+                final vehicle = vehiclesMap[log.vehicleId];
+                if (vehicle?.fuelType.toLowerCase() != 'petrol') return false;
+              } else if (_selectedFilter == "Diesel") {
+                final vehicle = vehiclesMap[log.vehicleId];
+                if (vehicle?.fuelType.toLowerCase() != 'diesel') return false;
+              } else if (_selectedFilter == "Full tank") {
+                if (log.isFullTank != true) return false;
+              }
+
+              return true;
+            }).toList();
+
             // Sort logs by date descending
-            final sortedLogs = List<FuelLog>.from(logs)
+            final sortedLogs = List<FuelLog>.from(filteredLogs)
               ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
 
             return Column(
@@ -144,6 +180,11 @@ class LogsPage extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                    },
                     style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                     decoration: InputDecoration.collapsed(
                       hintText: 'Search station name...',
@@ -160,24 +201,31 @@ class LogsPage extends ConsumerWidget {
             child: Row(
               children: ["All", "This month", "Petrol", "Diesel", "Full tank"]
                   .map((f) {
-                final isSelected = f == "All";
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSelected ? _neonColor : _surfaceColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    f,
-                    style: TextStyle(
-                      color: isSelected 
-                          ? (ThemeService.isDarkMode ? Colors.black : Colors.white)
-                          : _mutedColor,
-                      fontSize: 12,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
+                final isSelected = f == _selectedFilter;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedFilter = f;
+                    });
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected ? _neonColor : _surfaceColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      f,
+                      style: TextStyle(
+                        color: isSelected 
+                            ? (ThemeService.isDarkMode ? Colors.black : Colors.white)
+                            : _mutedColor,
+                        fontSize: 12,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
                     ),
                   ),
                 );
@@ -205,6 +253,7 @@ class LogsPage extends ConsumerWidget {
           'amount': log.totalCost,
           'liters': log.fuelQuantity,
           'odo': log.odometer.toStringAsFixed(0),
+          'remainingRange': log.remainingRange,
           'pricePerL': pricePerL,
           'mileage': mileage > 0 ? mileage.toStringAsFixed(1) : '-',
           'fullTank': log.isFullTank,

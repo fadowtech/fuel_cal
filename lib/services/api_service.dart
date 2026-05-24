@@ -232,10 +232,54 @@ class ApiService {
       return true;
     } catch (e) {
       if (e is DioException) {
+        if (e.response?.statusCode == 404) {
+          return true; // If it's already not found, consider it successfully deleted
+        }
         print('deleteFuelLog error response: ${e.response?.data}');
       } else {
         print('deleteFuelLog error: $e');
       }
+      return false;
+    }
+  }
+
+  Future<List<dynamic>> getReminders() async {
+    try {
+      final response = await _dio.get('/reminders/');
+      return response.data as List<dynamic>;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<bool> createReminder(Map<String, dynamic> data) async {
+    try {
+      await _dio.post('/reminders/', data: data);
+      return true;
+    } catch (e) {
+      if (e is DioException) {
+        print('createReminder error response: ${e.response?.data}');
+      } else {
+        print('createReminder error: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<bool> updateReminder(int id, Map<String, dynamic> data) async {
+    try {
+      await _dio.put('/reminders/$id', data: data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteReminder(int id) async {
+    try {
+      await _dio.delete('/reminders/$id');
+      return true;
+    } catch (e) {
       return false;
     }
   }

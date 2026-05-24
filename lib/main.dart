@@ -15,6 +15,7 @@ import 'package:fuel_cal/profile_page.dart';
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/providers/data_provider.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -181,7 +182,7 @@ class _FuelCalculatorAppState extends ConsumerState<FuelCalculatorApp> {
   }
 }
 
-class FuelCalculatorHomePage extends StatefulWidget {
+class FuelCalculatorHomePage extends ConsumerStatefulWidget {
   final String selectedCurrencySymbol;
   final String selectedCurrencyCode;
   final VoidCallback onCurrencyChanged;
@@ -194,10 +195,10 @@ class FuelCalculatorHomePage extends StatefulWidget {
   });
 
   @override
-  State<FuelCalculatorHomePage> createState() => _FuelCalculatorHomePageState();
+  ConsumerState<FuelCalculatorHomePage> createState() => _FuelCalculatorHomePageState();
 }
 
-class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
+class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey =
       GlobalKey<ScaffoldState>(); // GlobalKey for Scaffold
 
@@ -328,10 +329,21 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
   Widget _buildAddFuelButton() {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const AddFuelPage()),
-        );
+        final vehicles = ref.read(vehiclesProvider).value ?? [];
+        if (vehicles.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please add a vehicle to your Garage first.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddFuelPage()),
+          );
+        }
       },
       child: Container(
         width: 64,

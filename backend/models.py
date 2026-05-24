@@ -75,3 +75,19 @@ class Expense(Base):
     
     user = relationship("User")
     vehicle = relationship("Vehicle")
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    category = Column(String)
+    title = Column(String)
+    due_date = Column(DateTime, nullable=True)
+    due_km = Column(Float, nullable=True)
+    notes = Column(String, nullable=True)
+    repeat = Column(Boolean, default=False)
+    notify_before_days = Column(String, nullable=True) # e.g. "30,7,1"
+    priority = Column(String, default="High")
+    
+    user = relationship("User")

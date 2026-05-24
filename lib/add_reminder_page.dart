@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/services/api_service.dart';
 import 'package:intl/intl.dart';
 
 class AddReminderPage extends StatefulWidget {
@@ -126,6 +127,46 @@ class _AddReminderPageState extends State<AddReminderPage> {
     );
   }
 
+  bool _isLoading = false;
+
+  Future<void> _saveReminder() async {
+    if (_titleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a reminder title')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final data = {
+      'category': _selectedCategory,
+      'title': _titleController.text,
+      'due_date': _dueDate?.toIso8601String(),
+      'due_km': _kmController.text.isNotEmpty ? double.tryParse(_kmController.text) : null,
+      'notes': _notesController.text.isNotEmpty ? _notesController.text : null,
+      'repeat': _repeatReminder,
+      'notify_before_days': _selectedNotifications.join(','),
+      'priority': _priority,
+    };
+
+    final success = await ApiService().createReminder(data);
+    
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reminder saved successfully!'), backgroundColor: Colors.green),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save reminder'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   Widget _buildAppBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -142,10 +183,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: () {
-              // TODO: Implement save logic, currently just pops
-              Navigator.pop(context);
-            },
+            onTap: _isLoading ? null : _saveReminder,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
