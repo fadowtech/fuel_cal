@@ -107,6 +107,8 @@ class ReminderBase(BaseModel):
     repeat_interval: Optional[str] = None
     notify_before_days: Optional[str] = None
     priority: Optional[str] = "High"
+    status: Optional[str] = "pending"
+    completed_at: Optional[datetime] = None
 
 class ReminderCreate(ReminderBase):
     pass

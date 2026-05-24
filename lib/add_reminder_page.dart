@@ -144,6 +144,8 @@ class _AddReminderPageState extends State<AddReminderPage> {
                   _buildSectionTitle('Summary'),
                   const SizedBox(height: 12),
                   _buildSummarySection(),
+                  const SizedBox(height: 32),
+                  _buildSaveButton(),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -219,21 +221,28 @@ class _AddReminderPageState extends State<AddReminderPage> {
             style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: _isLoading ? null : _saveReminder,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Save',
-                style: TextStyle(color: _neonColor, fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return GestureDetector(
+      onTap: _isLoading ? null : _saveReminder,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.center,
+        child: _isLoading
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : Text(
+                'Save',
+                style: TextStyle(color: _neonColor, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }

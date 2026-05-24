@@ -68,7 +68,18 @@ class _RemindersPageState extends State<RemindersPage> {
         
         String status = '';
         String timeLeft = '';
-        if (dueDate != null) {
+        final apiStatus = r['status'] as String? ?? 'pending';
+        
+        if (apiStatus == 'completed' || apiStatus == 'skipped') {
+            status = 'Completed';
+            timeLeft = apiStatus == 'skipped' ? 'Skipped' : 'Done';
+            if (r['completed_at'] != null) {
+                final compDate = DateTime.tryParse(r['completed_at']);
+                if (compDate != null) {
+                    timeLeft += ' on ${DateFormat('dd MMM yyyy').format(compDate)}';
+                }
+            }
+        } else if (dueDate != null) {
           final diff = dueDate.difference(DateTime.now()).inDays;
           if (diff < 0) {
             status = 'Overdue';
@@ -86,21 +97,25 @@ class _RemindersPageState extends State<RemindersPage> {
         
         return {
           'title': r['title'] ?? '',
-          'subtitle': '${r['category']} • ${r['due_km'] != null ? 'Due in ${r['due_km']} KM' : (r['notes'] ?? '')}',
+          'subtitle': apiStatus != 'pending' ? '${r['category']} • $timeLeft' : '${r['category']} • ${r['due_km'] != null ? 'Due in ${r['due_km']} KM' : (r['notes'] ?? '')}',
           'status': status,
-          'statusColor': status == 'Due soon' || status == 'Overdue' ? _dangerColor : color,
-          'timeleft': timeLeft,
+          'statusColor': apiStatus != 'pending' ? const Color(0xFF22C55E) : (status == 'Due soon' || status == 'Overdue' ? _dangerColor : color),
+          'timeleft': apiStatus != 'pending' ? '' : timeLeft,
           'date': dueDate != null ? DateFormat('dd MMM yyyy').format(dueDate) : '',
           'raw_date': dueDate,
           'icon': icon,
           'color': color,
           'category': r['category'] ?? 'All',
           'raw_data': r,
+          'is_completed': apiStatus != 'pending',
         };
       }).toList();
 
-      final Map<String, int> counts = {'All': formattedReminders.length};
-      for (var r in formattedReminders) {
+      final pendingReminders = formattedReminders.where((r) => r['is_completed'] == false).toList();
+      final completedReminders = formattedReminders.where((r) => r['is_completed'] == true).toList();
+
+      final Map<String, int> counts = {'All': pendingReminders.length};
+      for (var r in pendingReminders) {
         final cat = r['category'] as String? ?? 'Others';
         counts[cat] = (counts[cat] ?? 0) + 1;
       }
@@ -115,7 +130,8 @@ class _RemindersPageState extends State<RemindersPage> {
 
       if (mounted) {
         setState(() {
-          _upcomingReminders = formattedReminders;
+          _upcomingReminders = pendingReminders;
+          _completedReminders = completedReminders;
           _categories = updatedCategories;
           _isLoading = false;
         });
@@ -126,20 +142,7 @@ class _RemindersPageState extends State<RemindersPage> {
     }
   }
 
-  final List<Map<String, dynamic>> _completedReminders = [
-    {
-      'title': 'Brake Service',
-      'subtitle': 'Service • Done on 20 May 2026',
-      'status': 'Completed',
-      'statusColor': Color(0xFF22C55E),
-    },
-    {
-      'title': 'Air Filter Replacement',
-      'subtitle': 'Maintenance • Done on 18 May 2026',
-      'status': 'Completed',
-      'statusColor': Color(0xFF22C55E),
-    },
-  ];
+  List<Map<String, dynamic>> _completedReminders = [];
 
   @override
   Widget build(BuildContext context) {
@@ -588,7 +591,7 @@ class _RemindersPageState extends State<RemindersPage> {
                   decoration: BoxDecoration(
                     color: isCompleted ? Colors.transparent : iconColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: isCompleted ? Border.all(color: statusColor.withOpacity(0.3)) : null,
+                    border: isCompleted ? Border.all(color: statusColor.withOpacity(0.5)) : null,
                   ),
                   child: Icon(iconData, color: iconColor, size: 24),
                 ),
@@ -615,28 +618,42 @@ class _RemindersPageState extends State<RemindersPage> {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      data['status'],
-                      style: TextStyle(color: statusColor, fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 4),
-                    if (data['timeleft'] != null && data['timeleft'].toString().isNotEmpty)
+                if (isCompleted)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        data['timeleft'],
-                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                        data['status'],
+                        style: TextStyle(color: statusColor, fontSize: 13, fontWeight: FontWeight.w500),
                       ),
-                    if (data['date'] != null)
+                      const SizedBox(width: 8),
+                      Icon(Icons.chevron_right, color: _mutedColor, size: 20),
+                    ],
+                  )
+                else ...[
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
                       Text(
-                        data['date'],
-                        style: TextStyle(color: _mutedColor, fontSize: 11),
+                        data['status'],
+                        style: TextStyle(color: statusColor, fontSize: 13, fontWeight: FontWeight.w500),
                       ),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                Icon(Icons.chevron_right, color: _mutedColor, size: 20),
+                      const SizedBox(height: 4),
+                      if (data['timeleft'] != null && data['timeleft'].toString().isNotEmpty)
+                        Text(
+                          data['timeleft'],
+                          style: const TextStyle(color: Colors.white, fontSize: 11),
+                        ),
+                      if (data['date'] != null)
+                        Text(
+                          data['date'],
+                          style: TextStyle(color: _mutedColor, fontSize: 11),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right, color: _mutedColor, size: 20),
+                ],
               ],
             ),
           ),
