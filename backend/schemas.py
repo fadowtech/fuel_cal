@@ -104,6 +104,7 @@ class ReminderBase(BaseModel):
     due_km: Optional[float] = None
     notes: Optional[str] = None
     repeat: Optional[bool] = False
+    repeat_interval: Optional[str] = None
     notify_before_days: Optional[str] = None
     priority: Optional[str] = "High"
 

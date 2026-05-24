@@ -4,7 +4,8 @@ import 'package:fuel_cal/services/api_service.dart';
 import 'package:intl/intl.dart';
 
 class AddReminderPage extends StatefulWidget {
-  const AddReminderPage({super.key});
+  final Map<String, dynamic>? editData;
+  const AddReminderPage({super.key, this.editData});
 
   @override
   State<AddReminderPage> createState() => _AddReminderPageState();
@@ -27,6 +28,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
   
   DateTime? _dueDate;
   bool _repeatReminder = false;
+  String? _repeatInterval;
   
   // Notification days selected
   final Set<int> _selectedNotifications = {30}; // e.g., 30, 7, 1
@@ -43,6 +45,31 @@ class _AddReminderPageState extends State<AddReminderPage> {
     {'name': 'Wash', 'icon': Icons.local_car_wash_outlined, 'color': Color(0xFF06B6D4)},
     {'name': 'Tolls Recharge', 'icon': Icons.toll_outlined, 'color': Color(0xFFEC4899)},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.editData != null) {
+      final raw = widget.editData!['raw_data'];
+      _selectedCategory = raw['category'] ?? 'Service';
+      _titleController.text = raw['title'] ?? '';
+      _kmController.text = raw['due_km']?.toString() ?? '';
+      _notesController.text = raw['notes'] ?? '';
+      if (raw['due_date'] != null) {
+        _dueDate = DateTime.parse(raw['due_date']);
+      }
+      _repeatReminder = raw['repeat'] ?? false;
+      _repeatInterval = raw['repeat_interval'];
+      if (raw['notify_before_days'] != null) {
+        _selectedNotifications.clear();
+        for (var d in raw['notify_before_days'].split(',')) {
+          final val = int.tryParse(d);
+          if (val != null) _selectedNotifications.add(val);
+        }
+      }
+      _priority = raw['priority'] ?? 'High';
+    }
+  }
 
   @override
   void dispose() {
@@ -146,23 +173,33 @@ class _AddReminderPageState extends State<AddReminderPage> {
       'due_km': _kmController.text.isNotEmpty ? double.tryParse(_kmController.text) : null,
       'notes': _notesController.text.isNotEmpty ? _notesController.text : null,
       'repeat': _repeatReminder,
+      'repeat_interval': _repeatInterval,
       'notify_before_days': _selectedNotifications.join(','),
       'priority': _priority,
     };
 
-    final success = await ApiService().createReminder(data);
+    bool success = false;
+    String? errorMessage;
+    
+    try {
+      success = widget.editData != null 
+          ? await ApiService().updateReminder(widget.editData!['raw_data']['id'], data)
+          : await ApiService().createReminder(data);
+    } catch (e) {
+      errorMessage = e.toString();
+    }
     
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reminder saved successfully!'), backgroundColor: Colors.green),
+        SnackBar(content: Text(widget.editData != null ? 'Reminder updated successfully!' : 'Reminder saved successfully!'), backgroundColor: Colors.green),
       );
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save reminder'), backgroundColor: Colors.red),
+        SnackBar(content: Text(errorMessage ?? 'Failed to save reminder'), backgroundColor: Colors.red),
       );
     }
   }
@@ -177,9 +214,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
             child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 16),
-          const Text(
-            'Add Reminder',
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            widget.editData != null ? 'Edit Reminder' : 'Add Reminder',
+            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
           GestureDetector(
@@ -476,26 +513,67 @@ class _AddReminderPageState extends State<AddReminderPage> {
           Divider(color: Colors.white.withOpacity(0.05), height: 1),
           Opacity(
             opacity: _repeatReminder ? 1.0 : 0.5,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Repeat Every', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 2),
-                      Text('Select interval', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                    ],
-                  ),
-                  Icon(Icons.chevron_right, color: _mutedColor, size: 20),
-                ],
+            child: GestureDetector(
+              onTap: _repeatReminder ? () => _showIntervalPicker() : null,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Repeat Every', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 2),
+                        Text(_repeatInterval ?? 'Select interval', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                      ],
+                    ),
+                    Icon(Icons.chevron_right, color: _mutedColor, size: 20),
+                  ],
+                ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _showIntervalPicker() {
+    final options = ['1 Month', '3 Months', '6 Months', '1 Year'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select Interval',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ...options.map((option) => ListTile(
+                title: Text(option, style: const TextStyle(color: Colors.white)),
+                trailing: _repeatInterval == option 
+                    ? Icon(Icons.check, color: _neonColor) 
+                    : null,
+                onTap: () {
+                  setState(() {
+                    _repeatInterval = option;
+                  });
+                  Navigator.pop(context);
+                },
+              )).toList(),
+            ],
+          ),
+        );
+      },
     );
   }
 

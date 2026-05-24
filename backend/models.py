@@ -87,6 +87,7 @@ class Reminder(Base):
     due_km = Column(Float, nullable=True)
     notes = Column(String, nullable=True)
     repeat = Column(Boolean, default=False)
+    repeat_interval = Column(String, nullable=True)
     notify_before_days = Column(String, nullable=True) # e.g. "30,7,1"
     priority = Column(String, default="High")
     

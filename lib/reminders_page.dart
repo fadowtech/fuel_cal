@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/add_reminder_page.dart';
+import 'package:fuel_cal/future_reminders_page.dart';
+import 'package:fuel_cal/reminder_details_page.dart';
+import 'package:fuel_cal/services/api_service.dart';
+import 'package:intl/intl.dart';
 
 class RemindersPage extends StatefulWidget {
   const RemindersPage({super.key});
@@ -22,7 +26,7 @@ class _RemindersPageState extends State<RemindersPage> {
   String _selectedCategory = 'All';
   bool _smartRemindersEnabled = true;
 
-  final List<Map<String, dynamic>> _categories = [
+  List<Map<String, dynamic>> _categories = [
     {'name': 'All', 'icon': Icons.grid_view_rounded, 'color': Color(0xFF22C55E), 'badge': 28},
     {'name': 'Service', 'icon': Icons.build_outlined, 'color': Color(0xFF22C55E), 'badge': 5},
     {'name': 'Insurance', 'icon': Icons.security_outlined, 'color': Color(0xFFEF4444), 'badge': 1},
@@ -33,78 +37,94 @@ class _RemindersPageState extends State<RemindersPage> {
     {'name': 'Tolls Recharge', 'icon': Icons.toll_outlined, 'color': Color(0xFFEC4899), 'badge': 0},
   ];
 
-  final List<Map<String, dynamic>> _upcomingReminders = [
-    {
-      'title': 'Insurance Expiry',
-      'subtitle': 'Insurance • Policy No. 12345678',
-      'status': 'Due soon',
-      'statusColor': Color(0xFFEF4444),
-      'timeleft': '12 days left',
-      'date': '26 May 2026',
-      'icon': Icons.security_outlined,
-      'color': Color(0xFFEF4444)
-    },
-    {
-      'title': 'General Service',
-      'subtitle': 'Service • Last done: 15,000 KM',
-      'status': 'In 8 days',
-      'statusColor': Color(0xFFA855F7),
-      'timeleft': '',
-      'date': '04 Jun 2026',
-      'icon': Icons.build_outlined,
-      'color': Color(0xFFA855F7)
-    },
-    {
-      'title': 'Engine Oil Change',
-      'subtitle': 'Maintenance • Due in 450 KM',
-      'status': 'In 12 days',
-      'statusColor': Color(0xFFA855F7),
-      'timeleft': '',
-      'date': '08 Jun 2026',
-      'icon': Icons.settings_outlined,
-      'color': Color(0xFFA855F7)
-    },
-    {
-      'title': 'Registration Renewal',
-      'subtitle': 'Registration • RC No. KA01AB1234',
-      'status': 'In 18 days',
-      'statusColor': Color(0xFF3B82F6),
-      'timeleft': '',
-      'date': '14 Jun 2026',
-      'icon': Icons.receipt_long_outlined,
-      'color': Color(0xFF3B82F6)
-    },
-    {
-      'title': 'Parking Pass Renewal',
-      'subtitle': 'Parking • Monthly pass',
-      'status': 'In 22 days',
-      'statusColor': Color(0xFFEAB308),
-      'timeleft': '',
-      'date': '18 Jun 2026',
-      'icon': Icons.local_parking_outlined,
-      'color': Color(0xFFEAB308)
-    },
-    {
-      'title': 'Car Wash Reminder',
-      'subtitle': 'Wash • Last wash: 12 May 2026',
-      'status': 'In 25 days',
-      'statusColor': Color(0xFF06B6D4),
-      'timeleft': '',
-      'date': '21 Jun 2026',
-      'icon': Icons.local_car_wash_outlined,
-      'color': Color(0xFF06B6D4)
-    },
-    {
-      'title': 'Tolls Recharge',
-      'subtitle': 'Tolls • FASTag Balance Low',
-      'status': 'In 30 days',
-      'statusColor': Color(0xFFEC4899),
-      'timeleft': '',
-      'date': '26 Jun 2026',
-      'icon': Icons.toll_outlined,
-      'color': Color(0xFFEC4899)
-    },
-  ];
+  List<Map<String, dynamic>> _upcomingReminders = [];
+  bool _isLoading = true;
+  String _sortOption = 'Due Date';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReminders();
+  }
+
+  Future<void> _fetchReminders() async {
+    setState(() => _isLoading = true);
+    try {
+      final apiReminders = await ApiService().getReminders();
+      
+      final formattedReminders = apiReminders.map((r) {
+        final categoryData = _categories.firstWhere(
+          (c) => c['name'] == r['category'],
+          orElse: () => _categories.first,
+        );
+        final color = categoryData['color'] as Color;
+        final icon = categoryData['icon'] as IconData;
+        
+        final dueDateStr = r['due_date'] as String?;
+        DateTime? dueDate;
+        if (dueDateStr != null) {
+          dueDate = DateTime.tryParse(dueDateStr);
+        }
+        
+        String status = '';
+        String timeLeft = '';
+        if (dueDate != null) {
+          final diff = dueDate.difference(DateTime.now()).inDays;
+          if (diff < 0) {
+            status = 'Overdue';
+            timeLeft = '${diff.abs()} days ago';
+          } else if (diff <= 3) {
+            status = 'Due soon';
+            timeLeft = '$diff days left';
+          } else {
+            status = 'In $diff days';
+          }
+        } else if (r['due_km'] != null) {
+            status = 'Based on KM';
+            timeLeft = '${r['due_km']} KM';
+        }
+        
+        return {
+          'title': r['title'] ?? '',
+          'subtitle': '${r['category']} • ${r['due_km'] != null ? 'Due in ${r['due_km']} KM' : (r['notes'] ?? '')}',
+          'status': status,
+          'statusColor': status == 'Due soon' || status == 'Overdue' ? _dangerColor : color,
+          'timeleft': timeLeft,
+          'date': dueDate != null ? DateFormat('dd MMM yyyy').format(dueDate) : '',
+          'raw_date': dueDate,
+          'icon': icon,
+          'color': color,
+          'category': r['category'] ?? 'All',
+          'raw_data': r,
+        };
+      }).toList();
+
+      final Map<String, int> counts = {'All': formattedReminders.length};
+      for (var r in formattedReminders) {
+        final cat = r['category'] as String? ?? 'Others';
+        counts[cat] = (counts[cat] ?? 0) + 1;
+      }
+      
+      final updatedCategories = _categories.map((c) {
+        final name = c['name'] as String;
+        return {
+          ...c,
+          'badge': counts[name] ?? 0,
+        };
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _upcomingReminders = formattedReminders;
+          _categories = updatedCategories;
+          _isLoading = false;
+        });
+        _applySort();
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   final List<Map<String, dynamic>> _completedReminders = [
     {
@@ -138,8 +158,12 @@ class _RemindersPageState extends State<RemindersPage> {
                   _buildCategoryFilter(),
                   const SizedBox(height: 24),
                   
-                  if (_selectedTab == 0) ..._buildUpcomingAlertsTab(),
-                  if (_selectedTab == 1) ..._buildAllRemindersTab(),
+                  if (_isLoading)
+                    const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+                  else ...[
+                    if (_selectedTab == 0) ..._buildUpcomingAlertsTab(),
+                    if (_selectedTab == 1) ..._buildAllRemindersTab(),
+                  ],
                   
                   const SizedBox(height: 32),
                 ],
@@ -171,7 +195,7 @@ class _RemindersPageState extends State<RemindersPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AddReminderPage()),
-              );
+              ).then((_) => _fetchReminders());
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -300,47 +324,90 @@ class _RemindersPageState extends State<RemindersPage> {
   }
 
   List<Widget> _buildUpcomingAlertsTab() {
+    final categoryFiltered = _selectedCategory == 'All' 
+        ? _upcomingReminders 
+        : _upcomingReminders.where((r) => r['category'] == _selectedCategory).toList();
+
+    final next30Days = categoryFiltered.where((r) {
+      final DateTime? date = r['raw_date'];
+      if (date == null) return false;
+      final diff = date.difference(DateTime.now()).inDays;
+      return diff <= 30;
+    }).toList();
+
     return [
-      _buildSectionHeader('Upcoming Alerts', 'Sort', Icons.sort, subtitle: '(Next 30 days)'),
+      _buildSectionHeader('Upcoming Alerts', 'Sort', Icons.sort, subtitle: '(Next 30 days)', onActionTap: _showSortOptions),
       const SizedBox(height: 12),
-      ..._upcomingReminders.map((r) => _buildReminderCard(r, false)),
+      if (next30Days.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Center(child: Text('No upcoming alerts in the next 30 days', style: TextStyle(color: _mutedColor))),
+        )
+      else
+        ...next30Days.map((r) => _buildReminderCard(r, false)),
       const SizedBox(height: 24),
       
-      _buildSectionHeader('Next 30+ days', 'View all', null),
+      _buildSectionHeader('Next 31 - 60 Days', 'View all', null),
       const SizedBox(height: 12),
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _cardColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.calendar_today_outlined, color: Colors.white54, size: 24),
+      Builder(
+        builder: (context) {
+          final futureReminders = categoryFiltered.where((r) {
+            final DateTime? date = r['raw_date'];
+            if (date == null) return false;
+            final diff = date.difference(DateTime.now()).inDays;
+            return diff > 30 && diff <= 60;
+          }).toList();
+
+          if (futureReminders.isEmpty) return const SizedBox.shrink();
+
+          return GestureDetector(
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FutureRemindersPage(reminders: futureReminders),
+                ),
+              );
+              if (result == true) {
+                _fetchReminders();
+              }
+            },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _cardColor,
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('4 reminders', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text('View reminders beyond 30 days', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                ],
-              ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.calendar_today_outlined, color: Colors.white54, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${futureReminders.length} reminders', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Text('View reminders between 31 and 60 days', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: _mutedColor, size: 20),
+              ],
             ),
-            Icon(Icons.chevron_right, color: _mutedColor, size: 20),
-          ],
-        ),
-      ),
-      
-      const SizedBox(height: 24),
+          ),
+        );
+      },
+    ),
+    
+    const SizedBox(height: 24),
       _buildSmartReminders(),
       const SizedBox(height: 16),
       _buildInfoFooter(),
@@ -348,12 +415,16 @@ class _RemindersPageState extends State<RemindersPage> {
   }
 
   List<Widget> _buildAllRemindersTab() {
+    final filteredReminders = _selectedCategory == 'All' 
+        ? _upcomingReminders 
+        : _upcomingReminders.where((r) => r['category'] == _selectedCategory).toList();
+
     return [
-      _buildSectionHeader('All Reminders', 'Sort', Icons.sort),
+      _buildSectionHeader('All Reminders', 'Sort', Icons.sort, onActionTap: _showSortOptions),
       const SizedBox(height: 16),
       Text('Upcoming', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
       const SizedBox(height: 12),
-      ..._upcomingReminders.map((r) => _buildReminderCard(r, false)),
+      ...filteredReminders.map((r) => _buildReminderCard(r, false)),
       const SizedBox(height: 24),
       
       _buildSectionHeader('Completed', 'View all', null),
@@ -367,7 +438,7 @@ class _RemindersPageState extends State<RemindersPage> {
     ];
   }
 
-  Widget _buildSectionHeader(String title, String actionText, IconData? actionIcon, {String? subtitle}) {
+  Widget _buildSectionHeader(String title, String actionText, IconData? actionIcon, {String? subtitle, VoidCallback? onActionTap}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -388,20 +459,82 @@ class _RemindersPageState extends State<RemindersPage> {
             ],
           ],
         ),
-        Row(
-          children: [
-            Text(
-              actionText,
-              style: TextStyle(color: _mutedColor, fontSize: 13),
-            ),
-            if (actionIcon != null) ...[
-              const SizedBox(width: 4),
-              Icon(actionIcon, color: _mutedColor, size: 16),
-            ]
-          ],
+        GestureDetector(
+          onTap: onActionTap,
+          child: Row(
+            children: [
+              Text(
+                actionText,
+                style: TextStyle(color: _mutedColor, fontSize: 13),
+              ),
+              if (actionIcon != null) ...[
+                const SizedBox(width: 4),
+                Icon(actionIcon, color: _mutedColor, size: 16),
+              ]
+            ],
+          ),
         ),
       ],
     );
+  }
+
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Sort by', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              _buildSortOption('Due Date'),
+              _buildSortOption('Category'),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSortOption(String option) {
+    return ListTile(
+      title: Text(option, style: TextStyle(color: _sortOption == option ? _neonColor : Colors.white)),
+      trailing: _sortOption == option ? Icon(Icons.check, color: _neonColor) : null,
+      onTap: () {
+        setState(() {
+          _sortOption = option;
+        });
+        Navigator.pop(context);
+        _applySort();
+      },
+    );
+  }
+
+  void _applySort() {
+    setState(() {
+      if (_sortOption == 'Due Date') {
+        _upcomingReminders.sort((a, b) {
+          final dateA = a['raw_date'] as DateTime?;
+          final dateB = b['raw_date'] as DateTime?;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          return dateA.compareTo(dateB);
+        });
+      } else if (_sortOption == 'Category') {
+        _upcomingReminders.sort((a, b) {
+          final catA = (a['category'] as String?) ?? '';
+          final catB = (b['category'] as String?) ?? '';
+          return catA.compareTo(catB);
+        });
+      }
+    });
   }
 
   Widget _buildReminderCard(Map<String, dynamic> data, bool isCompleted) {
@@ -409,14 +542,26 @@ class _RemindersPageState extends State<RemindersPage> {
     final iconColor = isCompleted ? statusColor : (data['color'] as Color);
     final iconData = isCompleted ? Icons.check_circle_outline : (data['icon'] as IconData);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Stack(
-        children: [
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReminderDetailsPage(data: data),
+          ),
+        );
+        if (result == true) {
+          _fetchReminders();
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Stack(
+          children: [
           if (!isCompleted)
             Positioned(
               left: 0,
@@ -497,9 +642,9 @@ class _RemindersPageState extends State<RemindersPage> {
           ),
         ],
       ),
-    );
-  }
-
+    ),
+  );
+}
   Widget _buildSmartReminders() {
     return Container(
       padding: const EdgeInsets.all(16),

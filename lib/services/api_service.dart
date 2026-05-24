@@ -271,7 +271,10 @@ class ApiService {
       await _dio.put('/reminders/$id', data: data);
       return true;
     } catch (e) {
-      return false;
+      if (e is DioException) {
+        throw Exception(e.response?.data ?? e.message);
+      }
+      throw Exception(e.toString());
     }
   }
 
