@@ -30,6 +30,21 @@ mixin _$Vehicle {
   String get fuelType => throw _privateConstructorUsedError;
   @JsonKey(name: 'tank_capacity')
   double get tankCapacity => throw _privateConstructorUsedError;
+  @JsonKey(name: 'vehicle_number')
+  String? get vehicleNumber => throw _privateConstructorUsedError;
+  String? get variant => throw _privateConstructorUsedError;
+  @JsonKey(name: 'vehicle_type')
+  String? get vehicleType => throw _privateConstructorUsedError;
+  @JsonKey(name: 'tank_type')
+  String? get tankType => throw _privateConstructorUsedError;
+  @JsonKey(name: 'highest_avg_mileage')
+  double? get highestAvgMileage => throw _privateConstructorUsedError;
+  @JsonKey(name: 'avg_mileage')
+  double? get avgMileage => throw _privateConstructorUsedError;
+  @JsonKey(name: 'poor_mileage')
+  double? get poorMileage => throw _privateConstructorUsedError;
+  String? get notes => throw _privateConstructorUsedError;
+  String? get color => throw _privateConstructorUsedError;
 
   /// Serializes this Vehicle to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -52,7 +67,16 @@ abstract class $VehicleCopyWith<$Res> {
       String model,
       int year,
       @JsonKey(name: 'fuel_type') String fuelType,
-      @JsonKey(name: 'tank_capacity') double tankCapacity});
+      @JsonKey(name: 'tank_capacity') double tankCapacity,
+      @JsonKey(name: 'vehicle_number') String? vehicleNumber,
+      String? variant,
+      @JsonKey(name: 'vehicle_type') String? vehicleType,
+      @JsonKey(name: 'tank_type') String? tankType,
+      @JsonKey(name: 'highest_avg_mileage') double? highestAvgMileage,
+      @JsonKey(name: 'avg_mileage') double? avgMileage,
+      @JsonKey(name: 'poor_mileage') double? poorMileage,
+      String? notes,
+      String? color});
 }
 
 /// @nodoc
@@ -77,6 +101,15 @@ class _$VehicleCopyWithImpl<$Res, $Val extends Vehicle>
     Object? year = null,
     Object? fuelType = null,
     Object? tankCapacity = null,
+    Object? vehicleNumber = freezed,
+    Object? variant = freezed,
+    Object? vehicleType = freezed,
+    Object? tankType = freezed,
+    Object? highestAvgMileage = freezed,
+    Object? avgMileage = freezed,
+    Object? poorMileage = freezed,
+    Object? notes = freezed,
+    Object? color = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -107,6 +140,42 @@ class _$VehicleCopyWithImpl<$Res, $Val extends Vehicle>
           ? _value.tankCapacity
           : tankCapacity // ignore: cast_nullable_to_non_nullable
               as double,
+      vehicleNumber: freezed == vehicleNumber
+          ? _value.vehicleNumber
+          : vehicleNumber // ignore: cast_nullable_to_non_nullable
+              as String?,
+      variant: freezed == variant
+          ? _value.variant
+          : variant // ignore: cast_nullable_to_non_nullable
+              as String?,
+      vehicleType: freezed == vehicleType
+          ? _value.vehicleType
+          : vehicleType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      tankType: freezed == tankType
+          ? _value.tankType
+          : tankType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      highestAvgMileage: freezed == highestAvgMileage
+          ? _value.highestAvgMileage
+          : highestAvgMileage // ignore: cast_nullable_to_non_nullable
+              as double?,
+      avgMileage: freezed == avgMileage
+          ? _value.avgMileage
+          : avgMileage // ignore: cast_nullable_to_non_nullable
+              as double?,
+      poorMileage: freezed == poorMileage
+          ? _value.poorMileage
+          : poorMileage // ignore: cast_nullable_to_non_nullable
+              as double?,
+      notes: freezed == notes
+          ? _value.notes
+          : notes // ignore: cast_nullable_to_non_nullable
+              as String?,
+      color: freezed == color
+          ? _value.color
+          : color // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -125,7 +194,16 @@ abstract class _$$VehicleImplCopyWith<$Res> implements $VehicleCopyWith<$Res> {
       String model,
       int year,
       @JsonKey(name: 'fuel_type') String fuelType,
-      @JsonKey(name: 'tank_capacity') double tankCapacity});
+      @JsonKey(name: 'tank_capacity') double tankCapacity,
+      @JsonKey(name: 'vehicle_number') String? vehicleNumber,
+      String? variant,
+      @JsonKey(name: 'vehicle_type') String? vehicleType,
+      @JsonKey(name: 'tank_type') String? tankType,
+      @JsonKey(name: 'highest_avg_mileage') double? highestAvgMileage,
+      @JsonKey(name: 'avg_mileage') double? avgMileage,
+      @JsonKey(name: 'poor_mileage') double? poorMileage,
+      String? notes,
+      String? color});
 }
 
 /// @nodoc
@@ -148,6 +226,15 @@ class __$$VehicleImplCopyWithImpl<$Res>
     Object? year = null,
     Object? fuelType = null,
     Object? tankCapacity = null,
+    Object? vehicleNumber = freezed,
+    Object? variant = freezed,
+    Object? vehicleType = freezed,
+    Object? tankType = freezed,
+    Object? highestAvgMileage = freezed,
+    Object? avgMileage = freezed,
+    Object? poorMileage = freezed,
+    Object? notes = freezed,
+    Object? color = freezed,
   }) {
     return _then(_$VehicleImpl(
       id: null == id
@@ -178,6 +265,42 @@ class __$$VehicleImplCopyWithImpl<$Res>
           ? _value.tankCapacity
           : tankCapacity // ignore: cast_nullable_to_non_nullable
               as double,
+      vehicleNumber: freezed == vehicleNumber
+          ? _value.vehicleNumber
+          : vehicleNumber // ignore: cast_nullable_to_non_nullable
+              as String?,
+      variant: freezed == variant
+          ? _value.variant
+          : variant // ignore: cast_nullable_to_non_nullable
+              as String?,
+      vehicleType: freezed == vehicleType
+          ? _value.vehicleType
+          : vehicleType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      tankType: freezed == tankType
+          ? _value.tankType
+          : tankType // ignore: cast_nullable_to_non_nullable
+              as String?,
+      highestAvgMileage: freezed == highestAvgMileage
+          ? _value.highestAvgMileage
+          : highestAvgMileage // ignore: cast_nullable_to_non_nullable
+              as double?,
+      avgMileage: freezed == avgMileage
+          ? _value.avgMileage
+          : avgMileage // ignore: cast_nullable_to_non_nullable
+              as double?,
+      poorMileage: freezed == poorMileage
+          ? _value.poorMileage
+          : poorMileage // ignore: cast_nullable_to_non_nullable
+              as double?,
+      notes: freezed == notes
+          ? _value.notes
+          : notes // ignore: cast_nullable_to_non_nullable
+              as String?,
+      color: freezed == color
+          ? _value.color
+          : color // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -192,7 +315,16 @@ class _$VehicleImpl implements _Vehicle {
       required this.model,
       required this.year,
       @JsonKey(name: 'fuel_type') required this.fuelType,
-      @JsonKey(name: 'tank_capacity') required this.tankCapacity});
+      @JsonKey(name: 'tank_capacity') required this.tankCapacity,
+      @JsonKey(name: 'vehicle_number') this.vehicleNumber,
+      this.variant,
+      @JsonKey(name: 'vehicle_type') this.vehicleType,
+      @JsonKey(name: 'tank_type') this.tankType,
+      @JsonKey(name: 'highest_avg_mileage') this.highestAvgMileage,
+      @JsonKey(name: 'avg_mileage') this.avgMileage,
+      @JsonKey(name: 'poor_mileage') this.poorMileage,
+      this.notes,
+      this.color});
 
   factory _$VehicleImpl.fromJson(Map<String, dynamic> json) =>
       _$$VehicleImplFromJson(json);
@@ -214,10 +346,34 @@ class _$VehicleImpl implements _Vehicle {
   @override
   @JsonKey(name: 'tank_capacity')
   final double tankCapacity;
+  @override
+  @JsonKey(name: 'vehicle_number')
+  final String? vehicleNumber;
+  @override
+  final String? variant;
+  @override
+  @JsonKey(name: 'vehicle_type')
+  final String? vehicleType;
+  @override
+  @JsonKey(name: 'tank_type')
+  final String? tankType;
+  @override
+  @JsonKey(name: 'highest_avg_mileage')
+  final double? highestAvgMileage;
+  @override
+  @JsonKey(name: 'avg_mileage')
+  final double? avgMileage;
+  @override
+  @JsonKey(name: 'poor_mileage')
+  final double? poorMileage;
+  @override
+  final String? notes;
+  @override
+  final String? color;
 
   @override
   String toString() {
-    return 'Vehicle(id: $id, userId: $userId, make: $make, model: $model, year: $year, fuelType: $fuelType, tankCapacity: $tankCapacity)';
+    return 'Vehicle(id: $id, userId: $userId, make: $make, model: $model, year: $year, fuelType: $fuelType, tankCapacity: $tankCapacity, vehicleNumber: $vehicleNumber, variant: $variant, vehicleType: $vehicleType, tankType: $tankType, highestAvgMileage: $highestAvgMileage, avgMileage: $avgMileage, poorMileage: $poorMileage, notes: $notes, color: $color)';
   }
 
   @override
@@ -233,13 +389,44 @@ class _$VehicleImpl implements _Vehicle {
             (identical(other.fuelType, fuelType) ||
                 other.fuelType == fuelType) &&
             (identical(other.tankCapacity, tankCapacity) ||
-                other.tankCapacity == tankCapacity));
+                other.tankCapacity == tankCapacity) &&
+            (identical(other.vehicleNumber, vehicleNumber) ||
+                other.vehicleNumber == vehicleNumber) &&
+            (identical(other.variant, variant) || other.variant == variant) &&
+            (identical(other.vehicleType, vehicleType) ||
+                other.vehicleType == vehicleType) &&
+            (identical(other.tankType, tankType) ||
+                other.tankType == tankType) &&
+            (identical(other.highestAvgMileage, highestAvgMileage) ||
+                other.highestAvgMileage == highestAvgMileage) &&
+            (identical(other.avgMileage, avgMileage) ||
+                other.avgMileage == avgMileage) &&
+            (identical(other.poorMileage, poorMileage) ||
+                other.poorMileage == poorMileage) &&
+            (identical(other.notes, notes) || other.notes == notes) &&
+            (identical(other.color, color) || other.color == color));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
-      runtimeType, id, userId, make, model, year, fuelType, tankCapacity);
+      runtimeType,
+      id,
+      userId,
+      make,
+      model,
+      year,
+      fuelType,
+      tankCapacity,
+      vehicleNumber,
+      variant,
+      vehicleType,
+      tankType,
+      highestAvgMileage,
+      avgMileage,
+      poorMileage,
+      notes,
+      color);
 
   /// Create a copy of Vehicle
   /// with the given fields replaced by the non-null parameter values.
@@ -259,14 +446,22 @@ class _$VehicleImpl implements _Vehicle {
 
 abstract class _Vehicle implements Vehicle {
   const factory _Vehicle(
-          {required final int id,
-          @JsonKey(name: 'user_id') required final int userId,
-          required final String make,
-          required final String model,
-          required final int year,
-          @JsonKey(name: 'fuel_type') required final String fuelType,
-          @JsonKey(name: 'tank_capacity') required final double tankCapacity}) =
-      _$VehicleImpl;
+      {required final int id,
+      @JsonKey(name: 'user_id') required final int userId,
+      required final String make,
+      required final String model,
+      required final int year,
+      @JsonKey(name: 'fuel_type') required final String fuelType,
+      @JsonKey(name: 'tank_capacity') required final double tankCapacity,
+      @JsonKey(name: 'vehicle_number') final String? vehicleNumber,
+      final String? variant,
+      @JsonKey(name: 'vehicle_type') final String? vehicleType,
+      @JsonKey(name: 'tank_type') final String? tankType,
+      @JsonKey(name: 'highest_avg_mileage') final double? highestAvgMileage,
+      @JsonKey(name: 'avg_mileage') final double? avgMileage,
+      @JsonKey(name: 'poor_mileage') final double? poorMileage,
+      final String? notes,
+      final String? color}) = _$VehicleImpl;
 
   factory _Vehicle.fromJson(Map<String, dynamic> json) = _$VehicleImpl.fromJson;
 
@@ -287,6 +482,30 @@ abstract class _Vehicle implements Vehicle {
   @override
   @JsonKey(name: 'tank_capacity')
   double get tankCapacity;
+  @override
+  @JsonKey(name: 'vehicle_number')
+  String? get vehicleNumber;
+  @override
+  String? get variant;
+  @override
+  @JsonKey(name: 'vehicle_type')
+  String? get vehicleType;
+  @override
+  @JsonKey(name: 'tank_type')
+  String? get tankType;
+  @override
+  @JsonKey(name: 'highest_avg_mileage')
+  double? get highestAvgMileage;
+  @override
+  @JsonKey(name: 'avg_mileage')
+  double? get avgMileage;
+  @override
+  @JsonKey(name: 'poor_mileage')
+  double? get poorMileage;
+  @override
+  String? get notes;
+  @override
+  String? get color;
 
   /// Create a copy of Vehicle
   /// with the given fields replaced by the non-null parameter values.

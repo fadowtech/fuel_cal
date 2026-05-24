@@ -13,6 +13,15 @@ class Vehicle with _$Vehicle {
     required int year,
     @JsonKey(name: 'fuel_type') required String fuelType,
     @JsonKey(name: 'tank_capacity') required double tankCapacity,
+    @JsonKey(name: 'vehicle_number') String? vehicleNumber,
+    String? variant,
+    @JsonKey(name: 'vehicle_type') String? vehicleType,
+    @JsonKey(name: 'tank_type') String? tankType,
+    @JsonKey(name: 'highest_avg_mileage') double? highestAvgMileage,
+    @JsonKey(name: 'avg_mileage') double? avgMileage,
+    @JsonKey(name: 'poor_mileage') double? poorMileage,
+    String? notes,
+    String? color,
   }) = _Vehicle;
 
   factory Vehicle.fromJson(Map<String, dynamic> json) => _$VehicleFromJson(json);

@@ -37,14 +37,16 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   final List<String> _stations = ['Shell', 'BP', 'Mobil', 'Exxon', 'Local Station'];
   final List<String> _paymentMethods = ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Other'];
 
-  // Base mock values for the Current Status calculations
-  final double _baseFuelLeft = 10.0; // Assume 10L already in tank
-  final double _avgMileage = 17.5; // 17.5 KM/L average
-  final double _tankCapacity = 50.0; // Assume 50L tank capacity
+  // Base dynamic values
+  double _baseFuelLeft = 0.0;
+  double _avgMileage = 15.0;
+  double _tankCapacity = 50.0;
   
-  double _currentFuelLeft = 10.0;
-  double _estimatedRange = 175.0; // 10.0 * 17.5
-  double _tankLevelPercent = 0.2; // 10.0 / 50.0
+  double _currentFuelLeft = 0.0;
+  double _estimatedRange = 0.0;
+  double _tankLevelPercent = 0.0;
+  double _lastOdo = 0.0;
+  bool _isInitialized = false;
 
   @override
   void dispose() {
@@ -58,6 +60,64 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     super.dispose();
   }
 
+  void _initializeData(List<dynamic> logs, List<dynamic> vehicles) {
+    if (_isInitialized) return;
+    
+    if (vehicles.isNotEmpty && vehicles.first.tankCapacity > 0) {
+      _tankCapacity = vehicles.first.tankCapacity;
+    }
+
+    if (logs.isNotEmpty) {
+      final sortedLogs = List<dynamic>.from(logs)
+        ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
+        
+      double totalDistance = 0.0;
+      double totalFuelUsed = 0.0;
+      final ascLogs = List<dynamic>.from(logs)
+        ..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+      for (int i = 1; i < ascLogs.length; i++) {
+        final distance = ascLogs[i].odometer - ascLogs[i - 1].odometer;
+        if (distance > 0 && ascLogs[i - 1].fuelQuantity > 0) {
+          totalDistance += distance;
+          totalFuelUsed += ascLogs[i - 1].fuelQuantity;
+        }
+      }
+      if (totalFuelUsed > 0) {
+        _avgMileage = totalDistance / totalFuelUsed;
+      }
+
+      final lastLog = sortedLogs.first;
+      _lastOdo = lastLog.odometer;
+      
+      final daysSinceLastLog = DateTime.now().difference(lastLog.date ?? DateTime.now()).inDays.clamp(0, 30);
+      
+      double avgDailyDistance = 30.0;
+      if (ascLogs.length > 1) {
+        final totalDays = (ascLogs.last.date ?? DateTime.now()).difference(ascLogs.first.date ?? DateTime.now()).inDays;
+        if (totalDays > 0) {
+          avgDailyDistance = totalDistance / totalDays;
+        }
+      }
+      
+      double estimatedDistanceSinceLastLog = avgDailyDistance * daysSinceLastLog;
+      
+      if (lastLog.remainingRange != null && lastLog.remainingRange! > 0) {
+          double estimatedCurrentRange = lastLog.remainingRange! - estimatedDistanceSinceLastLog;
+          double rangeKM = estimatedCurrentRange > 0 ? estimatedCurrentRange : 0.0;
+          _baseFuelLeft = (rangeKM / _avgMileage).clamp(0.0, _tankCapacity);
+      } else {
+          double startingFuel = lastLog.isFullTank ? _tankCapacity : (lastLog.fuelQuantity > 0 ? lastLog.fuelQuantity : _tankCapacity);
+          double estimatedFuelUsed = estimatedDistanceSinceLastLog / _avgMileage;
+          _baseFuelLeft = (startingFuel - estimatedFuelUsed).clamp(0.0, _tankCapacity);
+      }
+    }
+    
+    _currentFuelLeft = _baseFuelLeft;
+    _estimatedRange = _currentFuelLeft * _avgMileage;
+    _tankLevelPercent = (_currentFuelLeft / _tankCapacity).clamp(0.0, 1.0);
+    _isInitialized = true;
+  }
+
   void _calculateTotal() {
     final liters = double.tryParse(_fuelLitersController.text) ?? 0;
     final price = double.tryParse(_fuelPriceController.text) ?? 0;
@@ -69,7 +129,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         _totalAmountController.text = '';
       }
       
-      _currentFuelLeft = _baseFuelLeft + liters;
+      _currentFuelLeft = (_baseFuelLeft + liters).clamp(0.0, _tankCapacity);
       _estimatedRange = _currentFuelLeft * _avgMileage;
       _tankLevelPercent = (_currentFuelLeft / _tankCapacity).clamp(0.0, 1.0);
     });
@@ -146,6 +206,15 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
   @override
   Widget build(BuildContext context) {
+    final fuelLogsAsync = ref.watch(fuelLogsProvider);
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+
+    if (!fuelLogsAsync.isLoading && !vehiclesAsync.isLoading) {
+      final logs = fuelLogsAsync.value ?? [];
+      final vehicles = vehiclesAsync.value ?? [];
+      _initializeData(logs, vehicles);
+    }
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
@@ -411,7 +480,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 48, top: 4, bottom: 12),
-          child: Text('Last ODO: 54545 KM', style: TextStyle(color: _mutedColor, fontSize: 12)),
+          child: Text('Last ODO: ${_lastOdo.toStringAsFixed(0)} KM', style: TextStyle(color: _mutedColor, fontSize: 12)),
         ),
         _buildTextField(
           controller: _remainingRangeController,

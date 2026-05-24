@@ -15,6 +15,15 @@ _$VehicleImpl _$$VehicleImplFromJson(Map<String, dynamic> json) =>
       year: (json['year'] as num).toInt(),
       fuelType: json['fuel_type'] as String,
       tankCapacity: (json['tank_capacity'] as num).toDouble(),
+      vehicleNumber: json['vehicle_number'] as String?,
+      variant: json['variant'] as String?,
+      vehicleType: json['vehicle_type'] as String?,
+      tankType: json['tank_type'] as String?,
+      highestAvgMileage: (json['highest_avg_mileage'] as num?)?.toDouble(),
+      avgMileage: (json['avg_mileage'] as num?)?.toDouble(),
+      poorMileage: (json['poor_mileage'] as num?)?.toDouble(),
+      notes: json['notes'] as String?,
+      color: json['color'] as String?,
     );
 
 Map<String, dynamic> _$$VehicleImplToJson(_$VehicleImpl instance) =>
@@ -26,4 +35,13 @@ Map<String, dynamic> _$$VehicleImplToJson(_$VehicleImpl instance) =>
       'year': instance.year,
       'fuel_type': instance.fuelType,
       'tank_capacity': instance.tankCapacity,
+      'vehicle_number': instance.vehicleNumber,
+      'variant': instance.variant,
+      'vehicle_type': instance.vehicleType,
+      'tank_type': instance.tankType,
+      'highest_avg_mileage': instance.highestAvgMileage,
+      'avg_mileage': instance.avgMileage,
+      'poor_mileage': instance.poorMileage,
+      'notes': instance.notes,
+      'color': instance.color,
     };

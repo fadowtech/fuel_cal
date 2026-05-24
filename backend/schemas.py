@@ -34,6 +34,15 @@ class VehicleBase(BaseModel):
     year: int
     fuel_type: str
     tank_capacity: float
+    vehicle_number: Optional[str] = None
+    variant: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    tank_type: Optional[str] = None
+    highest_avg_mileage: Optional[float] = None
+    avg_mileage: Optional[float] = None
+    poor_mileage: Optional[float] = None
+    notes: Optional[str] = None
+    color: Optional[str] = None
 
 class VehicleCreate(VehicleBase):
     pass
