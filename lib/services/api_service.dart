@@ -130,6 +130,34 @@ class ApiService {
       await _dio.post('/vehicles/', data: data);
       return true;
     } catch (e) {
+      if (e is DioException) {
+        print('createVehicle error response: ${e.response?.data}');
+      } else {
+        print('createVehicle error: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<bool> updateVehicle(int id, Map<String, dynamic> data) async {
+    try {
+      await _dio.put('/vehicles/$id', data: data);
+      return true;
+    } catch (e) {
+      if (e is DioException) {
+        print('updateVehicle error response: ${e.response?.data}');
+      } else {
+        print('updateVehicle error: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<bool> deleteVehicle(int id) async {
+    try {
+      await _dio.delete('/vehicles/$id');
+      return true;
+    } catch (e) {
       return false;
     }
   }

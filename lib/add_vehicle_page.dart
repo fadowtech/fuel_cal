@@ -1,8 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
+  }
+}
+
+class TitleCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) return newValue;
+    
+    String text = newValue.text;
+    StringBuffer newText = StringBuffer();
+    bool capitalizeNext = true;
+    
+    for (int i = 0; i < text.length; i++) {
+      if (text[i] == ' ' || text[i] == '-') {
+        capitalizeNext = true;
+        newText.write(text[i]);
+      } else if (capitalizeNext) {
+        newText.write(text[i].toUpperCase());
+        capitalizeNext = false;
+      } else {
+        newText.write(text[i]);
+      }
+    }
+    
+    return TextEditingValue(
+      text: newText.toString(),
+      selection: newValue.selection,
+    );
+  }
+}
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -12,7 +52,9 @@ Color get _mutedColor => ThemeService.mutedColor;
 Color get _textColor => ThemeService.textColor;
 
 class AddVehiclePage extends ConsumerStatefulWidget {
-  const AddVehiclePage({super.key});
+  final Vehicle? vehicleToEdit;
+
+  const AddVehiclePage({super.key, this.vehicleToEdit});
 
   @override
   ConsumerState<AddVehiclePage> createState() => _AddVehiclePageState();
@@ -22,6 +64,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
   final _vehicleNumberController = TextEditingController();
   final _brandController = TextEditingController();
   final _modelController = TextEditingController();
+  final _yearController = TextEditingController();
   final _variantController = TextEditingController();
   final _tankCapacityController = TextEditingController();
   final _highestAvgMileageController = TextEditingController();
@@ -29,30 +72,68 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
   final _poorMileageController = TextEditingController();
   final _notesController = TextEditingController();
 
-  String _selectedVehicleType = 'Car';
-  String _selectedFuelType = 'Diesel';
-  String _selectedTankType = 'Full Tank';
-  Color _selectedColor = _neonColor;
+  String _selectedVehicleType = '';
+  String _selectedFuelType = '';
+  String _selectedTankType = '';
+  String _selectedColorName = 'None';
 
   bool _isLoading = false;
 
   final List<String> _vehicleTypes = ['Car', 'Bike', 'Truck', 'Scooter'];
   final List<String> _fuelTypes = ['Petrol', 'Diesel'];
   final List<String> _tankTypes = ['Full Tank', 'Reserve Tank'];
-  final List<Color> _vehicleColors = [
-    ThemeService.neonColor,
-    Colors.blue,
-    Colors.red,
-    Colors.amber,
-    Colors.purple,
-    Colors.grey,
+  final List<String> _vehicleColorNames = [
+    'None',
+    'White',
+    'Black',
+    'Silver',
+    'Grey / Gunmetal Grey',
+    'Blue',
+    'Red',
+    'Pearl White',
+    'Midnight Black',
+    'Matte Grey',
+    'Metallic Silver',
+    'Deep Ocean Blue',
+    'Wine Red',
+    'Titanium Grey',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.vehicleToEdit != null) {
+      final v = widget.vehicleToEdit!;
+      _vehicleNumberController.text = v.vehicleNumber ?? '';
+      _brandController.text = v.make;
+      _modelController.text = v.model;
+      _yearController.text = v.year.toString();
+      _variantController.text = v.variant ?? '';
+      _tankCapacityController.text = v.tankCapacity.toString();
+      _highestAvgMileageController.text = v.highestAvgMileage?.toString() ?? '';
+      _avgMileageController.text = v.avgMileage?.toString() ?? '';
+      _poorMileageController.text = v.poorMileage?.toString() ?? '';
+      _notesController.text = v.notes ?? '';
+      _selectedVehicleType = v.vehicleType ?? '';
+      _selectedFuelType = v.fuelType;
+      _selectedTankType = v.tankType ?? '';
+      _selectedColorName = v.color ?? 'None';
+    }
+    // Rebuild UI on keystrokes to make the preview card dynamic
+    final rebuild = () => setState(() {});
+    _vehicleNumberController.addListener(rebuild);
+    _brandController.addListener(rebuild);
+    _modelController.addListener(rebuild);
+    _tankCapacityController.addListener(rebuild);
+    _avgMileageController.addListener(rebuild);
+  }
 
   @override
   void dispose() {
     _vehicleNumberController.dispose();
     _brandController.dispose();
     _modelController.dispose();
+    _yearController.dispose();
     _variantController.dispose();
     _tankCapacityController.dispose();
     _highestAvgMileageController.dispose();
@@ -66,6 +147,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     final vehicleNumber = _vehicleNumberController.text.trim();
     final brand = _brandController.text.trim();
     final model = _modelController.text.trim();
+    final year = int.tryParse(_yearController.text.trim()) ?? 2024;
     final variant = _variantController.text.trim();
     final tankCapacity = double.tryParse(_tankCapacityController.text.trim()) ?? 0.0;
     
@@ -74,12 +156,12 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     final poor = double.tryParse(_poorMileageController.text.trim()) ?? 0.0;
     final notes = _notesController.text.trim();
     
-    // Convert color to hex string for storing
-    final colorString = '#${_selectedColor.value.toRadixString(16).substring(2).toUpperCase()}';
+    // Store color name directly
+    final colorString = _selectedColorName == 'None' ? null : _selectedColorName;
 
-    if (brand.isEmpty || model.isEmpty || tankCapacity == 0.0) {
+    if (brand.isEmpty || model.isEmpty || tankCapacity == 0.0 || _selectedVehicleType.isEmpty || _selectedFuelType.isEmpty || _selectedTankType.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields.')),
+        const SnackBar(content: Text('Please fill all required fields and make your selections.')),
       );
       return;
     }
@@ -88,32 +170,43 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
 
     final apiService = ref.read(apiServiceProvider);
     
-    // We default year to 2024 since it's removed from UI
-    final success = await apiService.createVehicle({
+    final payload = {
       "make": brand,
       "model": model,
-      "year": 2024,
+      "year": year,
       "fuel_type": _selectedFuelType,
       "tank_capacity": tankCapacity,
       "vehicle_number": vehicleNumber.isEmpty ? null : vehicleNumber,
       "variant": variant.isEmpty ? null : variant,
-      "vehicle_type": _selectedVehicleType,
+      "highest_avg_mileage": highestAvg == 0.0 ? null : highestAvg,
+      "avg_mileage": avg == 0.0 ? null : avg,
+      "poor_mileage": poor == 0.0 ? null : poor,
       "tank_type": _selectedTankType,
-      "highest_avg_mileage": highestAvg > 0 ? highestAvg : null,
-      "avg_mileage": avg > 0 ? avg : null,
-      "poor_mileage": poor > 0 ? poor : null,
+      "vehicle_type": _selectedVehicleType,
       "notes": notes.isEmpty ? null : notes,
       "color": colorString,
-    });
+    };
 
+    bool success;
+    if (widget.vehicleToEdit != null) {
+      success = await apiService.updateVehicle(widget.vehicleToEdit!.id, payload);
+    } else {
+      success = await apiService.createVehicle(payload);
+    }
+
+    if (!mounted) return;
+    
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
+    if (success) {
       ref.invalidate(vehiclesProvider);
-      Navigator.pop(context);
-    } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to add vehicle.')),
+        SnackBar(content: Text(widget.vehicleToEdit != null ? 'Vehicle updated successfully!' : 'Vehicle added successfully!')),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save vehicle. Please try again.')),
       );
     }
   }
@@ -140,8 +233,8 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Add New Vehicle', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text('Enter your vehicle details', style: TextStyle(color: _mutedColor, fontSize: 12)),
+            Text(widget.vehicleToEdit != null ? 'Edit Vehicle' : 'Add New Vehicle', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(widget.vehicleToEdit != null ? 'Update your vehicle details' : 'Enter your vehicle details', style: TextStyle(color: _mutedColor, fontSize: 12)),
           ],
         ),
         actions: [
@@ -209,6 +302,22 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
   }
 
   Widget _buildPreviewCard() {
+    final displayBrand = _brandController.text.isNotEmpty ? _brandController.text : '';
+    final displayModel = _modelController.text.isNotEmpty ? _modelController.text : '';
+    String displayName = '$displayBrand $displayModel'.trim();
+    if (displayName.isEmpty) displayName = ' ';
+
+    final displayNumber = _vehicleNumberController.text.isNotEmpty ? _vehicleNumberController.text : ' ';
+    final displayCapacity = _tankCapacityController.text.isNotEmpty ? '${_tankCapacityController.text} L' : '- L';
+    final displayMileage = _avgMileageController.text.isNotEmpty ? '${_avgMileageController.text} KM/L' : '- KM/L';
+
+    IconData previewIcon;
+    if (_selectedVehicleType == 'Car') previewIcon = Icons.directions_car;
+    else if (_selectedVehicleType == 'Bike') previewIcon = Icons.motorcycle;
+    else if (_selectedVehicleType == 'Truck') previewIcon = Icons.local_shipping;
+    else if (_selectedVehicleType == 'Scooter') previewIcon = Icons.electric_scooter;
+    else previewIcon = Icons.directions_car; // Default fallback
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -227,29 +336,31 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                   color: _neonColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.directions_car, color: _neonColor, size: 32),
+                child: Icon(previewIcon, color: _neonColor, size: 32),
               ),
               const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Toyota Innova', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _surfaceColor,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: _surfaceColor),
+                  Text(displayName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  if (displayNumber.trim().isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _surfaceColor,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: _surfaceColor),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.badge_outlined, color: _mutedColor, size: 14),
+                          const SizedBox(width: 6),
+                          Text(displayNumber, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.badge_outlined, color: _mutedColor, size: 14),
-                        const SizedBox(width: 6),
-                        const Text('TN 01 AB 1234', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ],
@@ -262,7 +373,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                   children: [
                     Icon(Icons.local_gas_station, color: _mutedColor, size: 16),
                     const SizedBox(width: 6),
-                    const Text('Diesel', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    Text(_selectedFuelType.isNotEmpty ? _selectedFuelType : '- -', style: const TextStyle(color: Colors.white, fontSize: 12)),
                   ],
                 ),
               ),
@@ -273,7 +384,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                   children: [
                     Icon(Icons.ev_station, color: _mutedColor, size: 16),
                     const SizedBox(width: 6),
-                    const Text('55 L', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    Text(displayCapacity, style: const TextStyle(color: Colors.white, fontSize: 12)),
                   ],
                 ),
               ),
@@ -284,7 +395,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                   children: [
                     Icon(Icons.speed, color: _mutedColor, size: 16),
                     const SizedBox(width: 6),
-                    const Text('17.5 KM/L', style: TextStyle(color: Colors.white, fontSize: 12)),
+                    Text(displayMileage, style: const TextStyle(color: Colors.white, fontSize: 12)),
                   ],
                 ),
               ),
@@ -311,9 +422,14 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false}) {
+  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, String capsType = 'none'}) {
     return TextField(
       controller: controller,
+      textCapitalization: capsType == 'all' ? TextCapitalization.characters : (capsType == 'words' ? TextCapitalization.words : TextCapitalization.none),
+      inputFormatters: [
+        if (capsType == 'all') UpperCaseTextFormatter(),
+        if (capsType == 'words') TitleCaseTextFormatter(),
+      ],
       keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
@@ -350,7 +466,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildLabel('Vehicle Number', isRequired: true),
-          _buildTextField(_vehicleNumberController, 'TN 01 AB 1234'),
+          _buildTextField(_vehicleNumberController, 'Enter the Vehicle Number', capsType: 'all'),
         ],
       ),
     );
@@ -368,13 +484,16 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildLabel('Brand', isRequired: true),
-          _buildTextField(_brandController, 'Enter brand'),
+          _buildTextField(_brandController, 'Brand (e.g. Toyota, Hyundai, Volkswagen, Kia)', capsType: 'words'),
           const SizedBox(height: 12),
           _buildLabel('Model', isRequired: true),
-          _buildTextField(_modelController, 'Enter model'),
+          _buildTextField(_modelController, 'Model (e.g. Fortuner, Creta, Polo, Seltos)', capsType: 'words'),
+          const SizedBox(height: 12),
+          _buildLabel('Year'),
+          _buildTextField(_yearController, 'Year (e.g. 2022)', isNumber: true),
           const SizedBox(height: 12),
           _buildLabel('Variant (Optional)'),
-          _buildTextField(_variantController, 'Enter variant'),
+          _buildTextField(_variantController, 'Variant (e.g. GX, E, GT, HTE)', capsType: 'all'),
         ],
       ),
     );
@@ -629,30 +748,52 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
           _buildLabel('Notes (Optional)'),
           _buildTextField(_notesController, 'Add any notes about your vehicle'),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              const Text('Vehicle Color', style: TextStyle(color: Colors.white, fontSize: 13)),
-              const Spacer(),
-              ..._vehicleColors.map((color) {
-                final isSelected = _selectedColor == color;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedColor = color),
-                  child: Container(
-                    margin: const EdgeInsets.only(left: 12),
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
-                    ),
-                    child: isSelected 
-                        ? const Icon(Icons.check, color: Colors.white, size: 14)
-                        : null,
-                  ),
+          _buildLabel('Vehicle Color'),
+          DropdownButtonFormField<String>(
+            value: _selectedColorName,
+            icon: Icon(Icons.arrow_drop_down, color: _mutedColor),
+            dropdownColor: _cardColor,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: _surfaceColor.withOpacity(0.5),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: _surfaceColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: _surfaceColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: _neonColor),
+              ),
+            ),
+            items: (() {
+              final itemsList = List<String>.from(_vehicleColorNames);
+              if (_selectedColorName.isNotEmpty && !itemsList.contains(_selectedColorName)) {
+                itemsList.add(_selectedColorName);
+              }
+              return itemsList.map((colorName) {
+                String displayName = colorName;
+                if (colorName.startsWith('#')) {
+                  if (colorName.toUpperCase() == '#00FF88') {
+                    displayName = 'Neon Green';
+                  } else {
+                    displayName = 'Custom ($colorName)';
+                  }
+                }
+                return DropdownMenuItem(
+                  value: colorName,
+                  child: Text(displayName),
                 );
-              }).toList(),
-            ],
+              }).toList();
+            })(),
+            onChanged: (val) {
+              if (val != null) setState(() => _selectedColorName = val);
+            },
           ),
         ],
       ),
@@ -678,9 +819,9 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.add_circle_outline, size: 20),
+                  Icon(widget.vehicleToEdit != null ? Icons.check_circle_outline : Icons.add_circle_outline, size: 20),
                   const SizedBox(width: 8),
-                  const Text('Add Vehicle', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(widget.vehicleToEdit != null ? 'Update Vehicle' : 'Add Vehicle', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
       ),

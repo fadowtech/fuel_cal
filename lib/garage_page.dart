@@ -4,6 +4,7 @@ import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/add_vehicle_page.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/vehicle_details_page.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -99,7 +100,49 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     );
   }
 
+  Color _getColorFromName(String? colorName) {
+    if (colorName == null) return _neonColor;
+    switch (colorName) {
+      case 'White': return Colors.white;
+      case 'Black': return Colors.black;
+      case 'Silver': return const Color(0xFFC0C0C0);
+      case 'Grey / Gunmetal Grey': return const Color(0xFF818589);
+      case 'Blue': return Colors.blue;
+      case 'Red': return Colors.red;
+      case 'Pearl White': return const Color(0xFFF0EAD6);
+      case 'Midnight Black': return const Color(0xFF2C2C2B);
+      case 'Matte Grey': return const Color(0xFF696969);
+      case 'Metallic Silver': return const Color(0xFFBCC6CC);
+      case 'Deep Ocean Blue': return const Color(0xFF000080);
+      case 'Wine Red': return const Color(0xFF722F37);
+      case 'Titanium Grey': return const Color(0xFF878681);
+      default:
+        // Try parsing hex if it was previously saved as hex
+        if (colorName.startsWith('#')) {
+          try {
+            return Color(int.parse(colorName.substring(1), radix: 16) + 0xFF000000);
+          } catch (e) {
+            return _neonColor;
+          }
+        }
+        return _neonColor;
+    }
+  }
+
+  IconData _getIconForType(String? type) {
+    switch (type) {
+      case 'Bike': return Icons.motorcycle;
+      case 'Truck': return Icons.local_shipping;
+      case 'Scooter': return Icons.electric_scooter;
+      case 'Car':
+      default:
+        return Icons.directions_car;
+    }
+  }
+
   Widget _buildVehicleCard(BuildContext context, Vehicle v) {
+    final vehicleColor = _getColorFromName(v.color);
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -123,10 +166,10 @@ class _GaragePageState extends ConsumerState<GaragePage> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                      color: _surfaceColor,
+                      color: vehicleColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16)),
                   alignment: Alignment.center,
-                  child: const Text('🚗', style: TextStyle(fontSize: 40)),
+                  child: Icon(_getIconForType(v.vehicleType), color: vehicleColor, size: 40),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -172,24 +215,30 @@ class _GaragePageState extends ConsumerState<GaragePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMiniStat('Mileage', '- KM/L'),
+                _buildMiniStat('Mileage', v.avgMileage != null ? '${v.avgMileage} KM/L' : '- KM/L'),
                 _buildMiniStat('ODO', '-'),
                 _buildMiniStat('Tank', '${v.tankCapacity}L'),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: _surfaceColor)),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => VehicleDetailsPage(vehicle: v)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('View details',
-                    style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
-                Icon(Icons.chevron_right, color: _mutedColor, size: 20),
-              ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: _surfaceColor)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('View details',
+                      style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+                  Icon(Icons.chevron_right, color: _mutedColor, size: 20),
+                ],
+              ),
             ),
           ),
         ],

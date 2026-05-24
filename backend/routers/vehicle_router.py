@@ -24,3 +24,36 @@ def create_vehicle(vehicle: schemas.VehicleCreate, db: Session = Depends(databas
 def read_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     vehicles = db.query(models.Vehicle).filter(models.Vehicle.user_id == current_user.id).offset(skip).limit(limit).all()
     return vehicles
+
+@router.delete("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_vehicle(
+    vehicle_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    db_vehicle = db.query(models.Vehicle).filter(models.Vehicle.id == vehicle_id, models.Vehicle.user_id == current_user.id).first()
+    if not db_vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    db.delete(db_vehicle)
+    db.commit()
+    return None
+
+@router.put("/{vehicle_id}", response_model=schemas.Vehicle)
+def update_vehicle(
+    vehicle_id: int,
+    vehicle_update: schemas.VehicleCreate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    db_vehicle = db.query(models.Vehicle).filter(models.Vehicle.id == vehicle_id, models.Vehicle.user_id == current_user.id).first()
+    if not db_vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    
+    update_data = vehicle_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_vehicle, key, value)
+        
+    db.commit()
+    db.refresh(db_vehicle)
+    return db_vehicle
