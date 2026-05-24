@@ -10,12 +10,11 @@ import '../services/currency_service.dart';
 import '../main.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final isAuthenticated = ref.watch(authProvider.select((state) => state.isAuthenticated));
 
   return GoRouter(
     initialLocation: '/dashboard',
     redirect: (context, state) {
-      final isAuthenticated = authState.isAuthenticated;
       final isLoggingIn = state.uri.toString() == '/signin' || state.uri.toString() == '/signup';
 
       if (!isAuthenticated && !isLoggingIn) {

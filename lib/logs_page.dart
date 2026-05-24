@@ -32,31 +32,50 @@ class LogsPage extends ConsumerWidget {
               children: [
                 _buildHeader(sortedLogs.length),
                 Expanded(
-                  child: sortedLogs.isEmpty
-                      ? Center(
-                          child: Text(
-                            "No fuel logs yet. Add one!",
-                            style: TextStyle(color: ThemeService.textColor),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 10),
-                          itemCount: sortedLogs.length,
-                          itemBuilder: (context, index) {
-                            final log = sortedLogs[index];
-                            // Calculate mileage if we have a previous log
-                            double mileage = 0.0;
-                            if (index < sortedLogs.length - 1) {
-                              final prevLog = sortedLogs[index + 1];
-                              final distance = log.odometer - prevLog.odometer;
-                              if (distance > 0 && prevLog.fuelQuantity > 0) {
-                                mileage = distance / prevLog.fuelQuantity;
+                  child: RefreshIndicator(
+                    color: _neonColor,
+                    backgroundColor: _cardColor,
+                    onRefresh: () async {
+                      ref.invalidate(fuelLogsProvider);
+                      try {
+                        await ref.read(fuelLogsProvider.future);
+                      } catch (_) {}
+                    },
+                    child: sortedLogs.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.5,
+                                child: Center(
+                                  child: Text(
+                                    "No fuel logs yet. Add one!",
+                                    style: TextStyle(color: ThemeService.textColor),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
+                            itemCount: sortedLogs.length,
+                            itemBuilder: (context, index) {
+                              final log = sortedLogs[index];
+                              // Calculate mileage if we have a previous log
+                              double mileage = 0.0;
+                              if (index < sortedLogs.length - 1) {
+                                final prevLog = sortedLogs[index + 1];
+                                final distance = log.odometer - prevLog.odometer;
+                                if (distance > 0 && prevLog.fuelQuantity > 0) {
+                                  mileage = distance / prevLog.fuelQuantity;
+                                }
                               }
-                            }
-                            return _buildLogCard(context, log, mileage);
-                          },
-                        ),
+                              return _buildLogCard(context, log, mileage);
+                            },
+                          ),
+                  ),
                 ),
               ],
             );

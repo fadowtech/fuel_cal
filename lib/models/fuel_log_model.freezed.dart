@@ -33,6 +33,18 @@ mixin _$FuelLog {
   @JsonKey(name: 'station_name')
   String? get stationName => throw _privateConstructorUsedError;
   DateTime? get date => throw _privateConstructorUsedError;
+  @JsonKey(name: 'fuel_price')
+  double? get fuelPrice => throw _privateConstructorUsedError;
+  @JsonKey(name: 'remaining_range')
+  double? get remainingRange => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_full_tank')
+  bool get isFullTank => throw _privateConstructorUsedError;
+  String? get location => throw _privateConstructorUsedError;
+  String? get notes => throw _privateConstructorUsedError;
+  @JsonKey(name: 'payment_method')
+  String? get paymentMethod => throw _privateConstructorUsedError;
+  @JsonKey(name: 'bill_image_path')
+  String? get billImagePath => throw _privateConstructorUsedError;
 
   /// Serializes this FuelLog to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -56,7 +68,14 @@ abstract class $FuelLogCopyWith<$Res> {
       @JsonKey(name: 'fuel_quantity') double fuelQuantity,
       @JsonKey(name: 'total_cost') double totalCost,
       @JsonKey(name: 'station_name') String? stationName,
-      DateTime? date});
+      DateTime? date,
+      @JsonKey(name: 'fuel_price') double? fuelPrice,
+      @JsonKey(name: 'remaining_range') double? remainingRange,
+      @JsonKey(name: 'is_full_tank') bool isFullTank,
+      String? location,
+      String? notes,
+      @JsonKey(name: 'payment_method') String? paymentMethod,
+      @JsonKey(name: 'bill_image_path') String? billImagePath});
 }
 
 /// @nodoc
@@ -82,6 +101,13 @@ class _$FuelLogCopyWithImpl<$Res, $Val extends FuelLog>
     Object? totalCost = null,
     Object? stationName = freezed,
     Object? date = freezed,
+    Object? fuelPrice = freezed,
+    Object? remainingRange = freezed,
+    Object? isFullTank = null,
+    Object? location = freezed,
+    Object? notes = freezed,
+    Object? paymentMethod = freezed,
+    Object? billImagePath = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -116,6 +142,34 @@ class _$FuelLogCopyWithImpl<$Res, $Val extends FuelLog>
           ? _value.date
           : date // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      fuelPrice: freezed == fuelPrice
+          ? _value.fuelPrice
+          : fuelPrice // ignore: cast_nullable_to_non_nullable
+              as double?,
+      remainingRange: freezed == remainingRange
+          ? _value.remainingRange
+          : remainingRange // ignore: cast_nullable_to_non_nullable
+              as double?,
+      isFullTank: null == isFullTank
+          ? _value.isFullTank
+          : isFullTank // ignore: cast_nullable_to_non_nullable
+              as bool,
+      location: freezed == location
+          ? _value.location
+          : location // ignore: cast_nullable_to_non_nullable
+              as String?,
+      notes: freezed == notes
+          ? _value.notes
+          : notes // ignore: cast_nullable_to_non_nullable
+              as String?,
+      paymentMethod: freezed == paymentMethod
+          ? _value.paymentMethod
+          : paymentMethod // ignore: cast_nullable_to_non_nullable
+              as String?,
+      billImagePath: freezed == billImagePath
+          ? _value.billImagePath
+          : billImagePath // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -135,7 +189,14 @@ abstract class _$$FuelLogImplCopyWith<$Res> implements $FuelLogCopyWith<$Res> {
       @JsonKey(name: 'fuel_quantity') double fuelQuantity,
       @JsonKey(name: 'total_cost') double totalCost,
       @JsonKey(name: 'station_name') String? stationName,
-      DateTime? date});
+      DateTime? date,
+      @JsonKey(name: 'fuel_price') double? fuelPrice,
+      @JsonKey(name: 'remaining_range') double? remainingRange,
+      @JsonKey(name: 'is_full_tank') bool isFullTank,
+      String? location,
+      String? notes,
+      @JsonKey(name: 'payment_method') String? paymentMethod,
+      @JsonKey(name: 'bill_image_path') String? billImagePath});
 }
 
 /// @nodoc
@@ -159,6 +220,13 @@ class __$$FuelLogImplCopyWithImpl<$Res>
     Object? totalCost = null,
     Object? stationName = freezed,
     Object? date = freezed,
+    Object? fuelPrice = freezed,
+    Object? remainingRange = freezed,
+    Object? isFullTank = null,
+    Object? location = freezed,
+    Object? notes = freezed,
+    Object? paymentMethod = freezed,
+    Object? billImagePath = freezed,
   }) {
     return _then(_$FuelLogImpl(
       id: null == id
@@ -193,6 +261,34 @@ class __$$FuelLogImplCopyWithImpl<$Res>
           ? _value.date
           : date // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      fuelPrice: freezed == fuelPrice
+          ? _value.fuelPrice
+          : fuelPrice // ignore: cast_nullable_to_non_nullable
+              as double?,
+      remainingRange: freezed == remainingRange
+          ? _value.remainingRange
+          : remainingRange // ignore: cast_nullable_to_non_nullable
+              as double?,
+      isFullTank: null == isFullTank
+          ? _value.isFullTank
+          : isFullTank // ignore: cast_nullable_to_non_nullable
+              as bool,
+      location: freezed == location
+          ? _value.location
+          : location // ignore: cast_nullable_to_non_nullable
+              as String?,
+      notes: freezed == notes
+          ? _value.notes
+          : notes // ignore: cast_nullable_to_non_nullable
+              as String?,
+      paymentMethod: freezed == paymentMethod
+          ? _value.paymentMethod
+          : paymentMethod // ignore: cast_nullable_to_non_nullable
+              as String?,
+      billImagePath: freezed == billImagePath
+          ? _value.billImagePath
+          : billImagePath // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -208,7 +304,14 @@ class _$FuelLogImpl implements _FuelLog {
       @JsonKey(name: 'fuel_quantity') required this.fuelQuantity,
       @JsonKey(name: 'total_cost') required this.totalCost,
       @JsonKey(name: 'station_name') this.stationName,
-      this.date});
+      this.date,
+      @JsonKey(name: 'fuel_price') this.fuelPrice,
+      @JsonKey(name: 'remaining_range') this.remainingRange,
+      @JsonKey(name: 'is_full_tank') this.isFullTank = false,
+      this.location,
+      this.notes,
+      @JsonKey(name: 'payment_method') this.paymentMethod,
+      @JsonKey(name: 'bill_image_path') this.billImagePath});
 
   factory _$FuelLogImpl.fromJson(Map<String, dynamic> json) =>
       _$$FuelLogImplFromJson(json);
@@ -234,10 +337,29 @@ class _$FuelLogImpl implements _FuelLog {
   final String? stationName;
   @override
   final DateTime? date;
+  @override
+  @JsonKey(name: 'fuel_price')
+  final double? fuelPrice;
+  @override
+  @JsonKey(name: 'remaining_range')
+  final double? remainingRange;
+  @override
+  @JsonKey(name: 'is_full_tank')
+  final bool isFullTank;
+  @override
+  final String? location;
+  @override
+  final String? notes;
+  @override
+  @JsonKey(name: 'payment_method')
+  final String? paymentMethod;
+  @override
+  @JsonKey(name: 'bill_image_path')
+  final String? billImagePath;
 
   @override
   String toString() {
-    return 'FuelLog(id: $id, userId: $userId, vehicleId: $vehicleId, odometer: $odometer, fuelQuantity: $fuelQuantity, totalCost: $totalCost, stationName: $stationName, date: $date)';
+    return 'FuelLog(id: $id, userId: $userId, vehicleId: $vehicleId, odometer: $odometer, fuelQuantity: $fuelQuantity, totalCost: $totalCost, stationName: $stationName, date: $date, fuelPrice: $fuelPrice, remainingRange: $remainingRange, isFullTank: $isFullTank, location: $location, notes: $notes, paymentMethod: $paymentMethod, billImagePath: $billImagePath)';
   }
 
   @override
@@ -257,13 +379,41 @@ class _$FuelLogImpl implements _FuelLog {
                 other.totalCost == totalCost) &&
             (identical(other.stationName, stationName) ||
                 other.stationName == stationName) &&
-            (identical(other.date, date) || other.date == date));
+            (identical(other.date, date) || other.date == date) &&
+            (identical(other.fuelPrice, fuelPrice) ||
+                other.fuelPrice == fuelPrice) &&
+            (identical(other.remainingRange, remainingRange) ||
+                other.remainingRange == remainingRange) &&
+            (identical(other.isFullTank, isFullTank) ||
+                other.isFullTank == isFullTank) &&
+            (identical(other.location, location) ||
+                other.location == location) &&
+            (identical(other.notes, notes) || other.notes == notes) &&
+            (identical(other.paymentMethod, paymentMethod) ||
+                other.paymentMethod == paymentMethod) &&
+            (identical(other.billImagePath, billImagePath) ||
+                other.billImagePath == billImagePath));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, userId, vehicleId, odometer,
-      fuelQuantity, totalCost, stationName, date);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      userId,
+      vehicleId,
+      odometer,
+      fuelQuantity,
+      totalCost,
+      stationName,
+      date,
+      fuelPrice,
+      remainingRange,
+      isFullTank,
+      location,
+      notes,
+      paymentMethod,
+      billImagePath);
 
   /// Create a copy of FuelLog
   /// with the given fields replaced by the non-null parameter values.
@@ -283,14 +433,22 @@ class _$FuelLogImpl implements _FuelLog {
 
 abstract class _FuelLog implements FuelLog {
   const factory _FuelLog(
-      {required final int id,
-      @JsonKey(name: 'user_id') required final int userId,
-      @JsonKey(name: 'vehicle_id') final int? vehicleId,
-      required final double odometer,
-      @JsonKey(name: 'fuel_quantity') required final double fuelQuantity,
-      @JsonKey(name: 'total_cost') required final double totalCost,
-      @JsonKey(name: 'station_name') final String? stationName,
-      final DateTime? date}) = _$FuelLogImpl;
+          {required final int id,
+          @JsonKey(name: 'user_id') required final int userId,
+          @JsonKey(name: 'vehicle_id') final int? vehicleId,
+          required final double odometer,
+          @JsonKey(name: 'fuel_quantity') required final double fuelQuantity,
+          @JsonKey(name: 'total_cost') required final double totalCost,
+          @JsonKey(name: 'station_name') final String? stationName,
+          final DateTime? date,
+          @JsonKey(name: 'fuel_price') final double? fuelPrice,
+          @JsonKey(name: 'remaining_range') final double? remainingRange,
+          @JsonKey(name: 'is_full_tank') final bool isFullTank,
+          final String? location,
+          final String? notes,
+          @JsonKey(name: 'payment_method') final String? paymentMethod,
+          @JsonKey(name: 'bill_image_path') final String? billImagePath}) =
+      _$FuelLogImpl;
 
   factory _FuelLog.fromJson(Map<String, dynamic> json) = _$FuelLogImpl.fromJson;
 
@@ -315,6 +473,25 @@ abstract class _FuelLog implements FuelLog {
   String? get stationName;
   @override
   DateTime? get date;
+  @override
+  @JsonKey(name: 'fuel_price')
+  double? get fuelPrice;
+  @override
+  @JsonKey(name: 'remaining_range')
+  double? get remainingRange;
+  @override
+  @JsonKey(name: 'is_full_tank')
+  bool get isFullTank;
+  @override
+  String? get location;
+  @override
+  String? get notes;
+  @override
+  @JsonKey(name: 'payment_method')
+  String? get paymentMethod;
+  @override
+  @JsonKey(name: 'bill_image_path')
+  String? get billImagePath;
 
   /// Create a copy of FuelLog
   /// with the given fields replaced by the non-null parameter values.

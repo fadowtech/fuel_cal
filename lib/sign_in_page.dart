@@ -224,7 +224,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                         final success = await ref.read(authProvider.notifier).login(email, password);
                         if (!success && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Login failed. Please check your credentials.')),
+                            const SnackBar(content: Text('Check the user name or password')),
                           );
                         } else if (success && context.mounted) {
                            context.go('/dashboard');

@@ -5,8 +5,8 @@ import 'package:fuel_cal/services/currency_service.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/profile_update_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fuel_cal/sign_in_page.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 
 Color get _neonColor => ThemeService.neonColor;
@@ -16,7 +16,7 @@ Color get _backgroundColor => ThemeService.backgroundColor;
 Color get _mutedColor => ThemeService.mutedColor;
 Color get _dangerColor => ThemeService.dangerColor;
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   final String? selectedCurrencyCode;
   final VoidCallback? onCurrencyChanged;
 
@@ -27,10 +27,10 @@ class ProfilePage extends StatefulWidget {
   });
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   String _selectedCurrencyCode = 'INR';
   String _profileName = ProfileService.defaultName;
   String _profileEmail = ProfileService.defaultEmail;
@@ -370,11 +370,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildSignOutButton() {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const SignInPage()),
-        );
+      onTap: () async {
+        await ref.read(authProvider.notifier).logout();
       },
       child: Container(
         width: double.infinity,

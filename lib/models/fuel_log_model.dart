@@ -14,6 +14,13 @@ class FuelLog with _$FuelLog {
     @JsonKey(name: 'total_cost') required double totalCost,
     @JsonKey(name: 'station_name') String? stationName,
     DateTime? date,
+    @JsonKey(name: 'fuel_price') double? fuelPrice,
+    @JsonKey(name: 'remaining_range') double? remainingRange,
+    @JsonKey(name: 'is_full_tank') @Default(false) bool isFullTank,
+    String? location,
+    String? notes,
+    @JsonKey(name: 'payment_method') String? paymentMethod,
+    @JsonKey(name: 'bill_image_path') String? billImagePath,
   }) = _FuelLog;
 
   factory FuelLog.fromJson(Map<String, dynamic> json) => _$FuelLogFromJson(json);

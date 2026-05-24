@@ -17,6 +17,13 @@ _$FuelLogImpl _$$FuelLogImplFromJson(Map<String, dynamic> json) =>
       stationName: json['station_name'] as String?,
       date:
           json['date'] == null ? null : DateTime.parse(json['date'] as String),
+      fuelPrice: (json['fuel_price'] as num?)?.toDouble(),
+      remainingRange: (json['remaining_range'] as num?)?.toDouble(),
+      isFullTank: json['is_full_tank'] as bool? ?? false,
+      location: json['location'] as String?,
+      notes: json['notes'] as String?,
+      paymentMethod: json['payment_method'] as String?,
+      billImagePath: json['bill_image_path'] as String?,
     );
 
 Map<String, dynamic> _$$FuelLogImplToJson(_$FuelLogImpl instance) =>
@@ -29,4 +36,11 @@ Map<String, dynamic> _$$FuelLogImplToJson(_$FuelLogImpl instance) =>
       'total_cost': instance.totalCost,
       'station_name': instance.stationName,
       'date': instance.date?.toIso8601String(),
+      'fuel_price': instance.fuelPrice,
+      'remaining_range': instance.remainingRange,
+      'is_full_tank': instance.isFullTank,
+      'location': instance.location,
+      'notes': instance.notes,
+      'payment_method': instance.paymentMethod,
+      'bill_image_path': instance.billImagePath,
     };

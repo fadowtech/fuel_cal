@@ -20,6 +20,13 @@ class ProfileService {
     await prefs.setString(_phoneKey, phone.trim());
   }
 
+  static Future<void> clearProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_nameKey);
+    await prefs.remove(_emailKey);
+    await prefs.remove(_phoneKey);
+  }
+
   static Future<Map<String, String>> getProfile() async {
     final prefs = await SharedPreferences.getInstance();
     return {

@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/api_service.dart';
+import '../services/profile_service.dart';
+import 'data_provider.dart';
 
 final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.read(apiServiceProvider));
+  return AuthNotifier(ref);
 });
 
 class AuthState {
@@ -33,10 +35,13 @@ class AuthState {
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  final ApiService _apiService;
+  final Ref _ref;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  AuthNotifier(this._apiService) : super(AuthState()) {
+  AuthNotifier(this._ref) : super(AuthState()) {
+    _ref.read(apiServiceProvider).onUnauthenticated = () {
+      state = state.copyWith(isAuthenticated: false);
+    };
     checkAuthStatus();
   }
 
@@ -50,7 +55,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final success = await _apiService.login(email, password);
+      final success = await _ref.read(apiServiceProvider).login(email, password);
       if (success) {
         state = state.copyWith(isAuthenticated: true, isLoading: false);
         return true;
@@ -71,7 +76,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> signup(String name, String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final success = await _apiService.signup(name, email, password);
+      final success = await _ref.read(apiServiceProvider).signup(name, email, password);
       state = state.copyWith(isLoading: false);
       return success;
     } catch (e) {
@@ -81,7 +86,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _apiService.logout();
+    await _ref.read(apiServiceProvider).logout();
+    await ProfileService.clearProfile();
+    _ref.invalidate(vehiclesProvider);
+    _ref.invalidate(fuelLogsProvider);
+    _ref.invalidate(expensesProvider);
     state = state.copyWith(isAuthenticated: false);
   }
 }

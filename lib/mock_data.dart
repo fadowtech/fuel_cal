@@ -101,11 +101,12 @@ const List<RecentActivity> mockRecentActivity = [
 ];
 
 const List<ExpenseBreakdown> mockExpenseBreakdown = [
-  ExpenseBreakdown(name: "Fuel", value: 6200),
-  ExpenseBreakdown(name: "Service", value: 2000),
-  ExpenseBreakdown(name: "Toll", value: 420),
-  ExpenseBreakdown(name: "Parking", value: 180),
-  ExpenseBreakdown(name: "Repairs", value: 600),
+  ExpenseBreakdown(name: "Fuel", value: 11925),
+  ExpenseBreakdown(name: "Insurance", value: 7950),
+  ExpenseBreakdown(name: "Toll", value: 2650),
+  ExpenseBreakdown(name: "Parking", value: 1855),
+  ExpenseBreakdown(name: "Washing", value: 1325),
+  ExpenseBreakdown(name: "Tires", value: 795),
 ];
 
 const List<Map<String, dynamic>> mockMonthlyFuelUsage = [

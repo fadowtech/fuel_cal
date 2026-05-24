@@ -231,7 +231,7 @@ class _$ExpenseImpl implements _Expense {
 
   @override
   String toString() {
-    return 'Expense(id: $id, userId: $userId, vehicleId: $vehicleId, category: $category, title: $title, amount: $amount, date: $date)';
+    return 'Expense(id: $id, userId: $userId, vehicleId: $vehicleId, category: $category, title: $title, amount: $amount, date: $date, notes: $notes)';
   }
 
   @override

@@ -5,10 +5,13 @@ import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/mock_data.dart' hide Vehicle, FuelLog;
 import 'package:fuel_cal/feature_pages.dart';
+import 'package:fuel_cal/add_fuel_page.dart';
 import 'package:fuel_cal/logs_page.dart';
 import 'package:fuel_cal/garage_page.dart';
 import 'package:fuel_cal/profile_page.dart';
 import 'package:fuel_cal/services/profile_service.dart';
+import 'package:fuel_cal/reminders_page.dart';
+import 'package:intl/intl.dart';
 import 'dart:math';
 
 import 'package:fuel_cal/services/theme_service.dart';
@@ -61,96 +64,109 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 20),
-              
-              // Handle Vehicles Data Loading
-              vehiclesAsync.when(
-                data: (vehicles) {
-                  if (vehicles.isEmpty) {
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Center(
-                        child: Text("No vehicles found. Add one in the Garage!"),
-                      ),
+        child: RefreshIndicator(
+          color: _neonColor,
+          backgroundColor: _cardColor,
+          onRefresh: () async {
+            ref.invalidate(vehiclesProvider);
+            ref.invalidate(fuelLogsProvider);
+            ref.invalidate(expensesProvider);
+            // Optionally await the primary data to show the loading spinner until done
+            try {
+              await ref.read(fuelLogsProvider.future);
+            } catch (_) {}
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 20),
+                
+                vehiclesAsync.when(
+                  data: (vehicles) {
+                    if (vehicles.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(
+                          child: Text("No vehicles found. Add one in the Garage!"),
+                        ),
+                      );
+                    }
+                    return _buildVehicleSelector(vehicles.first);
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
+                ),
+                
+                logsAsync.when(
+                  data: (logs) {
+                    final totalCost = logs.fold(0.0, (sum, log) => sum + log.totalCost);
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        _buildFuelHeroCard(logs, vehiclesAsync),
+                        const SizedBox(height: 16),
+                        _buildMetricCards(logs),
+                        const SizedBox(height: 24),
+                        _buildSectionTitle('Odometer'),
+                        _buildOdometerCard(logs, totalCost),
+                      ],
                     );
-                  }
-                  return _buildVehicleSelector(vehicles.first);
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
-              ),
-              
-              logsAsync.when(
-                data: (logs) {
-                  final totalCost = logs.fold(0.0, (sum, log) => sum + log.totalCost);
-                  
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 16),
-                      _buildFuelHeroCard(logs, vehiclesAsync),
-                      const SizedBox(height: 16),
-                      _buildMetricCards(logs),
-                      const SizedBox(height: 24),
-                      _buildSectionTitle('Odometer'),
-                      _buildOdometerCard(totalCost: totalCost),
-                    ],
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
-              ),
-              
-              const SizedBox(height: 24),
-              _buildSectionTitle(
-                'Upcoming alerts',
-                action: 'See all',
-                onActionTap: () => _openPage(const NotificationsPage()),
-              ),
-              _buildAlertsList(),
-              const SizedBox(height: 24),
-              _buildSectionTitle('Quick actions'),
-              _buildQuickActionsGrid(),
-              const SizedBox(height: 24),
-              _buildSectionTitle(
-                'Recent activity',
-                action: 'View all',
-                onActionTap: () => _openPage(const LogsPage()),
-              ),
-              logsAsync.when(
-                data: (logs) {
-                  final sortedLogs = List<FuelLog>.from(logs)
-                    ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
-                  final recentLogs = sortedLogs.take(4).toList();
-                  if (recentLogs.isEmpty) {
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Center(
-                        child: Text("No recent activity."),
-                      ),
-                    );
-                  }
-                  return _buildRecentActivityList(recentLogs);
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
-              ),
-              const SizedBox(height: 40), // Bottom padding
-            ],
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
+                ),
+                
+                const SizedBox(height: 24),
+                _buildSectionTitle(
+                  'Upcoming alerts',
+                  action: 'See all',
+                  onActionTap: () => _openPage(const NotificationsPage()),
+                ),
+                _buildAlertsList(),
+                const SizedBox(height: 24),
+                _buildSectionTitle('Quick actions'),
+                _buildQuickActionsGrid(),
+                const SizedBox(height: 24),
+                _buildSectionTitle(
+                  'Recent activity',
+                  action: 'View all',
+                  onActionTap: () => _openPage(const LogsPage()),
+                ),
+                logsAsync.when(
+                  data: (logs) {
+                    final sortedLogs = List<FuelLog>.from(logs)
+                      ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
+                    final recentLogs = sortedLogs.take(4).toList();
+                    if (recentLogs.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: _cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(
+                          child: Text("No recent activity."),
+                        ),
+                      );
+                    }
+                    return _buildRecentActivityList(recentLogs);
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
+                ),
+                const SizedBox(height: 100), // padding for bottom nav
+              ],
+            ),
           ),
         ),
       ),
@@ -598,7 +614,31 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildOdometerCard({required double totalCost}) {
+  Widget _buildOdometerCard(List<FuelLog> logs, double totalCost) {
+    double maxOdometer = 0.0;
+    double thisMonthDistance = 0.0;
+    
+    if (logs.isNotEmpty) {
+      final now = DateTime.now();
+      final sortedLogs = List<FuelLog>.from(logs)..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
+      
+      maxOdometer = sortedLogs.last.odometer;
+      
+      for (int i = 1; i < sortedLogs.length; i++) {
+        final currentLog = sortedLogs[i];
+        final prevLog = sortedLogs[i - 1];
+        
+        if (currentLog.date != null && currentLog.date!.year == now.year && currentLog.date!.month == now.month) {
+          final dist = currentLog.odometer - prevLog.odometer;
+          if (dist > 0) {
+            thisMonthDistance += dist;
+          }
+        }
+      }
+    }
+    
+    final formatter = NumberFormat('#,##0');
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -606,11 +646,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildStat('ODO', '45,220'),
-          _buildStat('This month', '1,250 KM'),
-          _buildStat('Total Cost', '₹${totalCost.toStringAsFixed(2)}'),
+          Expanded(child: _buildStat('ODO', formatter.format(maxOdometer))),
+          Expanded(child: _buildStat('This month', '${formatter.format(thisMonthDistance)} KM')),
+          Expanded(child: _buildStat('Total Cost', '₹${formatter.format(totalCost)}')),
         ],
       ),
     );
@@ -686,8 +725,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             page: const TripsPage()),
         _buildQuickAction(Icons.build_circle_outlined, 'Service',
             page: const ServicesPage()),
-        _buildQuickAction(Icons.qr_code_scanner, 'Scan',
-            page: const AddFuelPage()),
+        _buildQuickAction(Icons.alarm_add_rounded, 'Reminder',
+            page: const RemindersPage()),
       ],
     );
   }

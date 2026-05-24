@@ -50,7 +50,14 @@ class FuelLogBase(BaseModel):
     odometer: float
     fuel_quantity: float
     total_cost: float
+    fuel_price: Optional[float] = None
+    remaining_range: Optional[float] = None
+    is_full_tank: Optional[bool] = False
     station_name: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+    payment_method: Optional[str] = None
+    bill_image_path: Optional[str] = None
     date: Optional[datetime] = None
 
 class FuelLogCreate(FuelLogBase):

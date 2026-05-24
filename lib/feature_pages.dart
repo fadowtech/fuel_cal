@@ -120,13 +120,6 @@ const List<Map<String, dynamic>> mockTrips = [
   },
 ];
 
-class AddFuelPage extends ConsumerStatefulWidget {
-  const AddFuelPage({super.key});
-
-  @override
-  ConsumerState<AddFuelPage> createState() => _AddFuelPageState();
-}
-
 class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   final _liters = TextEditingController();
   final _price = TextEditingController();
@@ -220,10 +213,24 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             ),
           ]),
           _Section('Odometer', [
-            _InputTile(
-              label: 'Current ODO (KM)',
-              controller: _odo,
-              icon: Icons.speed_rounded,
+            Consumer(
+              builder: (context, ref, child) {
+                final logsAsync = ref.watch(fuelLogsProvider);
+                double lastOdo = 0.0;
+                logsAsync.whenData((logs) {
+                  if (logs.isNotEmpty) {
+                    final sortedLogs = List.from(logs)..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+                    lastOdo = sortedLogs.last.odometer;
+                  }
+                });
+                
+                return _InputTile(
+                  label: 'Current ODO (KM)',
+                  controller: _odo,
+                  icon: Icons.speed_rounded,
+                  subtitle: lastOdo > 0 ? 'Last ODO: ${lastOdo.toStringAsFixed(0)} KM' : null,
+                );
+              },
             ),
             const _InfoTile(
               label: 'Trip distance',
@@ -455,10 +462,10 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                       ),
                     )
                   else
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
                           children: [
                             const Text('Expenses', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                             const SizedBox(width: 8),
@@ -478,7 +485,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 GestureDetector(
                                   onTap: _pickYearOnly,
                                   child: Container(
@@ -497,9 +504,8 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  if (!_isSearching) const Spacer(),
                   GestureDetector(
                     onTap: () {
                       setState(() {
@@ -1081,6 +1087,7 @@ class _TotalSpendDonutCard extends StatelessWidget {
         breakdown.add({
           'name': entry.key,
           'percent': percent,
+          'amount': entry.value,
           'color': colors[i % colors.length],
         });
       }
@@ -1160,7 +1167,15 @@ class _TotalSpendDonutCard extends StatelessWidget {
                       Container(width: 6, height: 6, decoration: BoxDecoration(color: item['color'] as Color, shape: BoxShape.circle)),
                       const SizedBox(width: 6),
                       Expanded(child: Text(item['name'] as String, style: const TextStyle(color: Colors.white, fontSize: 10), overflow: TextOverflow.ellipsis)),
-                      Text('${(item['percent'] as double).toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      SizedBox(
+                        width: 30,
+                        child: Text('${(item['percent'] as double).toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.right),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 55,
+                        child: Text('₹${NumberFormat('#,##0').format(item['amount'])}', style: TextStyle(color: _mutedColor, fontSize: 10), textAlign: TextAlign.right),
+                      ),
                     ],
                   ),
                 );
@@ -1276,13 +1291,16 @@ class _InputTile extends StatelessWidget {
   final IconData icon;
   final TextInputType keyboardType;
   final ValueChanged<String>? onChanged;
+  final String? subtitle;
 
   const _InputTile({
+    super.key,
     required this.label,
     required this.controller,
     required this.icon,
     this.keyboardType = TextInputType.number,
     this.onChanged,
+    this.subtitle,
   });
 
   @override
@@ -1377,6 +1395,16 @@ class _InputTile extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(
+                      color: _mutedColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1598,7 +1626,7 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _FilterChips extends StatelessWidget {
+class _FilterChips extends StatefulWidget {
   final List<String> items;
   final String selectedItem;
   final Function(String) onSelected;
@@ -1610,29 +1638,153 @@ class _FilterChips extends StatelessWidget {
   });
 
   @override
+  State<_FilterChips> createState() => _FilterChipsState();
+}
+
+class _FilterChipsState extends State<_FilterChips> {
+  final ScrollController _scrollController = ScrollController();
+  bool _canScrollLeft = false;
+  bool _canScrollRight = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_updateScrollArrows);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateScrollArrows());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_updateScrollArrows);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _updateScrollArrows() {
+    if (!_scrollController.hasClients) return;
+    
+    final position = _scrollController.position;
+    final canScrollLeft = position.pixels > 0;
+    final canScrollRight = position.pixels < position.maxScrollExtent;
+    
+    if (_canScrollLeft != canScrollLeft || _canScrollRight != canScrollRight) {
+      setState(() {
+        _canScrollLeft = canScrollLeft;
+        _canScrollRight = canScrollRight;
+      });
+    }
+  }
+
+  IconData _getIconForCategory(String category) {
+    switch (category) {
+      case 'All': return Icons.grid_view_rounded;
+      case 'Fuel': return Icons.local_gas_station_rounded;
+      case 'Insurance': return Icons.security_rounded;
+      case 'Toll': return Icons.storefront_rounded;
+      case 'Parking': return Icons.local_parking_rounded;
+      case 'Washing': return Icons.local_car_wash_rounded;
+      case 'Tires': return Icons.tire_repair_rounded;
+      case 'Service': return Icons.build_rounded;
+      default: return Icons.category_rounded;
+    }
+  }
+
+  Color _getColorForCategory(String category) {
+    switch (category) {
+      case 'All': return _neonColor;
+      case 'Fuel': return const Color(0xFF22C55E);
+      case 'Insurance': return const Color(0xFF3B82F6);
+      case 'Toll': return const Color(0xFFF97316);
+      case 'Parking': return const Color(0xFFA855F7);
+      case 'Washing': return const Color(0xFFEAB308);
+      case 'Tires': return const Color(0xFF06B6D4);
+      case 'Service': return const Color(0xFFEF4444);
+      default: return Colors.grey;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.1),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
+        borderRadius: BorderRadius.circular(32),
+      ),
       child: Row(
-        children: items.map((item) {
-          final selected = item == selectedItem;
-          return GestureDetector(
-            onTap: () => onSelected(item),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                  color: selected ? _neonColor : _surfaceColor,
-                  borderRadius: BorderRadius.circular(20)),
-              child: Text(item,
-                  style: TextStyle(
-                      color: selected ? Colors.black : _mutedColor,
-                      fontSize: 12,
-                      fontWeight:
-                          selected ? FontWeight.bold : FontWeight.normal)),
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: _canScrollLeft ? 32 : 0,
+            alignment: Alignment.center,
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              scrollDirection: Axis.horizontal,
+              child: const Icon(Icons.chevron_left_rounded, color: Colors.white54, size: 20),
             ),
-          );
-        }).toList(),
+          ),
+          Expanded(
+            child: RawScrollbar(
+              controller: _scrollController,
+              thumbColor: Colors.white.withValues(alpha: 0.2),
+              radius: const Radius.circular(10),
+              thickness: 2,
+              padding: const EdgeInsets.only(bottom: 0),
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  children: widget.items.map((item) {
+                    final selected = item == widget.selectedItem;
+                    final color = _getColorForCategory(item);
+                    return GestureDetector(
+                      onTap: () => widget.onSelected(item),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8, bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                            color: selected ? color.withValues(alpha: 0.15) : _surfaceColor,
+                            border: Border.all(
+                              color: selected ? color : Colors.transparent,
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(24)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getIconForCategory(item),
+                              color: color,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(item,
+                                style: TextStyle(
+                                    color: selected ? color : Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: _canScrollRight ? 32 : 0,
+            alignment: Alignment.center,
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              scrollDirection: Axis.horizontal,
+              child: const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 20),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:fuel_cal/services/profile_service.dart';
 
 class ApiService {
   static const String baseUrl = 'http://184.174.37.4:8001';
   
   final Dio _dio = Dio(BaseOptions(baseUrl: baseUrl));
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  void Function()? onUnauthenticated;
 
   ApiService() {
     _dio.interceptors.add(InterceptorsWrapper(
@@ -16,8 +18,36 @@ class ApiService {
         }
         return handler.next(options);
       },
-      onError: (DioException e, handler) {
-        // Handle global errors here
+      onError: (DioException e, handler) async {
+        if (e.response?.statusCode == 401 && !e.requestOptions.path.contains('/auth/login')) {
+          final email = await _storage.read(key: 'user_email');
+          final password = await _storage.read(key: 'user_password');
+          
+          if (email != null && password != null) {
+            try {
+              final dioRetry = Dio(BaseOptions(baseUrl: baseUrl));
+              final retryResponse = await dioRetry.post('/auth/login', data: {
+                'email': email,
+                'password': password,
+              });
+              
+              final newToken = retryResponse.data['access_token'];
+              if (newToken != null) {
+                await _storage.write(key: 'access_token', value: newToken);
+                
+                final options = e.requestOptions;
+                options.headers['Authorization'] = 'Bearer $newToken';
+                final cloneReq = await _dio.fetch(options);
+                return handler.resolve(cloneReq);
+              }
+            } catch (_) {}
+          }
+          
+          await _storage.delete(key: 'access_token');
+          await _storage.delete(key: 'user_email');
+          await _storage.delete(key: 'user_password');
+          onUnauthenticated?.call();
+        }
         return handler.next(e);
       },
     ));
@@ -33,6 +63,17 @@ class ApiService {
       final token = response.data['access_token'];
       if (token != null) {
         await _storage.write(key: 'access_token', value: token);
+        await _storage.write(key: 'user_email', value: email);
+        await _storage.write(key: 'user_password', value: password);
+        
+        try {
+          final meRes = await _dio.get('/users/me', options: Options(headers: {'Authorization': 'Bearer $token'}));
+          final name = meRes.data['full_name'] ?? meRes.data['name'] ?? email.split('@').first;
+          await ProfileService.saveProfile(name: name, email: email, phone: '');
+        } catch (_) {
+          await ProfileService.saveProfile(name: email.split('@').first, email: email, phone: '');
+        }
+        
         return true;
       }
       return false;
@@ -50,7 +91,11 @@ class ApiService {
         'currency_code': 'USD'
       });
       
-      return response.statusCode == 200 || response.statusCode == 201;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+         await ProfileService.saveProfile(name: name, email: email, phone: '');
+         return true;
+      }
+      return false;
     } catch (e) {
       return false;
     }
@@ -58,6 +103,8 @@ class ApiService {
 
   Future<void> logout() async {
     await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'user_email');
+    await _storage.delete(key: 'user_password');
   }
 
   Future<List<dynamic>> getVehicles() async {
