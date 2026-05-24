@@ -11,6 +11,7 @@ import 'package:fuel_cal/garage_page.dart';
 import 'package:fuel_cal/profile_page.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/reminders_page.dart';
+import 'package:fuel_cal/widgets/vehicle_selector.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
 
@@ -60,6 +61,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     super.build(context);
     final vehiclesAsync = ref.watch(vehiclesProvider);
     final logsAsync = ref.watch(fuelLogsProvider);
+    final _selectedVehicle = ref.watch(selectedVehicleProvider);
+
+    final vehiclesList = vehiclesAsync.value ?? [];
+    final displayVehicle = _selectedVehicle ?? (vehiclesList.isNotEmpty ? vehiclesList.first : null);
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -99,21 +104,35 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         ),
                       );
                     }
-                    return _buildVehicleSelector(vehicles.first);
+                    return VehicleSelector(
+                      selectedVehicle: displayVehicle,
+                      vehicles: vehicles,
+                      onVehicleSelected: (v) {
+                        ref.read(selectedVehicleProvider.notifier).state = v;
+                      },
+                    );
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
                 ),
                 
                 logsAsync.when(
-                  data: (logs) {
+                  data: (allLogs) {
+                    final logs = displayVehicle != null 
+                        ? allLogs.where((log) {
+                            if (log.vehicleId == displayVehicle.id) return true;
+                            // Fallback for old logs without vehicle_id -> attach to first vehicle
+                            if (log.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+                            return false;
+                          }).toList() 
+                        : <FuelLog>[];
                     final totalCost = logs.fold(0.0, (sum, log) => sum + log.totalCost);
                     
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 16),
-                        _buildFuelHeroCard(logs, vehiclesAsync),
+                        _buildFuelHeroCard(logs, displayVehicle),
                         const SizedBox(height: 16),
                         _buildMetricCards(logs),
                         const SizedBox(height: 24),
@@ -143,7 +162,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   onActionTap: () => _openPage(const LogsPage()),
                 ),
                 logsAsync.when(
-                  data: (logs) {
+                  data: (allLogs) {
+                    final logs = displayVehicle != null 
+                        ? allLogs.where((log) {
+                            if (log.vehicleId == displayVehicle.id) return true;
+                            if (log.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+                            return false;
+                          }).toList() 
+                        : <FuelLog>[];
                     final sortedLogs = List<FuelLog>.from(logs)
                       ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
                     final recentLogs = sortedLogs.take(4).toList();
@@ -187,13 +213,23 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         : 'T';
     final displayName = name.split(' ')[0];
 
+    final hour = DateTime.now().hour;
+    String greeting = 'Good morning 👋';
+    if (hour >= 12 && hour < 17) {
+      greeting = 'Good afternoon ☀️';
+    } else if (hour >= 17 && hour < 21) {
+      greeting = 'Good evening 🌆';
+    } else if (hour >= 21 || hour < 4) {
+      greeting = 'Good night 🌙';
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Good morning 👋',
+            Text(greeting,
                 style: TextStyle(color: _mutedColor, fontSize: 12)),
             Text('Hi, $displayName',
                 style: TextStyle(
@@ -271,65 +307,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildVehicleSelector(Vehicle v) {
-    return GestureDetector(
-      onTap: () => _openPage(const GaragePage()),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: _surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: const Text('🚗', style: TextStyle(fontSize: 24)),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Selected vehicle',
-                      style: TextStyle(color: _mutedColor, fontSize: 12)),
-                  Text('${v.make} ${v.model}',
-                      style: TextStyle(
-                          color: _textColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
-                  Text('${v.year}',
-                      style: TextStyle(color: _mutedColor, fontSize: 12)),
-                ],
-              ),
-            ),
-            Icon(Icons.keyboard_arrow_down, color: _mutedColor),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildFuelHeroCard(List<FuelLog> logs, AsyncValue<List<Vehicle>> vehiclesAsync) {
-    double tankCapacity = 50.0;
-    vehiclesAsync.whenData((vehicles) {
-      if (vehicles.isNotEmpty && vehicles.first.tankCapacity > 0) {
-        tankCapacity = vehicles.first.tankCapacity;
-      }
-    });
+
+  Widget _buildFuelHeroCard(List<FuelLog> logs, Vehicle? vehicle) {
+    double tankCapacity = vehicle?.tankCapacity ?? 50.0;
+    if (tankCapacity <= 0) tankCapacity = 50.0;
 
     double lastFillCost = 0.0;
     double avgMileage = 15.0; // Fallback

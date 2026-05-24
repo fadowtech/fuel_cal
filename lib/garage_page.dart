@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dotted_border/dotted_border.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/add_vehicle_page.dart';
@@ -28,10 +30,15 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Column(
-            children: [
+        child: RefreshIndicator(
+          color: _neonColor,
+          backgroundColor: _cardColor,
+          onRefresh: () => ref.refresh(vehiclesProvider.future),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Column(
+              children: [
               vehiclesAsync.when(
                 data: (vehicles) => _buildHeader(context, vehicles.length),
                 loading: () => _buildHeader(context, 0),
@@ -60,6 +67,7 @@ class _GaragePageState extends ConsumerState<GaragePage> {
               const SizedBox(height: 100), // padding for bottom nav
             ],
           ),
+        ),
         ),
       ),
     );
@@ -136,7 +144,7 @@ class _GaragePageState extends ConsumerState<GaragePage> {
       case 'Scooter': return Icons.electric_scooter;
       case 'Car':
       default:
-        return Icons.directions_car;
+        return CupertinoIcons.car_detailed;
     }
   }
 
@@ -181,25 +189,66 @@ class _GaragePageState extends ConsumerState<GaragePage> {
                               color: ThemeService.textColor,
                               fontSize: 18,
                               fontWeight: FontWeight.bold)),
-                      Text('${v.year}',
-                          style: TextStyle(
-                              color: _mutedColor, fontSize: 12)),
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: ThemeService.isDarkMode 
-                                ? _neonColor.withOpacity(0.15)
-                                : const Color(0xFF00BFA5).withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(12)),
-                        child: Text(v.fuelType,
-                            style: TextStyle(
+                      Wrap(
+                        spacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                  color: ThemeService.isDarkMode 
+                                      ? Colors.white.withOpacity(0.05)
+                                      : Colors.black.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: ThemeService.isDarkMode 
+                                        ? Colors.white.withOpacity(0.1) 
+                                        : Colors.black.withOpacity(0.1),
+                                  ),
+                              ),
+                              child: Text(v.vehicleNumber!,
+                                  style: TextStyle(
+                                      color: ThemeService.textColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                            Text('•', style: TextStyle(color: _mutedColor, fontSize: 10)),
+                          ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
                                 color: ThemeService.isDarkMode 
-                                    ? _neonColor 
-                                    : const Color(0xFF00796B),
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold)),
+                                    ? Colors.white.withOpacity(0.05)
+                                    : Colors.black.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: ThemeService.isDarkMode 
+                                      ? Colors.white.withOpacity(0.1) 
+                                      : Colors.black.withOpacity(0.1),
+                                ),
+                            ),
+                            child: Text('${v.year}',
+                                style: TextStyle(
+                                    color: _mutedColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                          Text('•', style: TextStyle(color: _mutedColor, fontSize: 10)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: ThemeService.isDarkMode 
+                                    ? _neonColor.withOpacity(0.15)
+                                    : const Color(0xFF00BFA5).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12)),
+                            child: Text(v.fuelType,
+                                style: TextStyle(
+                                    color: ThemeService.isDarkMode 
+                                        ? _neonColor 
+                                        : const Color(0xFF00796B),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -232,10 +281,13 @@ class _GaragePageState extends ConsumerState<GaragePage> {
                 border: Border(top: BorderSide(color: _surfaceColor)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('View details',
-                      style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+                  Icon(Icons.assignment_outlined, color: _neonColor, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('View details',
+                        style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ),
                   Icon(Icons.chevron_right, color: _mutedColor, size: 20),
                 ],
               ),
@@ -268,29 +320,45 @@ class _GaragePageState extends ConsumerState<GaragePage> {
         context,
         MaterialPageRoute(builder: (context) => const AddVehiclePage()),
       ),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        decoration: BoxDecoration(
-          border: Border.all(
-              color: ThemeService.isDarkMode ? _surfaceColor : ThemeService.textColor.withOpacity(0.15),
-              width: 1.5,
-              style: BorderStyle.solid),
-          borderRadius: BorderRadius.circular(24),
+      child: DottedBorder(
+        options: RoundedRectDottedBorderOptions(
+          color: ThemeService.isDarkMode ? _surfaceColor : ThemeService.textColor.withOpacity(0.15),
+          strokeWidth: 1.5,
+          dashPattern: const [8, 6],
+          radius: const Radius.circular(24),
+          padding: EdgeInsets.zero,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add, 
-                color: ThemeService.isDarkMode ? _mutedColor : ThemeService.textColor.withOpacity(0.6), 
-                size: 20),
-            const SizedBox(width: 8),
-            Text('Add new vehicle',
-                style: TextStyle(
-                    color: ThemeService.isDarkMode ? _mutedColor : ThemeService.textColor.withOpacity(0.7), 
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600)),
-          ],
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _neonColor),
+                ),
+                child: Icon(Icons.add, color: _neonColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Add new vehicle',
+                      style: TextStyle(
+                          color: ThemeService.textColor, 
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Keep track of another vehicle',
+                      style: TextStyle(
+                          color: _mutedColor, 
+                          fontSize: 12)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

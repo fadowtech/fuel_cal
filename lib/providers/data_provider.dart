@@ -4,6 +4,8 @@ import '../models/fuel_log_model.dart';
 import '../models/expense_model.dart';
 import '../providers/auth_provider.dart';
 
+final selectedVehicleProvider = StateProvider<Vehicle?>((ref) => null);
+
 final vehiclesProvider = FutureProvider<List<Vehicle>>((ref) async {
   final apiService = ref.watch(apiServiceProvider);
   final data = await apiService.getVehicles();

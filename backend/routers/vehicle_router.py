@@ -35,6 +35,11 @@ def delete_vehicle(
     if not db_vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     
+    # Delete dependent fuel logs
+    db.query(models.FuelLog).filter(models.FuelLog.vehicle_id == vehicle_id).delete()
+    # Delete dependent expenses
+    db.query(models.Expense).filter(models.Expense.vehicle_id == vehicle_id).delete()
+    
     db.delete(db_vehicle)
     db.commit()
     return None

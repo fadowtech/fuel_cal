@@ -10,6 +10,7 @@ import 'package:fuel_cal/add_expense_page.dart';
 import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fuel_cal/add_fuel_page.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -633,13 +634,13 @@ class ReportsPage extends StatelessWidget {
   }
 }
 
-class LogDetailPage extends StatelessWidget {
+class LogDetailPage extends ConsumerWidget {
   final Map<String, dynamic> log;
 
   const LogDetailPage({super.key, required this.log});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return _FeatureScaffold(
       title: log['station'] as String,
       subtitle: log['date'] as String,
@@ -648,15 +649,15 @@ class LogDetailPage extends StatelessWidget {
         children: [
           _LogSummaryCard(log: log),
           const SizedBox(height: 14),
-          const _InfoTile(
-              label: 'Payment', value: 'UPI', icon: Icons.credit_card_outlined),
-          const _InfoTile(
+          _InfoTile(
+              label: 'Payment', value: log['payment'] ?? 'Not specified', icon: Icons.credit_card_outlined),
+          _InfoTile(
               label: 'Location',
-              value: 'MG Road, Pune',
+              value: log['location'] ?? 'Unknown location',
               icon: Icons.location_on_outlined),
-          const _InfoTile(
+          _InfoTile(
               label: 'Notes',
-              value: 'Topped up before highway trip.',
+              value: log['notes'] ?? 'No notes provided',
               icon: Icons.description_outlined),
           const SizedBox(height: 12),
           Container(
@@ -669,19 +670,70 @@ class LogDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Row(
-            children: const [
+            children: [
               Expanded(
-                  child: _MiniAction(icon: Icons.edit_outlined, label: 'Edit')),
-              SizedBox(width: 10),
-              Expanded(
-                  child:
-                      _MiniAction(icon: Icons.share_outlined, label: 'Share')),
-              SizedBox(width: 10),
+                  child: _MiniAction(
+                      icon: Icons.edit_outlined,
+                      label: 'Edit',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  AddFuelPage(existingLog: log)),
+                        );
+                      })),
+              const SizedBox(width: 10),
               Expanded(
                   child: _MiniAction(
                       icon: Icons.delete_outline,
                       label: 'Delete',
-                      danger: true)),
+                      danger: true,
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: _cardColor,
+                            title: const Text('Delete Log?', style: TextStyle(color: Colors.white)),
+                            content: const Text('Are you sure you want to delete this log? This cannot be undone.', style: TextStyle(color: Colors.white70)),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(context); // pop dialog
+                                  
+                                  if (log['id'] == null) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Error: Missing log ID. Please refresh the logs list.')),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  
+                                  final api = ref.read(apiServiceProvider);
+                                  final success = await api.deleteFuelLog(log['id'] as int);
+                                  
+                                  if (success) {
+                                    ref.invalidate(fuelLogsProvider);
+                                    if (context.mounted) Navigator.pop(context); // pop page
+                                  } else {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Failed to delete fuel log. Please try again.')),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: Text('Delete', style: TextStyle(color: ThemeService.dangerColor)),
+                              ),
+                            ],
+                          ),
+                        );
+                      })),
             ],
           ),
         ],
@@ -2146,13 +2198,16 @@ class _MiniAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool danger;
+  final VoidCallback? onTap;
 
   const _MiniAction(
-      {required this.icon, required this.label, this.danger = false});
+      {required this.icon, required this.label, this.danger = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: danger ? _dangerColor.withValues(alpha: 0.1) : _surfaceColor,
@@ -2167,7 +2222,7 @@ class _MiniAction extends StatelessWidget {
                   color: danger ? _dangerColor : Colors.white, fontSize: 12)),
         ],
       ),
-    );
+    ));
   }
 }
 

@@ -67,6 +67,11 @@ class VehicleDetailsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final vehicle = vehiclesAsync.maybeWhen(
+      data: (list) => list.firstWhere((v) => v.id == this.vehicle.id, orElse: () => this.vehicle),
+      orElse: () => this.vehicle,
+    );
     final vehicleColor = _getColorFromName(vehicle.color);
 
     return Scaffold(
@@ -130,15 +135,15 @@ class VehicleDetailsPage extends ConsumerWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: vehicleColor.withOpacity(0.15),
+                              color: _neonColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.water_drop_outlined, color: vehicleColor, size: 10),
+                                Icon(Icons.water_drop_outlined, color: _neonColor, size: 10),
                                 const SizedBox(width: 4),
-                                Text(vehicle.fuelType, style: TextStyle(color: vehicleColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                Text(vehicle.fuelType, style: TextStyle(color: _neonColor, fontSize: 10, fontWeight: FontWeight.bold)),
                               ],
                             ),
                           ),
@@ -165,11 +170,11 @@ class VehicleDetailsPage extends ConsumerWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _buildTopStat(Icons.speed, 'MILEAGE', vehicle.avgMileage != null ? '${vehicle.avgMileage} KM/L' : '- KM/L', vehicleColor),
+                              _buildTopStat(Icons.speed, 'MILEAGE', vehicle.avgMileage != null ? '${vehicle.avgMileage} KM/L' : '- KM/L', _neonColor),
                               Container(width: 1, height: 30, color: _surfaceColor),
-                              _buildTopStat(Icons.pin_outlined, 'ODO', '-', vehicleColor),
+                              _buildTopStat(Icons.pin_outlined, 'ODO', '-', _neonColor),
                               Container(width: 1, height: 30, color: _surfaceColor),
-                              _buildTopStat(Icons.local_gas_station_outlined, 'TANK', '${vehicle.tankCapacity}L', vehicleColor),
+                              _buildTopStat(Icons.local_gas_station_outlined, 'TANK', '${vehicle.tankCapacity}L', _neonColor),
                             ],
                           ),
                         ),
@@ -181,34 +186,34 @@ class VehicleDetailsPage extends ConsumerWidget {
               const SizedBox(height: 32),
 
               // Vehicle Information
-              _buildSectionHeader(Icons.directions_car_outlined, 'VEHICLE INFORMATION', vehicleColor),
+              _buildSectionHeader(Icons.directions_car_outlined, 'VEHICLE INFORMATION', _neonColor),
               _buildInfoCard([
-                _buildInfoRow(Icons.badge_outlined, 'Vehicle Number', vehicle.vehicleNumber?.isNotEmpty == true ? vehicle.vehicleNumber! : '--', vehicleColor),
-                _buildInfoRow(Icons.local_gas_station_outlined, 'Fuel Type', vehicle.fuelType, vehicleColor),
-                _buildInfoRow(Icons.directions_car_outlined, 'Vehicle Type', vehicle.vehicleType ?? 'Car', vehicleColor),
-                _buildInfoRow(Icons.ev_station_outlined, 'Tank Type', vehicle.tankType ?? 'Full Tank', vehicleColor),
-                _buildInfoRow(Icons.water_drop_outlined, 'Tank Capacity', '${vehicle.tankCapacity}L', vehicleColor),
-                _buildInfoRow(Icons.speed, 'Mileage', vehicle.avgMileage != null ? '${vehicle.avgMileage} KM/L' : '- KM/L', vehicleColor, isLast: true),
+                _buildInfoRow(Icons.badge_outlined, 'Vehicle Number', vehicle.vehicleNumber?.isNotEmpty == true ? vehicle.vehicleNumber! : '--', _neonColor),
+                _buildInfoRow(Icons.local_gas_station_outlined, 'Fuel Type', vehicle.fuelType, _neonColor),
+                _buildInfoRow(Icons.directions_car_outlined, 'Vehicle Type', vehicle.vehicleType ?? 'Car', _neonColor),
+                _buildInfoRow(Icons.ev_station_outlined, 'Tank Type', vehicle.tankType ?? 'Full Tank', _neonColor),
+                _buildInfoRow(Icons.water_drop_outlined, 'Tank Capacity', '${vehicle.tankCapacity}L', _neonColor),
+                _buildInfoRow(Icons.speed, 'Mileage', vehicle.avgMileage != null ? '${vehicle.avgMileage} KM/L' : '- KM/L', _neonColor, isLast: true),
               ]),
 
               const SizedBox(height: 24),
 
               // Basic Information
-              _buildSectionHeader(Icons.person_outline, 'BASIC INFORMATION', vehicleColor),
+              _buildSectionHeader(Icons.person_outline, 'BASIC INFORMATION', _neonColor),
               _buildInfoCard([
-                _buildInfoRow(Icons.verified_outlined, 'Brand', vehicle.make, vehicleColor),
-                _buildInfoRow(Icons.directions_car_outlined, 'Model', vehicle.model, vehicleColor),
-                _buildInfoRow(Icons.calendar_today_outlined, 'Year', '${vehicle.year}', vehicleColor),
-                _buildInfoRow(Icons.tune_outlined, 'Variant', vehicle.variant?.isNotEmpty == true ? vehicle.variant! : '--', vehicleColor, isLast: true),
+                _buildInfoRow(Icons.verified_outlined, 'Brand', vehicle.make, _neonColor),
+                _buildInfoRow(Icons.directions_car_outlined, 'Model', vehicle.model, _neonColor),
+                _buildInfoRow(Icons.calendar_today_outlined, 'Year', '${vehicle.year}', _neonColor),
+                _buildInfoRow(Icons.tune_outlined, 'Variant', vehicle.variant?.isNotEmpty == true ? vehicle.variant! : '--', _neonColor, isLast: true),
               ]),
 
               const SizedBox(height: 24),
 
               // Additional Information
-              _buildSectionHeader(Icons.note_alt_outlined, 'ADDITIONAL INFORMATION', vehicleColor),
+              _buildSectionHeader(Icons.note_alt_outlined, 'ADDITIONAL INFORMATION', _neonColor),
               _buildInfoCard([
-                _buildInfoRow(Icons.description_outlined, 'Notes', vehicle.notes?.isNotEmpty == true ? vehicle.notes! : 'No notes added', vehicleColor),
-                _buildInfoRow(Icons.palette_outlined, 'Vehicle Color', _getColorDisplayName(vehicle.color), vehicleColor, isLast: true),
+                _buildInfoRow(Icons.description_outlined, 'Notes', vehicle.notes?.isNotEmpty == true ? vehicle.notes! : 'No notes added', _neonColor),
+                _buildInfoRow(Icons.palette_outlined, 'Vehicle Color', _getColorDisplayName(vehicle.color), _neonColor, isLast: true),
               ]),
 
               const SizedBox(height: 32),
@@ -227,14 +232,14 @@ class VehicleDetailsPage extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: vehicleColor, width: 1.5),
+                    border: Border.all(color: _neonColor, width: 1.5),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.edit_outlined, color: vehicleColor, size: 18),
+                      Icon(Icons.edit_outlined, color: _neonColor, size: 18),
                       const SizedBox(width: 8),
-                      Text('Edit Vehicle', style: TextStyle(color: vehicleColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                      Text('Edit Vehicle', style: TextStyle(color: _neonColor, fontSize: 14, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -285,19 +290,19 @@ class VehicleDetailsPage extends ConsumerWidget {
   void _showDeleteConfirmation(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: _cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Delete Vehicle', style: TextStyle(color: ThemeService.textColor)),
         content: Text('Are you sure you want to delete this vehicle? This action cannot be undone.', style: TextStyle(color: _mutedColor)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancel', style: TextStyle(color: _mutedColor)),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _deleteVehicle(context, ref);
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),

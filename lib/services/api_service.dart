@@ -158,6 +158,11 @@ class ApiService {
       await _dio.delete('/vehicles/$id');
       return true;
     } catch (e) {
+      if (e is DioException) {
+        print('deleteVehicle error response: ${e.response?.data}');
+      } else {
+        print('deleteVehicle error: $e');
+      }
       return false;
     }
   }
@@ -201,6 +206,29 @@ class ApiService {
   Future<bool> deleteExpense(int id) async {
     try {
       await _dio.delete('/expenses/$id');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateFuelLog(int id, Map<String, dynamic> data) async {
+    try {
+      await _dio.put('/logs/$id', data: data);
+      return true;
+    } catch (e) {
+      if (e is DioException) {
+        print('updateFuelLog error response: ${e.response?.data}');
+      } else {
+        print('updateFuelLog error: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<bool> deleteFuelLog(int id) async {
+    try {
+      await _dio.delete('/logs/$id');
       return true;
     } catch (e) {
       return false;

@@ -198,11 +198,19 @@ class LogsPage extends ConsumerWidget {
       onTap: () {
         // Mock log for detail page
         final mockLog = {
+          'id': log.id,
           'station': log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station',
           'date': dateStr,
+          'rawDate': log.date,
           'amount': log.totalCost,
           'liters': log.fuelQuantity,
-          'odo': log.odometer,
+          'odo': log.odometer.toStringAsFixed(0),
+          'pricePerL': pricePerL,
+          'mileage': mileage > 0 ? mileage.toStringAsFixed(1) : '-',
+          'fullTank': log.isFullTank,
+          'payment': log.paymentMethod ?? 'Not specified',
+          'location': log.location ?? 'Unknown location',
+          'notes': log.notes ?? 'No notes provided',
         };
         Navigator.push(
           context,

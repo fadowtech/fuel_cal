@@ -13,7 +13,8 @@ Color get _mutedColor => ThemeService.mutedColor;
 Color get _textColor => ThemeService.textColor;
 
 class AddFuelPage extends ConsumerStatefulWidget {
-  const AddFuelPage({super.key});
+  final Map<String, dynamic>? existingLog;
+  const AddFuelPage({super.key, this.existingLog});
 
   @override
   ConsumerState<AddFuelPage> createState() => _AddFuelPageState();
@@ -47,6 +48,29 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   double _tankLevelPercent = 0.0;
   double _lastOdo = 0.0;
   bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingLog != null) {
+      final log = widget.existingLog!;
+      _fuelLitersController.text = log['liters']?.toString() ?? '';
+      _totalAmountController.text = log['amount']?.toString() ?? '';
+      _fuelPriceController.text = log['pricePerL']?.toString() ?? '';
+      _currentOdoController.text = log['odo']?.toString() ?? '';
+      _locationController.text = log['location'] == 'Unknown location' ? '' : (log['location'] ?? '');
+      _notesController.text = log['notes'] == 'No notes provided' ? '' : (log['notes'] ?? '');
+      _selectedStation = (log['station'] == 'Gas Station' || log['station'] == null) ? null : log['station'];
+      if (_selectedStation != null && !_stations.contains(_selectedStation)) {
+          _stations.add(_selectedStation!);
+      }
+      _isFullTank = log['fullTank'] == true;
+      _selectedPaymentMethod = (log['payment'] == 'Not specified' || log['payment'] == null) ? null : log['payment'];
+      if (log['rawDate'] != null) {
+        _selectedDate = log['rawDate'] as DateTime;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -176,7 +200,12 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
     final apiService = ref.read(apiServiceProvider);
     
+    final selectedVehicle = ref.read(selectedVehicleProvider);
+    final vehicles = ref.read(vehiclesProvider).value ?? [];
+    final activeVehicle = selectedVehicle ?? (vehicles.isNotEmpty ? vehicles.first : null);
+    
     final payload = {
+      "vehicle_id": activeVehicle?.id,
       "fuel_quantity": liters,
       "total_cost": totalCost,
       "odometer": odo,
@@ -190,7 +219,12 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       "date": _selectedDate.toIso8601String(),
     };
 
-    final success = await apiService.createFuelLog(payload);
+    bool success;
+    if (widget.existingLog != null && widget.existingLog!['id'] != null) {
+      success = await apiService.updateFuelLog(widget.existingLog!['id'] as int, payload);
+    } else {
+      success = await apiService.createFuelLog(payload);
+    }
 
     setState(() => _isLoading = false);
 
@@ -275,7 +309,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Add fuel', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(widget.existingLog != null ? 'Edit fuel' : 'Add fuel', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               Text('Log your entry', style: TextStyle(color: _mutedColor, fontSize: 13)),
             ],
           ),
@@ -766,7 +800,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         ),
         child: _isLoading 
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-            : const Text('Save fuel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            : Text(widget.existingLog != null ? 'Update fuel' : 'Save fuel', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }
