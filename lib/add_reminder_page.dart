@@ -23,6 +23,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
   String _selectedCategory = '';
   
   final _titleController = TextEditingController();
+  final _amountController = TextEditingController();
   final _kmController = TextEditingController();
   final _notesController = TextEditingController();
   
@@ -54,6 +55,8 @@ class _AddReminderPageState extends State<AddReminderPage> {
       _selectedCategory = raw['category'] ?? '';
       _titleController.text = raw['title'] ?? '';
       _kmController.text = raw['due_km']?.toString() ?? '';
+      
+      _amountController.text = raw['amount'] != null ? raw['amount'].toString() : '';
       _notesController.text = raw['notes'] ?? '';
       if (raw['due_date'] != null) {
         _dueDate = DateTime.parse(raw['due_date']);
@@ -188,12 +191,15 @@ class _AddReminderPageState extends State<AddReminderPage> {
 
     setState(() => _isLoading = true);
 
+    String finalNotes = _notesController.text.trim();
+
     final data = {
       'category': _selectedCategory,
-      'title': _titleController.text,
+      'title': _titleController.text.trim(),
       'due_date': _dueDate?.toIso8601String(),
       'due_km': _kmController.text.isNotEmpty ? double.tryParse(_kmController.text) : null,
-      'notes': _notesController.text.isNotEmpty ? _notesController.text : null,
+      'amount': _amountController.text.isNotEmpty ? double.tryParse(_amountController.text) : null,
+      'notes': finalNotes,
       'repeat': _repeatReminder,
       'repeat_interval': _repeatInterval,
       'notify_before_days': _selectedNotifications.join(','),
@@ -346,6 +352,8 @@ class _AddReminderPageState extends State<AddReminderPage> {
     return Column(
       children: [
         _buildTitleCard(),
+        const SizedBox(height: 12),
+        _buildAmountCard(),
         const SizedBox(height: 12),
         _buildDueDateCard(),
         const SizedBox(height: 12),
@@ -562,6 +570,66 @@ class _AddReminderPageState extends State<AddReminderPage> {
                         ),
                       ),
                       suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.currency_rupee, color: Color(0xFF10B981), size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      const TextSpan(text: 'Amount ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _backgroundColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. 300',
+                      hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                   ),
                 ),

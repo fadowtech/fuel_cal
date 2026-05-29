@@ -614,30 +614,11 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
       ),
       child: expensesAsync.when(
         data: (expenses) {
-          // Convert mock data to Expense objects so the UI doesn't look empty
-          final mockExpenses = mockServices.map((s) {
-            DateTime? parsedDate;
-            final d = s['date'] as String;
-            final parts = d.split(' ');
-            if (parts.length == 2) {
-              final day = int.tryParse(parts[0]) ?? 1;
-              final monthStr = parts[1];
-              final monthMap = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12};
-              final month = monthMap[monthStr] ?? 1;
-              parsedDate = DateTime(DateTime.now().year, month, day);
-            }
-
-            return Expense(
-              id: s['id'].hashCode,
-              userId: 1,
-              category: s['category'],
-              title: s['title'],
-              amount: (s['amount'] as num).toDouble(),
-              date: parsedDate,
-            );
+          final serviceExpenses = expenses.where((e) {
+            return ['service', 'engine', 'brakes', 'suspension', 'general', 'tires'].contains(e.category.toLowerCase());
           }).toList();
-
-          final allExpenses = [...mockExpenses, ...expenses];
+          
+          final allExpenses = serviceExpenses;
 
           final allServices = allExpenses.where((e) => _serviceCategories.contains(e.category)).toList();
           

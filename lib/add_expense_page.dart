@@ -101,10 +101,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     setState(() => _isLoading = true);
 
     final apiService = ref.read(apiServiceProvider);
-    bool success;
+    dynamic result;
 
     if (widget.existingExpense != null) {
-      success = await apiService.updateExpense(widget.existingExpense!.id, {
+      result = await apiService.updateExpense(widget.existingExpense!.id, {
         "category": _selectedCategory,
         "title": title,
         "amount": amount,
@@ -112,23 +112,25 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         "notes": notes.isEmpty ? null : notes,
       });
     } else {
-      success = await apiService.createExpense({
+      bool created = await apiService.createExpense({
         "category": _selectedCategory,
         "title": title,
         "amount": amount,
         "date": _selectedDate.toIso8601String(),
         "notes": notes.isEmpty ? null : notes,
       });
+      result = created ? true : 'Failed to save expense.';
     }
 
     setState(() => _isLoading = false);
 
-    if (success && mounted) {
+    if (result == true && mounted) {
       ref.invalidate(expensesProvider);
       Navigator.pop(context);
     } else if (mounted) {
+      String errMsg = result is String ? result : 'Failed to update expense.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.existingExpense != null ? 'Failed to update expense.' : 'Failed to save expense.')),
+        SnackBar(content: Text(errMsg)),
       );
     }
   }

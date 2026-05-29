@@ -208,12 +208,15 @@ class ApiService {
     }
   }
 
-  Future<bool> updateExpense(int id, Map<String, dynamic> data) async {
+  Future<dynamic> updateExpense(int id, Map<String, dynamic> data) async {
     try {
       await _dio.put('/expenses/$id', data: data);
       return true;
     } catch (e) {
-      return false;
+      if (e is DioException) {
+        return e.response?.data?.toString() ?? e.message ?? 'Unknown error';
+      }
+      return e.toString();
     }
   }
 

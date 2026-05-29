@@ -102,6 +102,7 @@ class ReminderBase(BaseModel):
     title: str
     due_date: Optional[datetime] = None
     due_km: Optional[float] = None
+    amount: Optional[float] = None
     notes: Optional[str] = None
     repeat: Optional[bool] = False
     repeat_interval: Optional[str] = None

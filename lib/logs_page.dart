@@ -586,19 +586,16 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
   Widget _buildReminderCard(BuildContext context, Map<String, dynamic> rem) {
     final dateFormat = DateFormat('yyyy-MM-dd');
+    final dateStr = rem['due_date'] != null 
+        ? dateFormat.format(DateTime.parse(rem['due_date'])) 
+        : 'Unknown Date';
     final status = rem['status'] as String? ?? 'pending';
     
-    DateTime? dt;
-    if (status == 'completed' || status == 'skipped') {
-        if (rem['completed_at'] != null) dt = DateTime.tryParse(rem['completed_at']);
-    }
-    if (dt == null && rem['due_date'] != null) {
-        dt = DateTime.tryParse(rem['due_date']);
-    }
-    final dateStr = dt != null ? dateFormat.format(dt) : 'Unknown Date';
-    final category = rem['category'] as String? ?? '';
+    String? amountStr = rem['amount']?.toString();
+
     IconData iconData = Icons.alarm_on_outlined;
     Color iconColor = const Color(0xFFEC4899); // default pink
+    final category = rem['category'] as String? ?? '';
     
     final isService = ['service', 'tires', 'engine', 'brakes', 'suspension', 'general', 'maintenance'].contains(category.toLowerCase());
     if (isService) {
@@ -652,16 +649,26 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: status == 'completed' ? Colors.green.withOpacity(0.2) : (status == 'skipped' ? Colors.orange.withOpacity(0.2) : Colors.grey.withOpacity(0.2)),
-              borderRadius: BorderRadius.circular(8),
+              color: amountStr != null 
+                  ? Colors.transparent 
+                  : (status == 'pending' 
+                      ? Colors.white.withOpacity(0.1) 
+                      : const Color(0xFF10B981).withOpacity(0.1)),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(status.toUpperCase(),
-                style: TextStyle(
-                    color: status == 'completed' ? Colors.green : (status == 'skipped' ? Colors.orange : Colors.grey),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold)),
+            child: amountStr != null 
+                ? Text('₹$amountStr',
+                    style: TextStyle(
+                        color: ThemeService.textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold))
+                : Text(status.toUpperCase(),
+                    style: TextStyle(
+                        color: status == 'pending' ? Colors.white70 : const Color(0xFF10B981),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold)),
           ),
         ],
       ),

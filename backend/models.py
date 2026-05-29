@@ -85,6 +85,7 @@ class Reminder(Base):
     title = Column(String)
     due_date = Column(DateTime, nullable=True)
     due_km = Column(Float, nullable=True)
+    amount = Column(Float, nullable=True)
     notes = Column(String, nullable=True)
     repeat = Column(Boolean, default=False)
     repeat_interval = Column(String, nullable=True)
