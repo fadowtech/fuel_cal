@@ -20,9 +20,10 @@ class _AddReminderPageState extends State<AddReminderPage> {
   Color get _dangerColor => ThemeService.dangerColor;
   Color get _textColor => ThemeService.textColor;
 
-  String _selectedCategory = 'Service';
+  String _selectedCategory = '';
   
   final _titleController = TextEditingController();
+  final _amountController = TextEditingController();
   final _kmController = TextEditingController();
   final _notesController = TextEditingController();
   
@@ -51,8 +52,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
     super.initState();
     if (widget.editData != null) {
       final raw = widget.editData!['raw_data'];
-      _selectedCategory = raw['category'] ?? 'Service';
+      _selectedCategory = raw['category'] ?? '';
       _titleController.text = raw['title'] ?? '';
+      _amountController.text = raw['amount']?.toString() ?? '';
       _kmController.text = raw['due_km']?.toString() ?? '';
       _notesController.text = raw['notes'] ?? '';
       if (raw['due_date'] != null) {
@@ -74,6 +76,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
   @override
   void dispose() {
     _titleController.dispose();
+    _amountController.dispose();
     _kmController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -157,11 +160,31 @@ class _AddReminderPageState extends State<AddReminderPage> {
   }
 
   bool _isLoading = false;
+  String? _titleErrorText;
+  String? _categoryErrorText;
 
   Future<void> _saveReminder() async {
+    bool hasError = false;
+
+    if (_selectedCategory.isEmpty) {
+      setState(() => _categoryErrorText = 'Please select a category');
+      hasError = true;
+    } else {
+      setState(() => _categoryErrorText = null);
+    }
+
     if (_titleController.text.isEmpty) {
+      setState(() => _titleErrorText = 'Required');
+      hasError = true;
+    } else {
+      setState(() => _titleErrorText = null);
+    }
+
+    if (hasError) return;
+
+    if (_repeatReminder && _repeatInterval == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a reminder title')),
+        const SnackBar(content: Text('Please select a repeat interval')),
       );
       return;
     }
@@ -171,6 +194,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
     final data = {
       'category': _selectedCategory,
       'title': _titleController.text,
+      'amount': _amountController.text.isNotEmpty ? double.tryParse(_amountController.text) : null,
       'due_date': _dueDate?.toIso8601String(),
       'due_km': _kmController.text.isNotEmpty ? double.tryParse(_kmController.text) : null,
       'notes': _notesController.text.isNotEmpty ? _notesController.text : null,
@@ -179,6 +203,10 @@ class _AddReminderPageState extends State<AddReminderPage> {
       'notify_before_days': _selectedNotifications.join(','),
       'priority': _priority,
     };
+
+    if (widget.editData != null && widget.editData!['raw_data']['status'] != null) {
+      data['status'] = widget.editData!['raw_data']['status'];
+    }
 
     bool success = false;
     String? errorMessage;
@@ -255,175 +283,217 @@ class _AddReminderPageState extends State<AddReminderPage> {
   }
 
   Widget _buildCategoryFilter() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: _categories.map((cat) {
-          final isSelected = _selectedCategory == cat['name'];
-          return GestureDetector(
-            onTap: () => setState(() => _selectedCategory = cat['name']!),
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withOpacity(0.05) : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isSelected ? _neonColor : Colors.white.withOpacity(0.05),
-                  width: isSelected ? 1.5 : 1,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(cat['icon'], color: cat['color'], size: 28),
-                  const SizedBox(height: 8),
-                  Text(
-                    cat['name']!,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : _mutedColor,
-                      fontSize: 10,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
+    return Container(
+      width: double.infinity,
+      padding: _categoryErrorText != null ? const EdgeInsets.all(12) : EdgeInsets.zero,
+      decoration: BoxDecoration(
+        border: _categoryErrorText != null ? Border.all(color: Colors.redAccent, width: 1) : null,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _categories.map((cat) {
+              final isSelected = _selectedCategory == cat['name'];
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedCategory = cat['name'] as String;
+                    if (_categoryErrorText != null) _categoryErrorText = null;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                      color: isSelected ? _neonColor.withValues(alpha: 0.1) : Colors.transparent,
+                      border: Border.all(color: isSelected ? _neonColor : Colors.white.withValues(alpha: 0.05)),
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(cat['icon'] as IconData, color: isSelected ? _neonColor : Colors.blueAccent, size: 18),
+                      const SizedBox(width: 8),
+                      Text(cat['name'] as String,
+                          style: TextStyle(
+                              color: isSelected ? _neonColor : Colors.white,
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
+                    ],
                   ),
-                  if (isSelected)
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      width: 20,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: _neonColor,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
+                ),
+              );
+            }).toList(),
+          ),
+          if (_categoryErrorText != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 4, top: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.redAccent, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    _categoryErrorText!,
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                  ),
                 ],
               ),
             ),
-          );
-        }).toList(),
+        ],
       ),
     );
   }
 
   Widget _buildDetailsSection() {
+    return Column(
+      children: [
+        _buildTitleCard(),
+        const SizedBox(height: 12),
+        _buildAmountCard(),
+        const SizedBox(height: 12),
+        _buildDueDateCard(),
+        const SizedBox(height: 12),
+        _buildDueKmCard(),
+        const SizedBox(height: 12),
+        _buildNotesCard(),
+      ],
+    );
+  }
+
+  Widget _buildTitleCard() {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title Input
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFA855F7).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.build_outlined, color: Color(0xFFA855F7), size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFA855F7).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.build_outlined, color: Color(0xFFA855F7), size: 20),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                RichText(
+                  text: const TextSpan(
                     children: [
-                      const Text('Reminder Title', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                      TextField(
-                        controller: _titleController,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'e.g. General Service, Engine Oil Change',
-                          hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.only(top: 4),
-                        ),
-                      ),
+                      TextSpan(text: 'Reminder Title ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: '*', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: _mutedColor, size: 20),
-              ],
-            ),
-          ),
-          
-          Divider(color: Colors.white.withOpacity(0.05), height: 1),
-          
-          // Date and KM Inputs
-          IntrinsicHeight(
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _pickDate,
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(Icons.calendar_today_outlined, color: _neonColor, size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Due Date', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _dueDate != null ? DateFormat('dd MMM yyyy').format(_dueDate!) : 'Select date',
-                                  style: TextStyle(color: _dueDate != null ? Colors.white : _mutedColor, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.calendar_month_outlined, color: _mutedColor, size: 16),
-                        ],
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _backgroundColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _titleErrorText != null ? Colors.redAccent : Colors.white.withOpacity(0.1)),
+                  ),
+                  child: TextField(
+                    controller: _titleController,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    maxLength: 60,
+                    onChanged: (_) {
+                      if (_titleErrorText != null) setState(() => _titleErrorText = null);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'e.g. General Service',
+                      hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      counterText: '',
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        child: Text('${_titleController.text.length}/60', style: TextStyle(color: _mutedColor, fontSize: 11)),
                       ),
+                      suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                     ),
                   ),
                 ),
-                VerticalDivider(color: Colors.white.withOpacity(0.05), width: 1),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+                if (_titleErrorText != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, top: 4),
+                    child: Text(
+                      _titleErrorText!,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDueDateCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF22C55E).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.calendar_today_outlined, color: Color(0xFF22C55E), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: const TextSpan(
+                    children: [
+                      TextSpan(text: 'Due Date ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: '*', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: _pickDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _backgroundColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(Icons.speed_outlined, color: Color(0xFFEAB308), size: 20),
-                        const SizedBox(width: 12),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              RichText(
-                                text: TextSpan(
-                                  children: [
-                                    const TextSpan(text: 'Due in KM ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                                    TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
-                                  ],
-                                ),
-                              ),
-                              TextField(
-                                controller: _kmController,
-                                keyboardType: TextInputType.number,
-                                style: const TextStyle(color: Colors.white, fontSize: 12),
-                                onChanged: (_) => setState(() {}),
-                                decoration: InputDecoration(
-                                  hintText: 'Enter KM',
-                                  hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.only(top: 4),
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            _dueDate != null ? DateFormat('dd MMM yyyy').format(_dueDate!) : 'Select date',
+                            style: TextStyle(color: _dueDate != null ? Colors.white : _mutedColor, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Text('KM', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                        Icon(Icons.calendar_month_outlined, color: _mutedColor, size: 16),
                       ],
                     ),
                   ),
@@ -431,49 +501,196 @@ class _AddReminderPageState extends State<AddReminderPage> {
               ],
             ),
           ),
-          
-          Divider(color: Colors.white.withOpacity(0.05), height: 1),
-          
-          // Notes
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00FF88).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.attach_money_outlined, color: Color(0xFF00FF88), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF3B82F6).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 16),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                RichText(
+                  text: TextSpan(
                     children: [
-                      RichText(
-                        text: TextSpan(
+                      const TextSpan(text: 'Estimated Amount ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _backgroundColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: TextField(
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. 300',
+                      hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDueKmCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAB308).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.speed_outlined, color: Color(0xFFEAB308), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      const TextSpan(text: 'Due in KM ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _backgroundColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: TextField(
+                    controller: _kmController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Enter KM',
+                      hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      suffixIcon: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          border: Border(left: BorderSide(color: Colors.white.withOpacity(0.1))),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const TextSpan(text: 'Notes ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                            TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
+                            Text('KM', style: TextStyle(color: _mutedColor, fontSize: 12)),
                           ],
                         ),
                       ),
-                      TextField(
-                        controller: _notesController,
-                        maxLines: null,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        decoration: InputDecoration(
-                          hintText: 'Add any notes...',
-                          hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.only(top: 4),
-                        ),
-                      ),
+                      suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotesCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 20),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      const TextSpan(text: 'Notes ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _backgroundColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: TextField(
+                    controller: _notesController,
+                    maxLines: 3,
+                    maxLength: 200,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Add any notes...',
+                      hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.all(12),
+                      counterStyle: TextStyle(color: _mutedColor, fontSize: 11),
+                    ),
                   ),
                 ),
               ],
@@ -711,9 +928,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
     final iconColor = categoryData['color'] as Color;
     final iconData = categoryData['icon'] as IconData;
     
-    final displayTitle = _titleController.text.isNotEmpty ? _titleController.text : 'General Service';
-    final displayDate = _dueDate != null ? DateFormat('dd MMM yyyy').format(_dueDate!) : '04 Jun 2026';
-    final displayKm = _kmController.text.isNotEmpty ? _kmController.text : '15,000';
+    final displayTitle = _titleController.text.isNotEmpty ? _titleController.text : 'Reminder Title';
+    final displayDate = _dueDate != null ? DateFormat('dd MMM yyyy').format(_dueDate!) : '--';
+    final displayKm = _kmController.text.isNotEmpty ? '${_kmController.text} KM' : '--';
 
     Color priorityColor;
     if (_priority == 'High') priorityColor = _dangerColor;
@@ -809,11 +1026,14 @@ class _AddReminderPageState extends State<AddReminderPage> {
                         children: [
                           Icon(Icons.calendar_today_outlined, color: _mutedColor, size: 12),
                           const SizedBox(width: 4),
-                          Text(displayDate, style: TextStyle(color: _mutedColor, fontSize: 11)),
-                          const SizedBox(width: 12),
-                          Icon(Icons.speed_outlined, color: _mutedColor, size: 12),
+                          Text(displayDate, style: TextStyle(color: _mutedColor, fontSize: 13)),
+                          const SizedBox(width: 16),
+                          Icon(Icons.speed, color: _mutedColor, size: 14),
                           const SizedBox(width: 4),
-                          Text('$displayKm KM', style: TextStyle(color: _mutedColor, fontSize: 11)),
+                          Text(
+                            displayKm,
+                            style: TextStyle(color: _mutedColor, fontSize: 13),
+                          ),
                         ],
                       ),
                     ],

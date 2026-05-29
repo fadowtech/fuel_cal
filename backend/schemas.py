@@ -107,6 +107,7 @@ class ReminderBase(BaseModel):
     repeat_interval: Optional[str] = None
     notify_before_days: Optional[str] = None
     priority: Optional[str] = "High"
+    amount: Optional[float] = None
     status: Optional[str] = "pending"
     completed_at: Optional[datetime] = None
 

@@ -26,6 +26,8 @@ class _GaragePageState extends ConsumerState<GaragePage> {
   @override
   Widget build(BuildContext context) {
     final vehiclesAsync = ref.watch(vehiclesProvider);
+    final logsAsync = ref.watch(fuelLogsProvider);
+    final allLogs = logsAsync.value ?? [];
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -33,7 +35,10 @@ class _GaragePageState extends ConsumerState<GaragePage> {
         child: RefreshIndicator(
           color: _neonColor,
           backgroundColor: _cardColor,
-          onRefresh: () => ref.refresh(vehiclesProvider.future),
+          onRefresh: () async {
+            ref.refresh(vehiclesProvider.future);
+            ref.refresh(fuelLogsProvider.future);
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -55,7 +60,7 @@ class _GaragePageState extends ConsumerState<GaragePage> {
                     );
                   }
                   return Column(
-                    children: vehicles.map((v) => _buildVehicleCard(context, v)).toList(),
+                    children: vehicles.map((v) => _buildVehicleCard(context, v, allLogs)).toList(),
                   );
                 },
                 loading: () => const CircularProgressIndicator(),
@@ -148,8 +153,16 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     }
   }
 
-  Widget _buildVehicleCard(BuildContext context, Vehicle v) {
+  Widget _buildVehicleCard(BuildContext context, Vehicle v, List<dynamic> allLogs) {
     final vehicleColor = _getColorFromName(v.color);
+    
+    final vehicleLogs = allLogs.where((l) => l.vehicleId == v.id).toList();
+    double latestOdo = 0;
+    if (vehicleLogs.isNotEmpty) {
+       vehicleLogs.sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
+       latestOdo = vehicleLogs.first.odometer;
+    }
+    String odoText = latestOdo > 0 ? latestOdo.toInt().toString() : '-';
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -265,7 +278,7 @@ class _GaragePageState extends ConsumerState<GaragePage> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildMiniStat('Mileage', v.avgMileage != null ? '${v.avgMileage} KM/L' : '- KM/L'),
-                _buildMiniStat('ODO', '-'),
+                _buildMiniStat('ODO', odoText),
                 _buildMiniStat('Tank', '${v.tankCapacity}L'),
               ],
             ),

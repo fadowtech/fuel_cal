@@ -13,8 +13,24 @@ class ProfileService {
     required String name,
     required String email,
     required String phone,
+    bool fromLogin = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
+    
+    if (fromLogin) {
+      final savedName = prefs.getString('override_name_$email');
+      final savedPhone = prefs.getString('override_phone_$email');
+      final savedEmail = prefs.getString('override_email_$email');
+      name = savedName ?? name;
+      phone = savedPhone ?? phone;
+      email = savedEmail ?? email;
+    } else {
+      final currentEmail = prefs.getString(_emailKey) ?? email;
+      await prefs.setString('override_name_$currentEmail', name.trim());
+      await prefs.setString('override_phone_$currentEmail', phone.trim());
+      await prefs.setString('override_email_$currentEmail', email.trim());
+    }
+
     await prefs.setString(_nameKey, name.trim());
     await prefs.setString(_emailKey, email.trim());
     await prefs.setString(_phoneKey, phone.trim());

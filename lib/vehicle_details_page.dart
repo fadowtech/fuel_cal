@@ -73,6 +73,16 @@ class VehicleDetailsPage extends ConsumerWidget {
       orElse: () => this.vehicle,
     );
     final vehicleColor = _getColorFromName(vehicle.color);
+    
+    final logsAsync = ref.watch(fuelLogsProvider);
+    final allLogs = logsAsync.value ?? [];
+    final vehicleLogs = allLogs.where((l) => l.vehicleId == vehicle.id).toList();
+    double latestOdo = 0;
+    if (vehicleLogs.isNotEmpty) {
+       vehicleLogs.sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
+       latestOdo = vehicleLogs.first.odometer;
+    }
+    String odoText = latestOdo > 0 ? latestOdo.toInt().toString() : '-';
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -172,7 +182,7 @@ class VehicleDetailsPage extends ConsumerWidget {
                             children: [
                               _buildTopStat(Icons.speed, 'MILEAGE', vehicle.avgMileage != null ? '${vehicle.avgMileage} KM/L' : '- KM/L', _neonColor),
                               Container(width: 1, height: 30, color: _surfaceColor),
-                              _buildTopStat(Icons.pin_outlined, 'ODO', '-', _neonColor),
+                              _buildTopStat(Icons.pin_outlined, 'ODO', odoText, _neonColor),
                               Container(width: 1, height: 30, color: _surfaceColor),
                               _buildTopStat(Icons.local_gas_station_outlined, 'TANK', '${vehicle.tankCapacity}L', _neonColor),
                             ],

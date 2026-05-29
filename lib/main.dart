@@ -16,6 +16,9 @@ import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
+import 'package:fuel_cal/add_reminder_page.dart';
+import 'package:fuel_cal/add_expense_page.dart';
+import 'package:fuel_cal/widgets/connectivity_wrapper.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -96,6 +99,11 @@ class _FuelCalculatorAppState extends ConsumerState<FuelCalculatorApp> {
         final router = ref.watch(routerProvider);
         return MaterialApp.router(
           routerConfig: router,
+          builder: (context, child) {
+            return ConnectivityWrapper(
+              child: child!,
+            );
+          },
           debugShowCheckedModeBanner: false,
           title: 'Fuel Calculator',
           theme: ThemeData(
@@ -203,18 +211,34 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
       GlobalKey<ScaffoldState>(); // GlobalKey for Scaffold
 
   int _selectedIndex = 0; // Controls PageView (current visible main tab)
-  int _bottomNavIndex = 0; // Controls BottomNavigationBar visual selection
+  int _bottomNavIndex = 0;
+  bool _isFabMenuOpen = false;
+
   int _previousMainTabIndex =
       0; // Stores the index of the tab active before 'More' was selected
 
   final PageController _pageController = PageController();
 
-  late final List<String>
-      _pageTitles; // This will now mostly be for internal logic/tooltips
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
+    _pages = [
+      DashboardPage(),
+      const LogsPage(onlyFuel: false),
+      StatsPage(),
+      GaragePage(),
+      ToolsPage(
+        selectedCurrencySymbol: widget.selectedCurrencySymbol,
+        selectedCurrencyCode: widget.selectedCurrencyCode,
+        onCurrencyChanged: widget.onCurrencyChanged,
+      ),
+      ProfilePage(
+        selectedCurrencyCode: widget.selectedCurrencyCode,
+        onCurrencyChanged: widget.onCurrencyChanged,
+      ),
+    ];
   }
 
   void _navigateToCurrencySelection() async {
@@ -230,39 +254,102 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
 
   @override
   Widget build(BuildContext context) {
-    final pages = <Widget>[
-      DashboardPage(),
-      LogsPage(),
-      StatsPage(),
-      GaragePage(),
-      ToolsPage(
-        selectedCurrencySymbol: widget.selectedCurrencySymbol,
-        selectedCurrencyCode: widget.selectedCurrencyCode,
-        onCurrencyChanged: widget.onCurrencyChanged,
-      ),
-      ProfilePage(
-        selectedCurrencyCode: widget.selectedCurrencyCode,
-        onCurrencyChanged: widget.onCurrencyChanged,
-      ),
-    ];
-
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: ThemeService.backgroundColor, // Match background color
       extendBody: true, // Allow body to flow under bottom nav
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _selectedIndex = index;
-            _bottomNavIndex = index;
-          });
-          FocusManager.instance.primaryFocus?.unfocus();
-        },
-        physics: const NeverScrollableScrollPhysics(),
-        children: pages,
+      body: Stack(
+        children: [
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _selectedIndex = index;
+                _bottomNavIndex = index;
+              });
+              FocusManager.instance.primaryFocus?.unfocus();
+            },
+            physics: const NeverScrollableScrollPhysics(),
+            children: _pages,
+          ),
+          if (_isFabMenuOpen) _buildFabOverlay(),
+        ],
       ),
       bottomNavigationBar: _buildCustomBottomNav(),
+    );
+  }
+
+  Widget _buildFabOverlay() {
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _isFabMenuOpen = false),
+          child: Container(
+            color: Colors.black.withOpacity(0.4),
+          ),
+        ),
+        Positioned(
+          bottom: 110,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 200,
+                decoration: BoxDecoration(
+                  color: _cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildFabMenuItem(Icons.local_gas_station_rounded, const Color(0xFF22C55E), 'Add Fuel', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelPage()));
+                    }),
+                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    _buildFabMenuItem(Icons.account_balance_wallet_rounded, const Color(0xFFEF4444), 'Add Expense', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddExpensePage()));
+                    }),
+                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    _buildFabMenuItem(Icons.build_rounded, const Color(0xFF3B82F6), 'Add Service', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddExpensePage(initialCategory: 'Service')));
+                    }),
+                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    _buildFabMenuItem(Icons.notifications_active_rounded, const Color(0xFFF59E0B), 'Add Reminder', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddReminderPage()));
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFabMenuItem(IconData icon, Color color, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: () {
+        setState(() => _isFabMenuOpen = false);
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 16),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -339,13 +426,13 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
             ),
           );
         } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddFuelPage()),
-          );
+          setState(() {
+            _isFabMenuOpen = !_isFabMenuOpen;
+          });
         }
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         width: 64,
         height: 64,
         decoration: BoxDecoration(
@@ -357,15 +444,15 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF00FF88).withValues(alpha: 0.42),
+              color: const Color(0xFF00FF88).withOpacity(0.42),
               blurRadius: 22,
               spreadRadius: 3,
               offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: const Icon(
-          Icons.add_rounded,
+        child: Icon(
+          _isFabMenuOpen ? Icons.close_rounded : Icons.add_rounded,
           color: Colors.black,
           size: 35,
           weight: 600,

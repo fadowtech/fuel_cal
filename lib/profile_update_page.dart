@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/profile_service.dart';
+import 'package:fuel_cal/services/api_service.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 
 Color get _neonColor => ThemeService.neonColor;
@@ -49,6 +50,13 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
 
     // Simulate brief saving animation
     await Future.delayed(const Duration(milliseconds: 600));
+
+    // Try updating the database via API
+    await ApiService().updateProfile({
+      'full_name': _nameController.text,
+      'email': _emailController.text,
+      'phone': _phoneController.text,
+    });
 
     await ProfileService.saveProfile(
       name: _nameController.text,

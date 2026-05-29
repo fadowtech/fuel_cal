@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
@@ -34,6 +38,10 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   bool _isFullTank = false;
   String? _selectedPaymentMethod;
   bool _isLoading = false;
+  String? _odoErrorText;
+  String? _volumeErrorText;
+  String? _priceErrorText;
+  String? _amountErrorText;
 
   final List<String> _stations = ['Shell', 'BP', 'Mobil', 'Exxon', 'Local Station'];
   final List<String> _paymentMethods = ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Other'];
@@ -52,6 +60,82 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   double _tankLevelPercent = 0.0;
   double _lastOdo = 0.0;
   bool _isInitialized = false;
+  
+  bool _isFetchingLocation = false;
+  XFile? _billImage;
+  String? _existingImageUrl;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _billImage = image;
+      });
+    }
+  }
+
+  Future<void> _fetchCurrentLocation() async {
+    setState(() {
+      _isFetchingLocation = true;
+    });
+    
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permissions are denied');
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied');
+      } 
+
+      Position position = await Geolocator.getCurrentPosition();
+      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+        String address = [
+          if (place.subLocality != null && place.subLocality!.isNotEmpty) place.subLocality,
+          if (place.locality != null && place.locality!.isNotEmpty) place.locality,
+          if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) place.administrativeArea
+        ].where((e) => e != null).join(', ');
+        
+        if (address.isEmpty) {
+           address = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+        }
+
+        if (mounted) {
+          setState(() {
+            _locationController.text = address;
+            _isFetchingLocation = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location fetched successfully!')),
+          );
+        }
+      } else {
+        throw Exception('Could not determine address');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isFetchingLocation = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to get location: $e')),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -74,6 +158,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       _selectedPaymentMethod = (log['payment'] == 'Not specified' || log['payment'] == null) ? null : log['payment'];
       if (log['rawDate'] != null) {
         _selectedDate = log['rawDate'] as DateTime;
+      }
+      if (log['bill_image_path'] != null && log['bill_image_path'].toString().isNotEmpty) {
+        _existingImageUrl = log['bill_image_path'];
       }
     }
   }
@@ -115,31 +202,20 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           
         double currentFuel = 0.0;
         double currentRange = 0.0;
-        double currentMileage = defaultMileage;
         
-        for (int i = 0; i < ascLogs.length; i++) {
-          final log = ascLogs[i];
-          double logFuelAdded = log.fuelQuantity;
-          double logRangeInput = log.remainingRange ?? 0.0;
-          
-          if (i == 0) {
-            currentFuel = logFuelAdded;
-            currentRange = logRangeInput > 0 ? logRangeInput : (currentFuel * currentMileage);
-            if (logFuelAdded > 0) currentMileage = currentRange / logFuelAdded;
-          } else {
-            double rangeBeforeFill = logRangeInput;
-            double remainingFuelBeforeRefill = 0.0;
-            if (currentRange > 0) {
-              remainingFuelBeforeRefill = (rangeBeforeFill / currentRange) * currentFuel;
-            }
-            currentFuel = remainingFuelBeforeRefill + logFuelAdded;
-            currentRange = currentFuel * currentMileage;
-          }
+        double currentMileage = defaultMileage;
+        if (ascLogs.length > 1) {
+           double totDist = ascLogs.last.odometer - ascLogs.first.odometer;
+           double totFuel = ascLogs.map((l) => l.fuelQuantity).reduce((a, b) => a + b);
+           if (totFuel > 0 && totDist > 0) {
+              currentMileage = totDist / totFuel;
+           }
         }
+        if (currentMileage <= 0) currentMileage = 15.0;
         
         _avgMileage = currentMileage;
-        _previousFuel = currentFuel;
-        _previousRange = currentRange;
+        _previousFuel = ascLogs.last.fuelQuantity; // Tank-to-tank ignores history
+        _previousRange = _previousFuel * _avgMileage;
         _isFirstLog = false;
         
         final sortedLogs = List<dynamic>.from(filteredLogs)
@@ -168,7 +244,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           }
         }
         
-        double estimatedDistanceSinceLastLog = avgDailyDistance * daysSinceLastLog;
+        double estimatedDistanceSinceLastLog = 0.0; // Removed time decay to match explicitly logged values
         double rangeKM = (currentRange - estimatedDistanceSinceLastLog).clamp(0.0, 9999.0);
         _baseFuelLeft = (rangeKM / _avgMileage).clamp(0.0, _tankCapacity);
       } else {
@@ -200,9 +276,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
          _estimatedRange = 0;
          _tankLevelPercent = 0;
       } else {
-         double remainingFuelBeforeRefill = 0.0;
+         double remainingFuelBeforeRefill = 0;
          if (rangeInput > 0) {
-           remainingFuelBeforeRefill = rangeInput / _avgMileage;
+           remainingFuelBeforeRefill += rangeInput / _avgMileage;
          }
          
          _currentFuelLeft = (remainingFuelBeforeRefill + liters).clamp(0.0, _tankCapacity);
@@ -277,15 +353,46 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
   Future<void> _saveFuel() async {
     final liters = double.tryParse(_fuelLitersController.text) ?? 0;
+    final price = double.tryParse(_fuelPriceController.text) ?? 0;
     final totalCost = double.tryParse(_totalAmountController.text) ?? 0;
     final odo = double.tryParse(_currentOdoController.text) ?? 0;
     
-    if (liters <= 0 || totalCost <= 0 || odo <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid fuel, amount, and odometer readings.')),
-      );
-      return;
+    bool hasError = false;
+
+    if (liters <= 0) {
+      _volumeErrorText = 'Required';
+      hasError = true;
+    } else {
+      _volumeErrorText = null;
     }
+
+    if (price <= 0) {
+      _priceErrorText = 'Required';
+      hasError = true;
+    } else {
+      _priceErrorText = null;
+    }
+
+    if (totalCost <= 0) {
+      _amountErrorText = 'Required';
+      hasError = true;
+    } else {
+      _amountErrorText = null;
+    }
+
+    if (odo <= 0) {
+      _odoErrorText = 'Required';
+      hasError = true;
+    } else if (odo <= _lastOdo) {
+      _odoErrorText = 'Must be > ${_lastOdo.toStringAsFixed(0)} KM';
+      hasError = true;
+    } else {
+      _odoErrorText = null;
+    }
+
+    setState(() {});
+
+    if (hasError) return;
 
     setState(() => _isLoading = true);
 
@@ -295,7 +402,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     final vehicles = ref.read(vehiclesProvider).value ?? [];
     final activeVehicle = selectedVehicle ?? (vehicles.isNotEmpty ? vehicles.first : null);
     
-    final payload = {
+    final Map<String, dynamic> payload = {
       "vehicle_id": activeVehicle?.id,
       "fuel_quantity": liters,
       "total_cost": totalCost,
@@ -310,6 +417,14 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       "date": _selectedDate.toIso8601String(),
     };
 
+    if (_billImage != null) {
+      final bytes = await _billImage!.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      payload["bill_image_path"] = "data:image/jpeg;base64,$base64Image";
+    } else if (_existingImageUrl != null) {
+      payload["bill_image_path"] = _existingImageUrl;
+    }
+
     bool success;
     if (widget.existingLog != null && widget.existingLog!['id'] != null) {
       success = await apiService.updateFuelLog(widget.existingLog!['id'] as int, payload);
@@ -321,9 +436,11 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
     if (success && mounted) {
       ref.refresh(fuelLogsProvider);
-      Navigator.pop(context); // Pop AddFuelPage
       if (widget.existingLog != null) {
-        Navigator.pop(context); // Pop LogDetailPage so user sees fresh list
+        int count = 0;
+        Navigator.popUntil(context, (route) => count++ == 2);
+      } else {
+        Navigator.pop(context);
       }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -519,39 +636,76 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
   Widget _buildTextField({
     required TextEditingController controller,
+    required String label,
     required String hint,
     required IconData icon,
     String? suffix,
     bool isNumber = false,
     Function(String)? onChanged,
+    String? errorText,
+    bool isRequired = false,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _surfaceColor.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _surfaceColor),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, color: _neonColor, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              onChanged: onChanged,
-              decoration: InputDecoration(
-                hintText: hint,
-                hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
-                border: InputBorder.none,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+              children: [
+                if (isRequired)
+                  const TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: _surfaceColor.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: errorText != null ? Colors.redAccent : _surfaceColor),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          child: Row(
+            children: [
+              Icon(icon, color: errorText != null ? Colors.redAccent : _neonColor, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  onChanged: onChanged,
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    hintStyle: TextStyle(color: _mutedColor.withOpacity(0.5), fontSize: 14),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              if (suffix != null) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 14)),
+            ],
+          ),
+        ),
+        if (errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, top: 6),
+            child: Text(
+              errorText,
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontSize: 12,
               ),
             ),
           ),
-          if (suffix != null) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 14)),
-        ],
-      ),
+      ],
     );
   }
 
@@ -559,26 +713,39 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     return Column(
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: _buildTextField(
                 controller: _fuelLitersController,
+                label: 'Fuel volume',
                 hint: 'Enter fuel in liters',
                 icon: Icons.water_drop_outlined,
                 suffix: 'L',
                 isNumber: true,
-                onChanged: (_) => _calculateTotal(),
+                isRequired: true,
+                errorText: _volumeErrorText,
+                onChanged: (_) {
+                  if (_volumeErrorText != null) setState(() => _volumeErrorText = null);
+                  _calculateTotal();
+                },
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _buildTextField(
                 controller: _fuelPriceController,
-                hint: 'Enter price per liter',
+                label: 'Price per liter',
+                hint: 'Enter price',
                 icon: Icons.currency_rupee,
                 suffix: '/L',
                 isNumber: true,
-                onChanged: (_) => _calculateTotal(),
+                isRequired: true,
+                errorText: _priceErrorText,
+                onChanged: (_) {
+                  if (_priceErrorText != null) setState(() => _priceErrorText = null);
+                  _calculateTotal();
+                },
               ),
             ),
           ],
@@ -586,10 +753,16 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         const SizedBox(height: 12),
         _buildTextField(
           controller: _totalAmountController,
+          label: 'Total amount',
           hint: 'Enter total amount',
           icon: Icons.currency_rupee,
           suffix: '₹',
           isNumber: true,
+          isRequired: true,
+          errorText: _amountErrorText,
+          onChanged: (_) {
+            if (_amountErrorText != null) setState(() => _amountErrorText = null);
+          },
         ),
       ],
     );
@@ -601,10 +774,18 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       children: [
         _buildTextField(
           controller: _currentOdoController,
+          label: 'Current Odometer',
           hint: 'Enter current ODO',
           icon: Icons.speed,
           suffix: 'KM',
           isNumber: true,
+          isRequired: true,
+          errorText: _odoErrorText,
+          onChanged: (_) {
+            if (_odoErrorText != null) {
+              setState(() => _odoErrorText = null);
+            }
+          },
         ),
         Padding(
           padding: const EdgeInsets.only(left: 48, top: 4, bottom: 12),
@@ -612,6 +793,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         ),
         _buildTextField(
           controller: _remainingRangeController,
+          label: 'Distance to Empty',
           hint: 'Distance to Empty',
           icon: Icons.compare_arrows_rounded,
           suffix: 'KM',
@@ -737,18 +919,31 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _surfaceColor,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.my_location, color: Colors.white, size: 14),
-                        const SizedBox(width: 4),
-                        const Text('Use current location', style: TextStyle(color: Colors.white, fontSize: 12)),
-                      ],
+                  GestureDetector(
+                    onTap: _isFetchingLocation ? null : _fetchCurrentLocation,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _surfaceColor,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          if (_isFetchingLocation)
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          else
+                            const Icon(Icons.my_location, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            _isFetchingLocation ? 'Fetching...' : 'Use current location', 
+                            style: const TextStyle(color: Colors.white, fontSize: 12)
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -766,13 +961,19 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                   ],
                 ),
               ),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.edit_note, color: _neonColor, size: 20),
-                  const SizedBox(width: 12),
-                  const Text('Enter location manually', style: TextStyle(color: Colors.white, fontSize: 14)),
-                  const SizedBox(width: 16),
-                  Expanded(
+                  Row(
+                    children: [
+                      Icon(Icons.edit_note, color: _neonColor, size: 20),
+                      const SizedBox(width: 12),
+                      const Text('Enter location manually', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32),
                     child: TextField(
                       controller: _locationController,
                       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -783,9 +984,10 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: _surfaceColor),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         suffixText: 'Optional',
                         suffixStyle: TextStyle(color: _mutedColor, fontSize: 12),
+                        isDense: true,
                       ),
                     ),
                   ),
@@ -860,21 +1062,42 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   }
 
   Widget _buildUploadBill() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: _surfaceColor.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _surfaceColor, style: BorderStyle.solid),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.camera_alt_outlined, color: _neonColor, size: 24),
-          const SizedBox(height: 8),
-          const Text('Upload bill image', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-          Text('Optional • JPG, PNG up to 5MB', style: TextStyle(color: _mutedColor, fontSize: 12)),
-        ],
+    return GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: _surfaceColor.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _surfaceColor, style: BorderStyle.solid),
+        ),
+        child: _billImage != null
+            ? Column(
+                children: [
+                  Icon(Icons.check_circle, color: _neonColor, size: 24),
+                  const SizedBox(height: 8),
+                  Text(_billImage!.name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                  Text('Tap to change', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                ],
+              )
+            : _existingImageUrl != null
+                ? Column(
+                    children: [
+                      Icon(Icons.image_outlined, color: _neonColor, size: 24),
+                      const SizedBox(height: 8),
+                      const Text('Image already uploaded', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text('Tap to change', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      Icon(Icons.camera_alt_outlined, color: _neonColor, size: 24),
+                      const SizedBox(height: 8),
+                      const Text('Upload bill image', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text('Optional • JPG, PNG up to 5MB', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                    ],
+                  ),
       ),
     );
   }

@@ -69,9 +69,9 @@ class ApiService {
         try {
           final meRes = await _dio.get('/users/me', options: Options(headers: {'Authorization': 'Bearer $token'}));
           final name = meRes.data['full_name'] ?? meRes.data['name'] ?? email.split('@').first;
-          await ProfileService.saveProfile(name: name, email: email, phone: '');
+          await ProfileService.saveProfile(name: name, email: email, phone: '', fromLogin: true);
         } catch (_) {
-          await ProfileService.saveProfile(name: email.split('@').first, email: email, phone: '');
+          await ProfileService.saveProfile(name: email.split('@').first, email: email, phone: '', fromLogin: true);
         }
         
         return true;
@@ -92,7 +92,7 @@ class ApiService {
       });
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-         await ProfileService.saveProfile(name: name, email: email, phone: '');
+         await ProfileService.saveProfile(name: name, email: email, phone: '', fromLogin: true);
          return true;
       }
       return false;
@@ -105,6 +105,20 @@ class ApiService {
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'user_email');
     await _storage.delete(key: 'user_password');
+  }
+
+  Future<bool> updateProfile(Map<String, dynamic> data) async {
+    try {
+      await _dio.put('/users/me', data: data);
+      return true;
+    } catch (e) {
+      if (e is DioException) {
+        print('updateProfile error response: ${e.response?.data}');
+      } else {
+        print('updateProfile error: $e');
+      }
+      return false;
+    }
   }
 
   Future<List<dynamic>> getVehicles() async {

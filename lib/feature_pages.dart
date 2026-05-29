@@ -7,10 +7,12 @@ import 'package:fuel_cal/mock_data.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/models/expense_model.dart';
 import 'package:fuel_cal/add_expense_page.dart';
+import 'package:fuel_cal/expense_details_page.dart';
 import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
+import 'dart:convert';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -372,9 +374,22 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                   GestureDetector(
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
                     child: Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(color: _neonColor, shape: BoxShape.circle),
-                      child: const Icon(Icons.add, color: Colors.black),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _neonColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _neonColor.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.add, color: _neonColor, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Add Expense',
+                            style: TextStyle(color: _neonColor, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -435,21 +450,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                         expenses: filteredExpenses
                       ),
                       const SizedBox(height: 16),
-                      _FilterChips(
-                        items: const [
-                          'All',
-                          'Fuel',
-                          'Insurance',
-                          'Toll',
-                          'Parking',
-                          'Washing',
-                          'Tires',
-                          'Service',
-                          'Other'
-                        ],
-                        selectedItem: _selectedFilter,
-                        onSelected: (val) => setState(() => _selectedFilter = val),
-                      ),
+                      _buildCategoryFilter(monthFiltered),
                       const SizedBox(height: 16),
                       if (filteredExpenses.isEmpty)
                         Center(
@@ -484,69 +485,390 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
       ),
     );
   }
+
+  Widget _buildCategoryFilter(List<Expense> currentMonthExpenses) {
+    final Map<String, int> dynamicCounts = {'All': currentMonthExpenses.length};
+    for (var e in currentMonthExpenses) {
+      final catName = e.category;
+      dynamicCounts[catName] = (dynamicCounts[catName] ?? 0) + 1;
+    }
+
+    final List<Map<String, dynamic>> categories = [
+      {'name': 'All', 'icon': Icons.grid_view_rounded, 'color': ThemeService.neonColor},
+      {'name': 'Insurance', 'icon': Icons.health_and_safety_outlined, 'color': Colors.indigoAccent},
+      {'name': 'Toll', 'icon': Icons.receipt_long_outlined, 'color': Colors.orangeAccent},
+      {'name': 'Parking', 'icon': Icons.local_parking_outlined, 'color': Colors.blueAccent},
+      {'name': 'Washing', 'icon': Icons.local_car_wash_outlined, 'color': Colors.cyan},
+      {'name': 'Tires', 'icon': Icons.tire_repair_outlined, 'color': Colors.teal},
+      {'name': 'Service', 'icon': Icons.build_outlined, 'color': const Color(0xFF00FF88)},
+      {'name': 'Other', 'icon': Icons.more_horiz, 'color': Colors.grey},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categories.map((cat) {
+          final isSelected = _selectedFilter == cat['name'];
+          final badgeCount = dynamicCounts[cat['name']] ?? 0;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedFilter = cat['name']!),
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white.withOpacity(0.05) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? ThemeService.neonColor : Colors.white.withOpacity(0.1),
+                  width: isSelected ? 1.5 : 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(cat['icon'], color: cat['color'], size: 28),
+                      if (badgeCount > 0)
+                        Positioned(
+                          right: -8,
+                          top: -6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: ThemeService.neonColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text('$badgeCount', style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    cat['name']!,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : ThemeService.mutedColor,
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  if (isSelected)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      width: 20,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: ThemeService.neonColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 }
 
-class ServicesPage extends StatefulWidget {
+class ServicesPage extends ConsumerStatefulWidget {
   const ServicesPage({super.key});
 
   @override
-  State<ServicesPage> createState() => _ServicesPageState();
+  ConsumerState<ServicesPage> createState() => _ServicesPageState();
 }
 
-class _ServicesPageState extends State<ServicesPage> {
+class _ServicesPageState extends ConsumerState<ServicesPage> {
   String _selectedFilter = 'All';
+  final List<String> _serviceCategories = ['Service', 'Engine', 'Brakes', 'Suspension', 'General', 'Tires'];
 
   @override
   Widget build(BuildContext context) {
-    final filteredServices = _selectedFilter == 'All'
-        ? mockServices
-        : mockServices.where((s) => s['category'] == _selectedFilter).toList();
-
-    final total = filteredServices.fold<int>(
-      0,
-      (sum, item) => sum + (item['amount'] as int),
-    );
+    final expensesAsync = ref.watch(expensesProvider);
 
     return _FeatureScaffold(
       title: 'Services',
       subtitle: 'Maintenance logs',
-      action: const Icon(Icons.add, color: Colors.black),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        children: [
-          _TotalSpendCard(total: total, count: filteredServices.length),
-          const SizedBox(height: 16),
-          _FilterChips(
-            items: const [
-              'All',
-              'Engine',
-              'Brakes',
-              'Suspension',
-              'General',
-            ],
-            selectedItem: _selectedFilter,
-            onSelected: (val) => setState(() => _selectedFilter = val),
+      action: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: ThemeService.neonColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
           ),
-          const SizedBox(height: 16),
-          ...filteredServices.map((s) => _ServiceTile(service: s)),
-        ],
+          child: Row(
+            children: [
+              Icon(Icons.add, color: ThemeService.neonColor, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                'Add Service',
+                style: TextStyle(color: ThemeService.neonColor, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
+      child: expensesAsync.when(
+        data: (expenses) {
+          // Convert mock data to Expense objects so the UI doesn't look empty
+          final mockExpenses = mockServices.map((s) {
+            DateTime? parsedDate;
+            final d = s['date'] as String;
+            final parts = d.split(' ');
+            if (parts.length == 2) {
+              final day = int.tryParse(parts[0]) ?? 1;
+              final monthStr = parts[1];
+              final monthMap = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12};
+              final month = monthMap[monthStr] ?? 1;
+              parsedDate = DateTime(DateTime.now().year, month, day);
+            }
+
+            return Expense(
+              id: s['id'].hashCode,
+              userId: 1,
+              category: s['category'],
+              title: s['title'],
+              amount: (s['amount'] as num).toDouble(),
+              date: parsedDate,
+            );
+          }).toList();
+
+          final allExpenses = [...mockExpenses, ...expenses];
+
+          final allServices = allExpenses.where((e) => _serviceCategories.contains(e.category)).toList();
+          
+          final filteredServices = _selectedFilter == 'All'
+              ? allServices
+              : allServices.where((s) => s.category == _selectedFilter).toList();
+
+          final total = filteredServices.fold<double>(
+            0,
+            (sum, item) => sum + item.amount,
+          );
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            children: [
+              _TotalSpendDonutCard(
+                total: total.toInt(),
+                previousTotal: 0,
+                selectedMonth: DateTime.now(),
+                expenses: filteredServices,
+              ),
+              const SizedBox(height: 16),
+              _buildCategoryFilter(allServices),
+              const SizedBox(height: 16),
+              if (filteredServices.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  alignment: Alignment.center,
+                  child: Text('No service logs found.', style: TextStyle(color: Colors.white.withOpacity(0.5))),
+                )
+              else
+                ...filteredServices.map((s) => _ServiceTile(service: s)),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error loading services: $err', style: const TextStyle(color: Colors.redAccent))),
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilter(List<Expense> allServices) {
+    final Map<String, int> dynamicCounts = {'All': allServices.length};
+    for (var s in allServices) {
+      final catName = s.category;
+      dynamicCounts[catName] = (dynamicCounts[catName] ?? 0) + 1;
+    }
+
+    final List<Map<String, dynamic>> categories = [
+      {'name': 'All', 'icon': Icons.grid_view_rounded, 'color': ThemeService.neonColor},
+      {'name': 'Service', 'icon': Icons.build_outlined, 'color': const Color(0xFF00FF88)},
+      {'name': 'Engine', 'icon': Icons.settings_outlined, 'color': Colors.orange},
+      {'name': 'Brakes', 'icon': Icons.adjust_outlined, 'color': Colors.redAccent},
+      {'name': 'Suspension', 'icon': Icons.hardware_outlined, 'color': Colors.purpleAccent},
+      {'name': 'General', 'icon': Icons.fact_check_outlined, 'color': Colors.blueAccent},
+      {'name': 'Tires', 'icon': Icons.tire_repair_outlined, 'color': Colors.cyan},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categories.map((cat) {
+          final isSelected = _selectedFilter == cat['name'];
+          final badgeCount = dynamicCounts[cat['name']] ?? 0;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedFilter = cat['name']!),
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white.withOpacity(0.05) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? ThemeService.neonColor : Colors.white.withOpacity(0.1),
+                  width: isSelected ? 1.5 : 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(cat['icon'], color: cat['color'], size: 28),
+                      if (badgeCount > 0)
+                        Positioned(
+                          right: -8,
+                          top: -6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: ThemeService.neonColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text('$badgeCount', style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    cat['name']!,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : ThemeService.mutedColor,
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  if (isSelected)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      width: 20,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: ThemeService.neonColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 }
 
 class _ServiceTile extends StatelessWidget {
-  final Map<String, dynamic> service;
+  final Expense service;
 
   const _ServiceTile({required this.service});
 
   @override
   Widget build(BuildContext context) {
-    return _ListTileShell(
-      icon: Icons.build_circle_outlined,
-      title: service['title'] as String,
-      subtitle: '${service['category']} - ${service['date']}',
-      trailing: '₹${service['amount']}',
+    final dateFormat = DateFormat('dd MMM');
+    final dateStr = service.date != null ? dateFormat.format(service.date!) : 'Unknown Date';
+    
+    Color iconColor;
+    IconData iconData;
+    switch (service.category.toLowerCase()) {
+      case 'engine': iconColor = Colors.orange; iconData = Icons.settings_outlined; break;
+      case 'brakes': iconColor = Colors.redAccent; iconData = Icons.adjust_outlined; break;
+      case 'suspension': iconColor = Colors.purpleAccent; iconData = Icons.hardware_outlined; break;
+      case 'general': iconColor = Colors.blueAccent; iconData = Icons.fact_check_outlined; break;
+      case 'tires': iconColor = Colors.cyan; iconData = Icons.tire_repair_outlined; break;
+      default: iconColor = const Color(0xFF00FF88); iconData = Icons.build_outlined; break;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ExpenseDetailsPage(expense: service),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: ThemeService.cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 16,
+              bottom: 16,
+              child: Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: iconColor,
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(4),
+                    bottomRight: Radius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(iconData, color: iconColor, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          service.title,
+                          style: TextStyle(
+                            color: ThemeService.textColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          service.category,
+                          style: TextStyle(color: ThemeService.mutedColor, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '₹${service.amount.toStringAsFixed(0)}',
+                        style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(dateStr, style: TextStyle(color: ThemeService.mutedColor, fontSize: 11)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -645,14 +967,37 @@ class LogDetailPage extends ConsumerWidget {
               value: log['notes'] ?? 'No notes provided',
               icon: Icons.description_outlined),
           const SizedBox(height: 12),
-          Container(
-            height: 220,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-                color: _surfaceColor, borderRadius: BorderRadius.circular(18)),
-            child: Text('Fuel bill image',
-                style: TextStyle(color: _mutedColor, fontSize: 13)),
-          ),
+          if (log['bill_image_path'] != null && log['bill_image_path'].toString().isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                height: 220,
+                width: double.infinity,
+                decoration: BoxDecoration(color: _surfaceColor),
+                child: log['bill_image_path'].toString().startsWith('http')
+                    ? Image.network(
+                        log['bill_image_path'],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Center(child: Text('Image failed to load', style: TextStyle(color: _mutedColor, fontSize: 13))),
+                      )
+                    : log['bill_image_path'].toString().contains('base64,')
+                        ? Image.memory(
+                            base64Decode(log['bill_image_path'].toString().split('base64,').last),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Center(child: Text('Invalid image format', style: TextStyle(color: _mutedColor, fontSize: 13))),
+                          )
+                        : Center(child: Text('Invalid image format', style: TextStyle(color: _mutedColor, fontSize: 13))),
+              ),
+            )
+          else
+            Container(
+              height: 220,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                  color: _surfaceColor, borderRadius: BorderRadius.circular(18)),
+              child: Text('Fuel bill image',
+                  style: TextStyle(color: _mutedColor, fontSize: 13)),
+            ),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -781,17 +1126,7 @@ class _FeatureScaffold extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (action != null)
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                            colors: [_neonColor, Color(0xFF00BFA5)]),
-                        shape: BoxShape.circle,
-                      ),
-                      child: action,
-                    ),
+                  if (action != null) action!,
                 ],
               ),
             ),
@@ -1693,99 +2028,130 @@ class _ExpenseTileState extends State<_ExpenseTile> {
 
   @override
   Widget build(BuildContext context) {
+    Color iconColor;
+    IconData iconData;
+    switch (widget.expense.category.toLowerCase()) {
+      case 'fuel': iconColor = Colors.green; iconData = Icons.local_gas_station_outlined; break;
+      case 'insurance': iconColor = Colors.indigoAccent; iconData = Icons.health_and_safety_outlined; break;
+      case 'toll': iconColor = Colors.orangeAccent; iconData = Icons.receipt_long_outlined; break;
+      case 'parking': iconColor = Colors.blueAccent; iconData = Icons.local_parking_outlined; break;
+      case 'washing': iconColor = Colors.cyan; iconData = Icons.local_car_wash_outlined; break;
+      case 'tires': iconColor = Colors.teal; iconData = Icons.tire_repair_outlined; break;
+      case 'service': iconColor = const Color(0xFF00FF88); iconData = Icons.build_outlined; break;
+      default: iconColor = Colors.grey; iconData = Icons.more_horiz; break;
+    }
+
     Widget child = GestureDetector(
       onTap: () {
+        if (widget.onTap != null) widget.onTap!();
         setState(() {
           _isExpanded = !_isExpanded;
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: _surfaceColor,
+          color: ThemeService.cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.03),
-            width: 1,
-          ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Stack(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                _categoryIcon(widget.expense.category),
-                color: _neonColor,
-                size: 24,
+            Positioned(
+              left: 0,
+              top: 16,
+              bottom: 16,
+              child: Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: iconColor,
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(4),
+                    bottomRight: Radius.circular(4),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    widget.expense.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      iconData,
+                      color: iconColor,
+                      size: 24,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${widget.expense.category} • ${widget.expense.date != null ? '${widget.expense.date!.day} ${_getMonth(widget.expense.date!.month)}' : 'Today'}',
-                    style: TextStyle(
-                      color: _mutedColor,
-                      fontSize: 13,
-                    ),
-                  ),
-                  if (_isExpanded) ...[
-                    const SizedBox(height: 8),
-                    Row(
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.receipt_long_outlined, size: 14, color: _mutedColor),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            (widget.expense.notes != null && widget.expense.notes!.trim().isNotEmpty)
-                                ? widget.expense.notes!
-                                : 'no notes',
-                            style: TextStyle(color: _mutedColor, fontSize: 13),
+                        Text(
+                          widget.expense.title,
+                          style: TextStyle(
+                            color: ThemeService.textColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.expense.category,
+                          style: TextStyle(
+                            color: ThemeService.mutedColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (_isExpanded) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.receipt_long_outlined, size: 14, color: ThemeService.mutedColor),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  (widget.expense.notes != null && widget.expense.notes!.trim().isNotEmpty)
+                                      ? widget.expense.notes!
+                                      : 'no notes',
+                                  style: TextStyle(color: ThemeService.mutedColor, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
-                  ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '₹${widget.expense.amount.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: ThemeService.textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.expense.date != null ? '${widget.expense.date!.day} ${_getMonth(widget.expense.date!.month)}' : 'Today',
+                        style: TextStyle(color: ThemeService.mutedColor, fontSize: 11),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              '₹${widget.expense.amount.toStringAsFixed(0)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (widget.expense.notes != null && widget.expense.notes!.trim().isNotEmpty) ...[
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: _mutedColor,
-                size: 20,
-              ),
-            ] else ...[
-              const SizedBox(width: 28),
-            ],
           ],
         ),
       ),

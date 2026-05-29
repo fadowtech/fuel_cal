@@ -23,3 +23,9 @@ final expensesProvider = FutureProvider<List<Expense>>((ref) async {
   final data = await apiService.getExpenses();
   return data.map((json) => Expense.fromJson(json)).toList();
 });
+
+final remindersProvider = FutureProvider<List<dynamic>>((ref) async {
+  final apiService = ref.watch(apiServiceProvider);
+  final data = await apiService.getReminders();
+  return data;
+});

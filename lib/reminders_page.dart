@@ -5,9 +5,11 @@ import 'package:fuel_cal/future_reminders_page.dart';
 import 'package:fuel_cal/reminder_details_page.dart';
 import 'package:fuel_cal/services/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RemindersPage extends StatefulWidget {
-  const RemindersPage({super.key});
+  final Map<String, dynamic>? initialActionData;
+  const RemindersPage({super.key, this.initialActionData});
 
   @override
   State<RemindersPage> createState() => _RemindersPageState();
@@ -40,11 +42,39 @@ class _RemindersPageState extends State<RemindersPage> {
   List<Map<String, dynamic>> _upcomingReminders = [];
   bool _isLoading = true;
   String _sortOption = 'Due Date';
+  String _completedFilter = 'All';
 
   @override
   void initState() {
     super.initState();
+    _loadSmartRemindersState();
     _fetchReminders();
+    
+    if (widget.initialActionData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReminderDetailsPage(data: widget.initialActionData!),
+          ),
+        );
+        if (result == true) {
+          _fetchReminders();
+        }
+      });
+    }
+  }
+
+  Future<void> _loadSmartRemindersState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _smartRemindersEnabled = prefs.getBool('smart_reminders_enabled') ?? true;
+    });
+  }
+
+  Future<void> _saveSmartRemindersState(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('smart_reminders_enabled', value);
   }
 
   Future<void> _fetchReminders() async {
@@ -71,7 +101,7 @@ class _RemindersPageState extends State<RemindersPage> {
         final apiStatus = r['status'] as String? ?? 'pending';
         
         if (apiStatus == 'completed' || apiStatus == 'skipped') {
-            status = 'Completed';
+            status = apiStatus == 'skipped' ? 'Skipped' : 'Completed';
             timeLeft = apiStatus == 'skipped' ? 'Skipped' : 'Done';
             if (r['completed_at'] != null) {
                 final compDate = DateTime.tryParse(r['completed_at']);
@@ -99,7 +129,9 @@ class _RemindersPageState extends State<RemindersPage> {
           'title': r['title'] ?? '',
           'subtitle': apiStatus != 'pending' ? '${r['category']} • $timeLeft' : '${r['category']} • ${r['due_km'] != null ? 'Due in ${r['due_km']} KM' : (r['notes'] ?? '')}',
           'status': status,
-          'statusColor': apiStatus != 'pending' ? const Color(0xFF22C55E) : (status == 'Due soon' || status == 'Overdue' ? _dangerColor : color),
+          'statusColor': apiStatus != 'pending' 
+              ? (apiStatus == 'skipped' ? Colors.orange : const Color(0xFF22C55E)) 
+              : (status == 'Due soon' || status == 'Overdue' ? _dangerColor : color),
           'timeleft': apiStatus != 'pending' ? '' : timeLeft,
           'date': dueDate != null ? DateFormat('dd MMM yyyy').format(dueDate) : '',
           'raw_date': dueDate,
@@ -166,6 +198,7 @@ class _RemindersPageState extends State<RemindersPage> {
                   else ...[
                     if (_selectedTab == 0) ..._buildUpcomingAlertsTab(),
                     if (_selectedTab == 1) ..._buildAllRemindersTab(),
+                    if (_selectedTab == 2) ..._buildCompletedTab(),
                   ],
                   
                   const SizedBox(height: 32),
@@ -231,6 +264,7 @@ class _RemindersPageState extends State<RemindersPage> {
         children: [
           Expanded(child: _buildTab(0, 'Upcoming Alerts', Icons.notifications_none)),
           Expanded(child: _buildTab(1, 'All Reminders', Icons.format_list_bulleted)),
+          Expanded(child: _buildTab(2, 'Completed', Icons.check_circle_outline)),
         ],
       ),
     );
@@ -259,11 +293,32 @@ class _RemindersPageState extends State<RemindersPage> {
   }
 
   Widget _buildCategoryFilter() {
+    List<Map<String, dynamic>> targetList = _upcomingReminders;
+    if (_selectedTab == 0) {
+      targetList = _upcomingReminders.where((r) {
+        final DateTime? date = r['raw_date'];
+        if (date == null) return false;
+        final diff = date.difference(DateTime.now()).inDays;
+        return diff <= 30;
+      }).toList();
+    } else if (_selectedTab == 2) {
+      targetList = _completedFilter == 'All'
+          ? _completedReminders
+          : _completedReminders.where((r) => r['status'] == _completedFilter).toList();
+    }
+
+    final Map<String, int> dynamicCounts = {'All': targetList.length};
+    for (var r in targetList) {
+      final catName = r['category'] as String? ?? 'Others';
+      dynamicCounts[catName] = (dynamicCounts[catName] ?? 0) + 1;
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: _categories.map((cat) {
           final isSelected = _selectedCategory == cat['name'];
+          final badgeCount = dynamicCounts[cat['name']] ?? 0;
           return GestureDetector(
             onTap: () => setState(() => _selectedCategory = cat['name']!),
             child: Container(
@@ -283,7 +338,7 @@ class _RemindersPageState extends State<RemindersPage> {
                     clipBehavior: Clip.none,
                     children: [
                       Icon(cat['icon'], color: cat['color'], size: 28),
-                      if (cat['badge'] != null && (cat['badge'] as int) > 0)
+                      if (badgeCount > 0)
                         Positioned(
                           right: -8,
                           top: -6,
@@ -293,7 +348,7 @@ class _RemindersPageState extends State<RemindersPage> {
                               color: _neonColor,
                               shape: BoxShape.circle,
                             ),
-                            child: Text('${cat['badge']}', style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+                            child: Text('$badgeCount', style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
                           ),
                         ),
                     ],
@@ -342,15 +397,12 @@ class _RemindersPageState extends State<RemindersPage> {
       _buildSectionHeader('Upcoming Alerts', 'Sort', Icons.sort, subtitle: '(Next 30 days)', onActionTap: _showSortOptions),
       const SizedBox(height: 12),
       if (next30Days.isEmpty)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Center(child: Text('No upcoming alerts in the next 30 days', style: TextStyle(color: _mutedColor))),
-        )
+        _buildEmptyState('No upcoming alerts in the next 30 days')
       else
         ...next30Days.map((r) => _buildReminderCard(r, false)),
       const SizedBox(height: 24),
       
-      _buildSectionHeader('Next 31 - 60 Days', 'View all', null),
+      _buildSectionHeader('Next 31 - 60 Days', '', null),
       const SizedBox(height: 12),
       Builder(
         builder: (context) {
@@ -361,7 +413,7 @@ class _RemindersPageState extends State<RemindersPage> {
             return diff > 30 && diff <= 60;
           }).toList();
 
-          if (futureReminders.isEmpty) return const SizedBox.shrink();
+          if (futureReminders.isEmpty) return _buildEmptyState('No upcoming alerts in 31-60 days');
 
           return GestureDetector(
             onTap: () async {
@@ -396,7 +448,23 @@ class _RemindersPageState extends State<RemindersPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${futureReminders.length} reminders', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red, // Bright red like the screenshot
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${futureReminders.length}+',
+                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Reminders', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Text('View reminders between 31 and 60 days', style: TextStyle(color: _mutedColor, fontSize: 12)),
                     ],
@@ -423,22 +491,97 @@ class _RemindersPageState extends State<RemindersPage> {
         : _upcomingReminders.where((r) => r['category'] == _selectedCategory).toList();
 
     return [
-      _buildSectionHeader('All Reminders', 'Sort', Icons.sort, onActionTap: _showSortOptions),
+      _buildSectionHeader(_selectedCategory == 'All' ? 'All Reminders' : '$_selectedCategory Reminders', 'Sort', Icons.sort, onActionTap: _showSortOptions),
       const SizedBox(height: 16),
-      Text('Upcoming', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
-      const SizedBox(height: 12),
-      ...filteredReminders.map((r) => _buildReminderCard(r, false)),
-      const SizedBox(height: 24),
-      
-      _buildSectionHeader('Completed', 'View all', null),
-      const SizedBox(height: 12),
-      ..._completedReminders.map((r) => _buildReminderCard(r, true)),
-      const SizedBox(height: 24),
-      
+      if (filteredReminders.isEmpty)
+        _buildEmptyState('No reminders found')
+      else
+        ...filteredReminders.map((r) => _buildReminderCard(r, false)),
       _buildSmartReminders(),
       const SizedBox(height: 16),
       _buildInfoFooter(),
     ];
+  }
+
+  List<Widget> _buildCompletedTab() {
+    final categoryFiltered = _selectedCategory == 'All'
+        ? _completedReminders
+        : _completedReminders.where((r) => r['category'] == _selectedCategory).toList();
+
+    final filteredList = _completedFilter == 'All' 
+       ? categoryFiltered 
+       : categoryFiltered.where((r) => r['status'] == _completedFilter).toList();
+
+    return [
+      _buildSectionHeader(
+        _completedFilter == 'All' ? 'Completed & Skipped' : '$_completedFilter Reminders',
+        'Filter',
+        Icons.filter_list,
+        onActionTap: _showCompletedFilterOptions
+      ),
+      const SizedBox(height: 12),
+      if (filteredList.isEmpty)
+        _buildEmptyState('No ${_completedFilter.toLowerCase()} reminders yet')
+      else
+        ...filteredList.map((r) => _buildReminderCard(r, true)),
+      const SizedBox(height: 24),
+    ];
+  }
+
+  void _showCompletedFilterOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Filter by Status', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              _buildCompletedFilterOption('All'),
+              _buildCompletedFilterOption('Completed'),
+              _buildCompletedFilterOption('Skipped'),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompletedFilterOption(String filter) {
+    return ListTile(
+      title: Text(filter, style: TextStyle(color: _completedFilter == filter ? _neonColor : Colors.white)),
+      trailing: _completedFilter == filter ? Icon(Icons.check, color: _neonColor) : null,
+      onTap: () {
+        setState(() {
+          _completedFilter = filter;
+        });
+        Navigator.pop(context);
+      },
+    );
+  }
+
+  Widget _buildEmptyState(String message, {IconData icon = Icons.notifications_off}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(icon, size: 48, color: _mutedColor.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(color: _mutedColor, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSectionHeader(String title, String actionText, IconData? actionIcon, {String? subtitle, VoidCallback? onActionTap}) {
@@ -462,21 +605,22 @@ class _RemindersPageState extends State<RemindersPage> {
             ],
           ],
         ),
-        GestureDetector(
-          onTap: onActionTap,
-          child: Row(
-            children: [
-              Text(
-                actionText,
-                style: TextStyle(color: _mutedColor, fontSize: 13),
-              ),
-              if (actionIcon != null) ...[
-                const SizedBox(width: 4),
-                Icon(actionIcon, color: _mutedColor, size: 16),
-              ]
-            ],
+        if (actionText.isNotEmpty)
+          GestureDetector(
+            onTap: onActionTap,
+            child: Row(
+              children: [
+                Text(
+                  actionText,
+                  style: TextStyle(color: _mutedColor, fontSize: 13),
+                ),
+                if (actionIcon != null) ...[
+                  const SizedBox(width: 4),
+                  Icon(actionIcon, color: _mutedColor, size: 16),
+                ]
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -542,8 +686,8 @@ class _RemindersPageState extends State<RemindersPage> {
 
   Widget _buildReminderCard(Map<String, dynamic> data, bool isCompleted) {
     final statusColor = data['statusColor'] as Color;
-    final iconColor = isCompleted ? statusColor : (data['color'] as Color);
-    final iconData = isCompleted ? Icons.check_circle_outline : (data['icon'] as IconData);
+    final iconColor = data['color'] as Color;
+    final iconData = data['icon'] as IconData;
 
     return GestureDetector(
       onTap: () async {
@@ -591,9 +735,9 @@ class _RemindersPageState extends State<RemindersPage> {
                   decoration: BoxDecoration(
                     color: isCompleted ? Colors.transparent : iconColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: isCompleted ? Border.all(color: statusColor.withOpacity(0.5)) : null,
+                    border: isCompleted ? Border.all(color: iconColor.withOpacity(0.5)) : null,
                   ),
-                  child: Icon(iconData, color: iconColor, size: 24),
+                  child: Icon(iconData, color: isCompleted ? _mutedColor : iconColor, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -692,7 +836,10 @@ class _RemindersPageState extends State<RemindersPage> {
           ),
           Switch(
             value: _smartRemindersEnabled,
-            onChanged: (val) => setState(() => _smartRemindersEnabled = val),
+            onChanged: (val) {
+              setState(() => _smartRemindersEnabled = val);
+              _saveSmartRemindersState(val);
+            },
             activeColor: Colors.white,
             activeTrackColor: _neonColor,
             inactiveTrackColor: Colors.white.withOpacity(0.1),

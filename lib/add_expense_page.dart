@@ -15,7 +15,8 @@ Color get _mutedColor => ThemeService.mutedColor;
 
 class AddExpensePage extends ConsumerStatefulWidget {
   final Expense? existingExpense;
-  const AddExpensePage({super.key, this.existingExpense});
+  final String? initialCategory;
+  const AddExpensePage({super.key, this.existingExpense, this.initialCategory});
 
   @override
   ConsumerState<AddExpensePage> createState() => _AddExpensePageState();
@@ -28,6 +29,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   String _selectedCategory = '';
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
+  String? _amountErrorText;
+  String? _titleErrorText;
+  String? _categoryErrorText;
 
   @override
   void initState() {
@@ -43,13 +47,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   }
 
   final List<Map<String, dynamic>> _categories = [
-    {'name': 'Fuel', 'icon': Icons.local_gas_station_outlined},
     {'name': 'Insurance', 'icon': Icons.security_outlined},
     {'name': 'Toll', 'icon': Icons.toll_outlined},
     {'name': 'Parking', 'icon': Icons.local_parking_outlined},
     {'name': 'Washing', 'icon': Icons.local_car_wash_outlined},
     {'name': 'Tires', 'icon': Icons.tire_repair_outlined},
     {'name': 'Service', 'icon': Icons.build_outlined},
+    {'name': 'Engine', 'icon': Icons.settings_outlined},
+    {'name': 'Brakes', 'icon': Icons.adjust_outlined},
+    {'name': 'Suspension', 'icon': Icons.hardware_outlined},
+    {'name': 'General', 'icon': Icons.fact_check_outlined},
     {'name': 'Other', 'icon': Icons.more_horiz},
   ];
 
@@ -66,12 +73,30 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final title = _title.text.trim();
     final notes = _notesController.text.trim();
     
-    if (amount == 0.0 || title.isEmpty || _selectedCategory.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter title, amount, and select a category.')),
-      );
-      return;
+    bool hasError = false;
+
+    if (amount <= 0) {
+      setState(() => _amountErrorText = 'Required');
+      hasError = true;
+    } else {
+      setState(() => _amountErrorText = null);
     }
+
+    if (title.isEmpty) {
+      setState(() => _titleErrorText = 'Required');
+      hasError = true;
+    } else {
+      setState(() => _titleErrorText = null);
+    }
+
+    if (_selectedCategory.isEmpty) {
+      setState(() => _categoryErrorText = 'Please select a category');
+      hasError = true;
+    } else {
+      setState(() => _categoryErrorText = null);
+    }
+
+    if (hasError) return;
 
     setState(() => _isLoading = true);
 
@@ -168,13 +193,17 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.existingExpense != null ? 'Edit Expense' : 'Add Expense',
+                        Text(widget.existingExpense != null 
+                              ? 'Edit ${widget.initialCategory == 'Service' ? 'Service' : 'Expense'}' 
+                              : (widget.initialCategory == 'Service' ? 'Add Service' : 'Add Expense'),
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold)),
                         const SizedBox(height: 2),
-                        Text(widget.existingExpense != null ? 'Update your expense' : 'Log a new expense',
+                        Text(widget.existingExpense != null 
+                              ? 'Update your ${widget.initialCategory == 'Service' ? 'service' : 'expense'}' 
+                              : 'Log a new ${widget.initialCategory == 'Service' ? 'service' : 'expense'}',
                             style: TextStyle(
                                 color: _mutedColor, fontSize: 12)),
                       ],
@@ -214,73 +243,58 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
                 children: [
                   _Section('EXPENSE DETAILS', [
-                    _AdvancedInputTile(
-                      label: 'Amount (₹)',
+                    _buildTextField(
+                      label: 'Amount',
                       isRequired: true,
                       icon: Icons.currency_rupee_rounded,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _TextFieldBox(
-                            controller: _amount,
-                            hintText: '0.00',
-                            keyboardType: TextInputType.number,
-                            trailing: GestureDetector(
-                              onTap: () => _amount.clear(),
-                              child: Icon(Icons.cancel_outlined, color: _mutedColor, size: 18),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                _AmountChip('+100', () => _addAmount(100)),
-                                _AmountChip('+500', () => _addAmount(500)),
-                                _AmountChip('+1,000', () => _addAmount(1000)),
-                                _AmountChip('+2,000', () => _addAmount(2000)),
-                                _AmountChip('+5,000', () => _addAmount(5000)),
-                              ],
-                            ),
-                          )
-                        ],
+                      controller: _amount,
+                      hint: '0.00',
+                      isNumber: true,
+                      suffix: '₹',
+                      errorText: _amountErrorText,
+                      onChanged: (_) {
+                        if (_amountErrorText != null) setState(() => _amountErrorText = null);
+                      },
+                      bottomWidget: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _AmountChip('+100', () => _addAmount(100)),
+                            _AmountChip('+500', () => _addAmount(500)),
+                            _AmountChip('+1,000', () => _addAmount(1000)),
+                            _AmountChip('+2,000', () => _addAmount(2000)),
+                            _AmountChip('+5,000', () => _addAmount(5000)),
+                          ],
+                        ),
                       ),
                     ),
-                    _AdvancedInputTile(
+                    const SizedBox(height: 16),
+                    _buildTextField(
                       label: 'Title',
                       isRequired: true,
                       icon: Icons.description_outlined,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _TextFieldBox(
-                            controller: _title,
-                            hintText: 'Enter expense title',
-                          ),
-                          const SizedBox(height: 8),
-                          Text('e.g. Car wash at Cleanly', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                        ],
-                      ),
+                      controller: _title,
+                      hint: 'Enter expense title',
+                      errorText: _titleErrorText,
+                      onChanged: (_) {
+                        if (_titleErrorText != null) setState(() => _titleErrorText = null);
+                      },
+                      bottomWidget: Text('e.g. Car wash at Cleanly', style: TextStyle(color: _mutedColor, fontSize: 12)),
                     ),
-                    _AdvancedInputTile(
+                    const SizedBox(height: 16),
+                    _buildTextField(
                       label: 'Date',
                       isRequired: true,
                       icon: Icons.calendar_today_outlined,
-                      child: GestureDetector(
+                      customField: GestureDetector(
                         onTap: _pickDate,
                         child: Container(
-                          height: 48,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          color: Colors.transparent, // Ensures the whole area is tappable
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(dateFormat.format(_selectedDate), style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
-                              Icon(Icons.calendar_month_outlined, color: _mutedColor, size: 20),
+                              Text(dateFormat.format(_selectedDate), style: const TextStyle(color: Colors.white, fontSize: 14)),
                             ],
                           ),
                         ),
@@ -289,35 +303,61 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   ]),
                   const SizedBox(height: 8),
                   _Section('CATEGORY', [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _categories.map((cat) {
-                        final selected = _selectedCategory == cat['name'];
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedCategory = cat['name'] as String),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                                color: selected ? _neonColor.withValues(alpha: 0.1) : Colors.transparent,
-                                border: Border.all(color: selected ? _neonColor : Colors.white.withValues(alpha: 0.05)),
-                                borderRadius: BorderRadius.circular(20)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(cat['icon'] as IconData, color: selected ? _neonColor : Colors.blueAccent, size: 18),
-                                const SizedBox(width: 8),
-                                Text(cat['name'] as String,
-                                    style: TextStyle(
-                                        color: selected ? _neonColor : Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: selected ? FontWeight.bold : FontWeight.w500)),
-                              ],
+                    Container(
+                      padding: _categoryErrorText != null ? const EdgeInsets.all(12) : EdgeInsets.zero,
+                      decoration: BoxDecoration(
+                        border: _categoryErrorText != null ? Border.all(color: Colors.redAccent, width: 1) : null,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _categories.map((cat) {
+                          final selected = _selectedCategory == cat['name'];
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedCategory = cat['name'] as String;
+                                if (_categoryErrorText != null) _categoryErrorText = null;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                  color: selected ? _neonColor.withValues(alpha: 0.1) : Colors.transparent,
+                                  border: Border.all(color: selected ? _neonColor : Colors.white.withValues(alpha: 0.05)),
+                                  borderRadius: BorderRadius.circular(20)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(cat['icon'] as IconData, color: selected ? _neonColor : Colors.blueAccent, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(cat['name'] as String,
+                                      style: TextStyle(
+                                          color: selected ? _neonColor : Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: selected ? FontWeight.bold : FontWeight.w500)),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      }).toList(),
+                          );
+                        }).toList(),
+                      ),
                     ),
+                    if (_categoryErrorText != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, top: 8),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.redAccent, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              _categoryErrorText!,
+                              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
                   ], infoIcon: true),
                   const SizedBox(height: 8),
                   _Section('NOTES', [
@@ -358,7 +398,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                         children: [
                           const Icon(Icons.save_outlined, color: Colors.black, size: 22),
                           const SizedBox(width: 8),
-                          Text(_isLoading ? 'Saving...' : (widget.existingExpense != null ? 'Update Expense' : 'Save Expense'),
+                          Text(_isLoading 
+                                ? 'Saving...' 
+                                : (widget.existingExpense != null 
+                                    ? 'Update ${widget.initialCategory == 'Service' ? 'Service' : 'Expense'}' 
+                                    : 'Save ${widget.initialCategory == 'Service' ? 'Service' : 'Expense'}'),
                               style: const TextStyle(
                                   color: Colors.black,
                                   fontSize: 16,
@@ -373,6 +417,88 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    TextEditingController? controller,
+    required String label,
+    String? hint,
+    required IconData icon,
+    String? suffix,
+    bool isNumber = false,
+    Function(String)? onChanged,
+    String? errorText,
+    bool isRequired = false,
+    Widget? customField,
+    Widget? bottomWidget,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+              children: [
+                if (isRequired)
+                  const TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: _surfaceColor.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: errorText != null ? Colors.redAccent : _surfaceColor),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          child: Row(
+            children: [
+              Icon(icon, color: errorText != null ? Colors.redAccent : _neonColor, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: customField ?? TextField(
+                  controller: controller,
+                  keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  onChanged: onChanged,
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    hintStyle: TextStyle(color: _mutedColor.withOpacity(0.5), fontSize: 14),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              if (suffix != null) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 14)),
+            ],
+          ),
+        ),
+        if (errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, top: 6),
+            child: Text(
+              errorText,
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        if (bottomWidget != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: bottomWidget,
+          ),
+      ],
     );
   }
 }
@@ -458,148 +584,6 @@ class _Section extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _AdvancedInputTile extends StatelessWidget {
-  final String label;
-  final bool isRequired;
-  final IconData icon;
-  final Widget child;
-
-  const _AdvancedInputTile({
-    required this.label,
-    required this.isRequired,
-    required this.icon,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      decoration: BoxDecoration(
-        color: _surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.03),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.01),
-              border: Border.all(
-                color: const Color(0xFF00FF88).withValues(alpha: 0.25),
-                width: 1.5,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              icon,
-              color: const Color(0xFF00FF88),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (isRequired)
-                      const Text(
-                        ' *',
-                        style: TextStyle(color: Colors.redAccent, fontSize: 14),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                child,
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TextFieldBox extends StatelessWidget {
-  final TextEditingController controller;
-  final String hintText;
-  final TextInputType keyboardType;
-  final Widget? trailing;
-
-  const _TextFieldBox({
-    required this.controller,
-    required this.hintText,
-    this.keyboardType = TextInputType.text,
-    this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.05),
-          width: 1,
-        ),
-      ),
-      alignment: Alignment.centerLeft,
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              keyboardType: keyboardType,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              inputFormatters: keyboardType == TextInputType.number
-                  ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))]
-                  : null,
-              decoration: InputDecoration(
-                isDense: true,
-                filled: false,
-                hintText: hintText,
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 16),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          if (trailing != null) trailing!,
         ],
       ),
     );
