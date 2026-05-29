@@ -15,8 +15,9 @@ Color get _neonColor => ThemeService.neonColor;
 
 class ExpenseDetailsPage extends ConsumerWidget {
   final Expense expense;
+  final bool isServiceMode;
 
-  const ExpenseDetailsPage({super.key, required this.expense});
+  const ExpenseDetailsPage({super.key, required this.expense, this.isServiceMode = false});
 
   Widget _buildActionButton({
     required IconData icon,
@@ -142,7 +143,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
             onTap: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: expense)),
+                MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: expense, isServiceMode: isServiceMode)),
               );
               if (context.mounted) {
                 Navigator.pop(context);
@@ -174,9 +175,15 @@ class ExpenseDetailsPage extends ConsumerWidget {
                            Navigator.pop(context);
                            return;
                         }
-                        final success = await ref.read(apiServiceProvider).deleteExpense(expense.id);
+                        final success = isServiceMode 
+                            ? await ref.read(apiServiceProvider).deleteService(expense.id)
+                            : await ref.read(apiServiceProvider).deleteExpense(expense.id);
                         if (success) {
-                          ref.invalidate(expensesProvider);
+                          if (isServiceMode) {
+                            ref.invalidate(servicesProvider);
+                          } else {
+                            ref.invalidate(expensesProvider);
+                          }
                           if (context.mounted) {
                             Navigator.pop(context);
                           }

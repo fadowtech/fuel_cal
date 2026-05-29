@@ -16,7 +16,8 @@ Color get _mutedColor => ThemeService.mutedColor;
 class AddExpensePage extends ConsumerStatefulWidget {
   final Expense? existingExpense;
   final String? initialCategory;
-  const AddExpensePage({super.key, this.existingExpense, this.initialCategory});
+  final bool isServiceMode;
+  const AddExpensePage({super.key, this.existingExpense, this.initialCategory, this.isServiceMode = false});
 
   @override
   ConsumerState<AddExpensePage> createState() => _AddExpensePageState();
@@ -25,8 +26,8 @@ class AddExpensePage extends ConsumerStatefulWidget {
 class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   final _amount = TextEditingController();
   final _title = TextEditingController();
+  final _categoryController = TextEditingController();
   final _notesController = TextEditingController();
-  String _selectedCategory = '';
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   String? _amountErrorText;
@@ -40,30 +41,21 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       final e = widget.existingExpense!;
       _amount.text = e.amount.toStringAsFixed(0);
       _title.text = e.title;
-      _selectedCategory = e.category;
+      _categoryController.text = e.category;
       _selectedDate = e.date ?? DateTime.now();
       _notesController.text = e.notes ?? '';
+    } else if (widget.initialCategory != null) {
+      _categoryController.text = widget.initialCategory!;
     }
   }
 
-  final List<Map<String, dynamic>> _categories = [
-    {'name': 'Insurance', 'icon': Icons.security_outlined},
-    {'name': 'Toll', 'icon': Icons.toll_outlined},
-    {'name': 'Parking', 'icon': Icons.local_parking_outlined},
-    {'name': 'Washing', 'icon': Icons.local_car_wash_outlined},
-    {'name': 'Tires', 'icon': Icons.tire_repair_outlined},
-    {'name': 'Service', 'icon': Icons.build_outlined},
-    {'name': 'Engine', 'icon': Icons.settings_outlined},
-    {'name': 'Brakes', 'icon': Icons.adjust_outlined},
-    {'name': 'Suspension', 'icon': Icons.hardware_outlined},
-    {'name': 'General', 'icon': Icons.fact_check_outlined},
-    {'name': 'Other', 'icon': Icons.more_horiz},
-  ];
+
 
   @override
   void dispose() {
     _amount.dispose();
     _title.dispose();
+    _categoryController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -71,6 +63,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   Future<void> _saveExpense() async {
     final amount = double.tryParse(_amount.text) ?? 0.0;
     final title = _title.text.trim();
+    final category = _categoryController.text.trim();
     final notes = _notesController.text.trim();
     
     bool hasError = false;
@@ -89,8 +82,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       setState(() => _titleErrorText = null);
     }
 
-    if (_selectedCategory.isEmpty) {
-      setState(() => _categoryErrorText = 'Please select a category');
+    if (category.isEmpty) {
+      setState(() => _categoryErrorText = 'Please enter a category');
       hasError = true;
     } else {
       setState(() => _categoryErrorText = null);
@@ -104,28 +97,53 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     dynamic result;
 
     if (widget.existingExpense != null) {
-      result = await apiService.updateExpense(widget.existingExpense!.id, {
-        "category": _selectedCategory,
-        "title": title,
-        "amount": amount,
-        "date": _selectedDate.toIso8601String(),
-        "notes": notes.isEmpty ? null : notes,
-      });
+      if (widget.isServiceMode) {
+        result = await apiService.updateService(widget.existingExpense!.id, {
+          "category": category,
+          "title": title,
+          "amount": amount,
+          "date": _selectedDate.toIso8601String(),
+          "notes": notes.isEmpty ? null : notes,
+        });
+      } else {
+        result = await apiService.updateExpense(widget.existingExpense!.id, {
+          "category": category,
+          "title": title,
+          "amount": amount,
+          "date": _selectedDate.toIso8601String(),
+          "notes": notes.isEmpty ? null : notes,
+        });
+      }
     } else {
-      bool created = await apiService.createExpense({
-        "category": _selectedCategory,
-        "title": title,
-        "amount": amount,
-        "date": _selectedDate.toIso8601String(),
-        "notes": notes.isEmpty ? null : notes,
-      });
-      result = created ? true : 'Failed to save expense.';
+      bool created = false;
+      if (widget.isServiceMode) {
+        created = await apiService.createService({
+          "category": category,
+          "title": title,
+          "amount": amount,
+          "date": _selectedDate.toIso8601String(),
+          "notes": notes.isEmpty ? null : notes,
+        });
+      } else {
+        created = await apiService.createExpense({
+          "category": category,
+          "title": title,
+          "amount": amount,
+          "date": _selectedDate.toIso8601String(),
+          "notes": notes.isEmpty ? null : notes,
+        });
+      }
+      result = created ? true : 'Failed to save entry.';
     }
 
     setState(() => _isLoading = false);
 
     if (result == true && mounted) {
-      ref.invalidate(expensesProvider);
+      if (widget.isServiceMode) {
+        ref.invalidate(servicesProvider);
+      } else {
+        ref.invalidate(expensesProvider);
+      }
       Navigator.pop(context);
     } else if (mounted) {
       String errMsg = result is String ? result : 'Failed to update expense.';
@@ -305,61 +323,18 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   ]),
                   const SizedBox(height: 8),
                   _Section('CATEGORY', [
-                    Container(
-                      padding: _categoryErrorText != null ? const EdgeInsets.all(12) : EdgeInsets.zero,
-                      decoration: BoxDecoration(
-                        border: _categoryErrorText != null ? Border.all(color: Colors.redAccent, width: 1) : null,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _categories.map((cat) {
-                          final selected = _selectedCategory == cat['name'];
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedCategory = cat['name'] as String;
-                                if (_categoryErrorText != null) _categoryErrorText = null;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                  color: selected ? _neonColor.withValues(alpha: 0.1) : Colors.transparent,
-                                  border: Border.all(color: selected ? _neonColor : Colors.white.withValues(alpha: 0.05)),
-                                  borderRadius: BorderRadius.circular(20)),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(cat['icon'] as IconData, color: selected ? _neonColor : Colors.blueAccent, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(cat['name'] as String,
-                                      style: TextStyle(
-                                          color: selected ? _neonColor : Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: selected ? FontWeight.bold : FontWeight.w500)),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                    _buildTextField(
+                      label: 'Category',
+                      isRequired: true,
+                      icon: Icons.category_outlined,
+                      controller: _categoryController,
+                      hint: 'Enter category',
+                      errorText: _categoryErrorText,
+                      onChanged: (_) {
+                        if (_categoryErrorText != null) setState(() => _categoryErrorText = null);
+                      },
+                      bottomWidget: Text('e.g. Fuel, Service, Food', style: TextStyle(color: _mutedColor, fontSize: 12)),
                     ),
-                    if (_categoryErrorText != null)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, top: 8),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline, color: Colors.redAccent, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              _categoryErrorText!,
-                              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
                   ], infoIcon: true),
                   const SizedBox(height: 8),
                   _Section('NOTES', [

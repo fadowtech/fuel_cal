@@ -120,3 +120,21 @@ class Reminder(ReminderBase):
 
     class Config:
         from_attributes = True
+
+class ServiceBase(BaseModel):
+    vehicle_id: Optional[int] = None
+    category: str
+    title: str
+    amount: float
+    date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class ServiceCreate(ServiceBase):
+    pass
+
+class Service(ServiceBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True

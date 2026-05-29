@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/vehicle_model.dart';
 import '../models/fuel_log_model.dart';
 import '../models/expense_model.dart';
+import '../models/service_model.dart';
 import '../providers/auth_provider.dart';
 
 final selectedVehicleProvider = StateProvider<Vehicle?>((ref) => null);
@@ -28,4 +29,10 @@ final remindersProvider = FutureProvider<List<dynamic>>((ref) async {
   final apiService = ref.watch(apiServiceProvider);
   final data = await apiService.getReminders();
   return data;
+});
+
+final servicesProvider = FutureProvider<List<Service>>((ref) async {
+  final apiService = ref.watch(apiServiceProvider);
+  final data = await apiService.getServices();
+  return data.map((json) => Service.fromJson(json)).toList();
 });

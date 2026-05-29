@@ -303,6 +303,48 @@ class ApiService {
       return false;
     }
   }
-}
+  Future<List<dynamic>> getServices() async {
+    try {
+      final response = await _dio.get('/services/');
+      return response.data as List<dynamic>;
+    } catch (e) {
+      return [];
+    }
+  }
 
+  Future<bool> createService(Map<String, dynamic> data) async {
+    try {
+      await _dio.post('/services/', data: data);
+      return true;
+    } catch (e) {
+      if (e is DioException) {
+        print('createService error response: ${e.response?.data}');
+      } else {
+        print('createService error: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<dynamic> updateService(int id, Map<String, dynamic> data) async {
+    try {
+      await _dio.put('/services/$id', data: data);
+      return true;
+    } catch (e) {
+      if (e is DioException) {
+        return e.response?.data?.toString() ?? e.message ?? 'Unknown error';
+      }
+      return e.toString();
+    }
+  }
+
+  Future<bool> deleteService(int id) async {
+    try {
+      await _dio.delete('/services/$id');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+}
 
