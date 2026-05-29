@@ -90,7 +90,6 @@ class Reminder(Base):
     repeat_interval = Column(String, nullable=True)
     notify_before_days = Column(String, nullable=True) # e.g. "30,7,1"
     priority = Column(String, default="High")
-    amount = Column(Float, nullable=True)
     status = Column(String, default="pending") # "pending", "completed", "skipped"
     completed_at = Column(DateTime, nullable=True)
     

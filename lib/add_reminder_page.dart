@@ -23,7 +23,6 @@ class _AddReminderPageState extends State<AddReminderPage> {
   String _selectedCategory = '';
   
   final _titleController = TextEditingController();
-  final _amountController = TextEditingController();
   final _kmController = TextEditingController();
   final _notesController = TextEditingController();
   
@@ -54,7 +53,6 @@ class _AddReminderPageState extends State<AddReminderPage> {
       final raw = widget.editData!['raw_data'];
       _selectedCategory = raw['category'] ?? '';
       _titleController.text = raw['title'] ?? '';
-      _amountController.text = raw['amount']?.toString() ?? '';
       _kmController.text = raw['due_km']?.toString() ?? '';
       _notesController.text = raw['notes'] ?? '';
       if (raw['due_date'] != null) {
@@ -76,7 +74,6 @@ class _AddReminderPageState extends State<AddReminderPage> {
   @override
   void dispose() {
     _titleController.dispose();
-    _amountController.dispose();
     _kmController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -194,7 +191,6 @@ class _AddReminderPageState extends State<AddReminderPage> {
     final data = {
       'category': _selectedCategory,
       'title': _titleController.text,
-      'amount': _amountController.text.isNotEmpty ? double.tryParse(_amountController.text) : null,
       'due_date': _dueDate?.toIso8601String(),
       'due_km': _kmController.text.isNotEmpty ? double.tryParse(_kmController.text) : null,
       'notes': _notesController.text.isNotEmpty ? _notesController.text : null,
@@ -351,8 +347,6 @@ class _AddReminderPageState extends State<AddReminderPage> {
       children: [
         _buildTitleCard(),
         const SizedBox(height: 12),
-        _buildAmountCard(),
-        const SizedBox(height: 12),
         _buildDueDateCard(),
         const SizedBox(height: 12),
         _buildDueKmCard(),
@@ -495,66 +489,6 @@ class _AddReminderPageState extends State<AddReminderPage> {
                         ),
                         Icon(Icons.calendar_month_outlined, color: _mutedColor, size: 16),
                       ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAmountCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF00FF88).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.attach_money_outlined, color: Color(0xFF00FF88), size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      const TextSpan(text: 'Estimated Amount ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                      TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: _backgroundColor,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  child: TextField(
-                    controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      hintText: 'e.g. 300',
-                      hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                   ),
                 ),

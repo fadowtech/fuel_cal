@@ -651,31 +651,18 @@ class _LogsPageState extends ConsumerState<LogsPage> {
               ],
             ),
           ),
-          if (rem['amount'] != null)
-            Text('₹${rem['amount']}',
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: status == 'completed' ? Colors.green.withOpacity(0.2) : (status == 'skipped' ? Colors.orange.withOpacity(0.2) : Colors.grey.withOpacity(0.2)),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(status.toUpperCase(),
                 style: TextStyle(
-                    color: ThemeService.textColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold))
-          else if (status != 'pending')
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: status == 'completed' ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(status.toUpperCase(),
-                  style: TextStyle(
-                      color: status == 'completed' ? Colors.green : Colors.orange,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold)),
-            )
-          else
-            Text('-',
-                style: TextStyle(
-                    color: _mutedColor,
-                    fontSize: 14,
+                    color: status == 'completed' ? Colors.green : (status == 'skipped' ? Colors.orange : Colors.grey),
+                    fontSize: 10,
                     fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );

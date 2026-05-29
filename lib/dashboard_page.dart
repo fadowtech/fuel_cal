@@ -1547,9 +1547,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(reminder['amount'] != null ? '₹${reminder['amount']}' : '-',
+                    Text('-',
                         style: TextStyle(
-                            color: reminder['amount'] != null ? _textColor : _mutedColor,
+                            color: _mutedColor,
                             fontSize: 14,
                             fontWeight: FontWeight.bold)),
                     Text(dateStr,
