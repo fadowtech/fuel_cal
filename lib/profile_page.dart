@@ -8,6 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/services/notification_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:local_auth/local_auth.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -36,6 +39,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   String _profileEmail = ProfileService.defaultEmail;
   String _profilePhone = ProfileService.defaultPhone;
   bool _notificationsEnabled = true;
+  bool _pinLockEnabled = false;
+  bool _fingerprintEnabled = false;
 
   @override
   void initState() {
@@ -64,6 +69,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       _profileEmail = profile['email']!;
       _profilePhone = profile['phone']!;
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+      _pinLockEnabled = prefs.getBool('pin_lock_enabled') ?? false;
+      _fingerprintEnabled = prefs.getBool('fingerprint_enabled') ?? false;
     });
   }
 
@@ -76,6 +83,50 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         _selectedCurrencyCode = widget.selectedCurrencyCode!;
       });
     }
+  }
+
+  Future<void> _handleNotificationToggle(bool val) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (val) {
+      final granted = await NotificationService.requestPermissions();
+      if (!granted) {
+        val = false;
+        if (mounted) {
+          _showSettingsDialog();
+        }
+      }
+    }
+    setState(() {
+      _notificationsEnabled = val;
+    });
+    await prefs.setBool('notifications_enabled', val);
+  }
+
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardColor,
+        title: Text('Permission Required', style: TextStyle(color: ThemeService.textColor)),
+        content: Text(
+          'Notification permission is disabled. Please enable it in app settings to receive reminders.',
+          style: TextStyle(color: ThemeService.textColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: _mutedColor)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: Text('Open Settings', style: TextStyle(color: _neonColor)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -161,28 +212,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       activeTrackColor: _neonColor.withOpacity(0.3),
                       inactiveThumbColor: _mutedColor,
                       inactiveTrackColor: _surfaceColor,
-                      onChanged: (val) async {
-                        final prefs = await SharedPreferences.getInstance();
-                        setState(() {
-                          _notificationsEnabled = val;
-                        });
-                        await prefs.setBool('notifications_enabled', val);
-                      },
+                      onChanged: _handleNotificationToggle,
                     ),
                   ),
-                  onTap: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    setState(() {
-                      _notificationsEnabled = !_notificationsEnabled;
-                    });
-                    await prefs.setBool('notifications_enabled', _notificationsEnabled);
-                  },
+                  onTap: () => _handleNotificationToggle(!_notificationsEnabled),
                 ),
               ]),
               const SizedBox(height: 24),
               _buildGroup('DATA', [
-                _buildRow(Icons.cloud_upload_outlined, 'Backup', 'Today'),
-                _buildRow(Icons.restore, 'Restore', null),
                 _buildRow(
                   Icons.description_outlined,
                   'Reports',
@@ -196,8 +233,134 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ]),
               const SizedBox(height: 24),
               _buildGroup('SECURITY', [
-                _buildRow(Icons.lock_outline, 'PIN lock', 'Off'),
-                _buildRow(Icons.fingerprint, 'Fingerprint login', 'On'),
+                _buildRow(
+                  Icons.lock_outline,
+                  'PIN lock',
+                  _pinLockEnabled ? 'On' : 'Off',
+                  suffixWidget: Transform.scale(
+                    scale: 0.7,
+                    alignment: Alignment.centerRight,
+                    child: Switch(
+                      value: _pinLockEnabled,
+                      activeColor: _neonColor,
+                      activeTrackColor: _neonColor.withOpacity(0.3),
+                      inactiveThumbColor: _mutedColor,
+                      inactiveTrackColor: _surfaceColor,
+                      onChanged: (val) async {
+                        final prefs = await SharedPreferences.getInstance();
+                        setState(() {
+                          _pinLockEnabled = val;
+                        });
+                        await prefs.setBool('pin_lock_enabled', val);
+                      },
+                    ),
+                  ),
+                  onTap: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    bool val = !_pinLockEnabled;
+                    setState(() {
+                      _pinLockEnabled = val;
+                    });
+                    await prefs.setBool('pin_lock_enabled', val);
+                  },
+                ),
+                _buildRow(
+                  Icons.fingerprint,
+                  'Fingerprint login',
+                  _fingerprintEnabled ? 'On' : 'Off',
+                  suffixWidget: Transform.scale(
+                    scale: 0.7,
+                    alignment: Alignment.centerRight,
+                    child: Switch(
+                      value: _fingerprintEnabled,
+                      activeColor: _neonColor,
+                      activeTrackColor: _neonColor.withOpacity(0.3),
+                      inactiveThumbColor: _mutedColor,
+                      inactiveTrackColor: _surfaceColor,
+                      onChanged: (val) async {
+                        final prefs = await SharedPreferences.getInstance();
+                        if (val) {
+                          final localAuth = LocalAuthentication();
+                          try {
+                            final canCheck = await localAuth.canCheckBiometrics || await localAuth.isDeviceSupported();
+                            if (canCheck) {
+                              final didAuthenticate = await localAuth.authenticate(
+                                localizedReason: 'Please authenticate to enable biometric login',
+                              );
+                              if (!didAuthenticate) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Authentication failed or was canceled.')),
+                                  );
+                                }
+                                return;
+                              }
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Biometrics not supported on this device.')),
+                                );
+                              }
+                              return;
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error enabling biometrics: $e')),
+                              );
+                            }
+                            return;
+                          }
+                        }
+                        setState(() {
+                          _fingerprintEnabled = val;
+                        });
+                        await prefs.setBool('fingerprint_enabled', val);
+                      },
+                    ),
+                  ),
+                  onTap: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    bool val = !_fingerprintEnabled;
+                    if (val) {
+                      final localAuth = LocalAuthentication();
+                      try {
+                        final canCheck = await localAuth.canCheckBiometrics || await localAuth.isDeviceSupported();
+                        if (canCheck) {
+                          final didAuthenticate = await localAuth.authenticate(
+                            localizedReason: 'Please authenticate to enable biometric login',
+                          );
+                          if (!didAuthenticate) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Authentication failed or was canceled.')),
+                              );
+                            }
+                            return;
+                          }
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Biometrics not supported on this device.')),
+                            );
+                          }
+                          return;
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error enabling biometrics: $e')),
+                          );
+                        }
+                        return;
+                      }
+                    }
+                    setState(() {
+                      _fingerprintEnabled = val;
+                    });
+                    await prefs.setBool('fingerprint_enabled', val);
+                  },
+                ),
               ]),
               const SizedBox(height: 24),
               _buildSignOutButton(),

@@ -18,9 +18,13 @@ class ProfileUpdatePage extends StatefulWidget {
 
 class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  
+  String _selectedGender = 'Male';
+  final List<String> _genderOptions = ['Male', 'Female', 'Other'];
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -34,9 +38,14 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
   Future<void> _loadProfile() async {
     final profile = await ProfileService.getProfile();
     setState(() {
-      _nameController.text = profile['name']!;
+      _firstNameController.text = profile['firstName']!;
+      _lastNameController.text = profile['lastName']!;
       _emailController.text = profile['email']!;
       _phoneController.text = profile['phone']!;
+      _selectedGender = profile['gender']!;
+      if (!_genderOptions.contains(_selectedGender)) {
+        _selectedGender = 'Other';
+      }
       _isLoading = false;
     });
   }
@@ -53,15 +62,19 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
 
     // Try updating the database via API
     await ApiService().updateProfile({
-      'full_name': _nameController.text,
+      'first_name': _firstNameController.text.trim(),
+      'last_name': _lastNameController.text.trim(),
       'email': _emailController.text,
       'phone': _phoneController.text,
+      'gender': _selectedGender,
     });
 
     await ProfileService.saveProfile(
-      name: _nameController.text,
+      firstName: _firstNameController.text,
+      lastName: _lastNameController.text,
       email: _emailController.text,
       phone: _phoneController.text,
+      gender: _selectedGender,
     );
 
     setState(() {
@@ -89,7 +102,8 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     super.dispose();
@@ -97,8 +111,8 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
 
   @override
   Widget build(BuildContext context) {
-    final firstLetter = _nameController.text.isNotEmpty
-        ? _nameController.text.trim()[0].toUpperCase()
+    final firstLetter = _firstNameController.text.isNotEmpty
+        ? _firstNameController.text.trim()[0].toUpperCase()
         : 'T';
 
     return Scaffold(
@@ -229,13 +243,26 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
 
                           // Input Group
                           _buildInputField(
-                            label: 'Full Name',
-                            controller: _nameController,
+                            label: 'First Name',
+                            controller: _firstNameController,
                             icon: Icons.person_outline_rounded,
-                            hint: 'Enter your name',
+                            hint: 'Enter your first name',
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
-                                  return 'Please enter your name';
+                                  return 'Please enter your first name';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          _buildInputField(
+                            label: 'Last Name',
+                            controller: _lastNameController,
+                            icon: Icons.person_outline_rounded,
+                            hint: 'Enter your last name',
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                  return 'Please enter your last name';
                               }
                               return null;
                             },
@@ -270,6 +297,20 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                                 return 'Please enter your phone number';
                               }
                               return null;
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          _buildDropdownField(
+                            label: 'Gender',
+                            icon: Icons.wc_outlined,
+                            value: _selectedGender,
+                            items: _genderOptions,
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selectedGender = val;
+                                });
+                              }
                             },
                           ),
                           const SizedBox(height: 48),
@@ -363,7 +404,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
             fontWeight: FontWeight.w500,
           ),
           onChanged: (text) {
-            if (label == 'Full Name') {
+            if (label == 'First Name') {
               setState(() {});
             }
           },
@@ -427,6 +468,76 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
               fontSize: 11,
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    required IconData icon,
+    required String value,
+    required List<String> items,
+    required void Function(String?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: _mutedColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: value,
+          onChanged: onChanged,
+          dropdownColor: _surfaceColor,
+          style: TextStyle(
+            color: ThemeService.textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+          decoration: InputDecoration(
+            prefixIcon: Icon(
+              icon,
+              color: _neonColor.withOpacity(0.7),
+              size: 20,
+            ),
+            filled: true,
+            fillColor: _surfaceColor,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: ThemeService.isDarkMode 
+                    ? Colors.white.withOpacity(0.04)
+                    : Colors.black.withOpacity(0.08),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: ThemeService.isDarkMode 
+                    ? Colors.white.withOpacity(0.04)
+                    : Colors.black.withOpacity(0.08),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: _neonColor,
+                width: 1.5,
+              ),
+            ),
+          ),
+          items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
         ),
       ],
     );

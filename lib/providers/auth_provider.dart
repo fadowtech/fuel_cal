@@ -57,6 +57,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final success = await _ref.read(apiServiceProvider).login(email, password);
       if (success) {
+        _ref.invalidate(selectedVehicleProvider);
+        _ref.invalidate(vehiclesProvider);
+        _ref.invalidate(fuelLogsProvider);
+        _ref.invalidate(expensesProvider);
+        _ref.invalidate(remindersProvider);
+        _ref.invalidate(servicesProvider);
+        
+        // Eagerly fetch data so it starts immediately
+        _ref.read(vehiclesProvider.future).catchError((_) => []);
+        _ref.read(fuelLogsProvider.future).catchError((_) => []);
+        _ref.read(expensesProvider.future).catchError((_) => []);
+        _ref.read(remindersProvider.future).catchError((_) => []);
+        _ref.read(servicesProvider.future).catchError((_) => []);
+        
         state = state.copyWith(isAuthenticated: true, isLoading: false);
         return true;
       } else {
@@ -88,9 +102,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     await _ref.read(apiServiceProvider).logout();
     await ProfileService.clearProfile();
+    _ref.invalidate(selectedVehicleProvider);
     _ref.invalidate(vehiclesProvider);
     _ref.invalidate(fuelLogsProvider);
     _ref.invalidate(expensesProvider);
+    _ref.invalidate(remindersProvider);
+    _ref.invalidate(servicesProvider);
     state = state.copyWith(isAuthenticated: false);
   }
 }

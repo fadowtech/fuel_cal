@@ -4,9 +4,18 @@ from datetime import datetime
 
 class UserBase(BaseModel):
     email: EmailStr
-    full_name: str
+    first_name: str
+    last_name: str
     phone: Optional[str] = None
+    gender: Optional[str] = None
     currency_code: Optional[str] = "USD"
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    gender: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str

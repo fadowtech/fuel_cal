@@ -12,6 +12,7 @@ Color get _surfaceColor => ThemeService.surfaceColor;
 Color get _cardColor => ThemeService.cardColor;
 Color get _backgroundColor => ThemeService.backgroundColor;
 Color get _mutedColor => ThemeService.mutedColor;
+Color get _dangerColor => ThemeService.dangerColor;
 
 class AddExpensePage extends ConsumerStatefulWidget {
   final Expense? existingExpense;
@@ -33,6 +34,29 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   String? _amountErrorText;
   String? _titleErrorText;
   String? _categoryErrorText;
+
+  final List<Map<String, dynamic>> _serviceCategories = [
+    {'name': 'Insurance', 'icon': Icons.security_outlined},
+    {'name': 'Toll', 'icon': Icons.toll_outlined},
+    {'name': 'FASTag', 'icon': Icons.contactless_outlined},
+    {'name': 'Parking', 'icon': Icons.local_parking_outlined},
+    {'name': 'Washing', 'icon': Icons.local_car_wash_outlined},
+    {'name': 'Tires', 'icon': Icons.tire_repair_outlined},
+    {'name': 'Service', 'icon': Icons.build_outlined},
+    {'name': 'Engine', 'icon': Icons.settings_outlined},
+    {'name': 'Brakes', 'icon': Icons.adjust_outlined},
+    {'name': 'Suspension', 'icon': Icons.hardware_outlined},
+    {'name': 'General', 'icon': Icons.fact_check_outlined},
+    {'name': 'Other', 'icon': Icons.more_horiz},
+  ];
+
+  List<Map<String, dynamic>> get _displayCategories {
+    if (widget.isServiceMode) {
+      final allowed = ['Service', 'Tires', 'Engine', 'Brakes', 'Suspension', 'General', 'Other'];
+      return allowed.map((name) => _serviceCategories.firstWhere((cat) => cat['name'] == name)).toList();
+    }
+    return _serviceCategories;
+  }
 
   @override
   void initState() {
@@ -179,13 +203,42 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       },
     );
     if (date != null) {
-      setState(() => _selectedDate = date);
+      if (!context.mounted) return;
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_selectedDate),
+        builder: (context, child) {
+          return Theme(
+            data: ThemeData.dark().copyWith(
+              colorScheme: ColorScheme.dark(
+                primary: _neonColor,
+                onPrimary: Colors.black,
+                surface: _surfaceColor,
+                onSurface: Colors.white,
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+      
+      if (time != null) {
+        setState(() {
+          _selectedDate = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM yyyy');
+    final dateFormat = DateFormat('MMM dd, yyyy • hh:mm a');
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
@@ -226,32 +279,6 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                               : 'Log a new ${widget.initialCategory == 'Service' ? 'service' : 'expense'}',
                             style: TextStyle(
                                 color: _mutedColor, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: _surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.receipt_long_outlined, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    height: 44,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      border: Border.all(color: _neonColor.withValues(alpha: 0.3)),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: _neonColor, size: 16),
-                        const SizedBox(width: 6),
-                        Text('Tips', style: TextStyle(color: _neonColor, fontSize: 13, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -302,40 +329,85 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       bottomWidget: Text('e.g. Car wash at Cleanly', style: TextStyle(color: _mutedColor, fontSize: 12)),
                     ),
                     const SizedBox(height: 16),
-                    _buildTextField(
-                      label: 'Date',
-                      isRequired: true,
-                      icon: Icons.calendar_today_outlined,
-                      customField: GestureDetector(
-                        onTap: _pickDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          color: Colors.transparent, // Ensures the whole area is tappable
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(dateFormat.format(_selectedDate), style: const TextStyle(color: Colors.white, fontSize: 14)),
-                            ],
-                          ),
+                    GestureDetector(
+                      onTap: _pickDate,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _surfaceColor.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today_outlined, color: _neonColor, size: 24),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Date & time', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    dateFormat.format(_selectedDate),
+                                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.chevron_right, color: _mutedColor, size: 20),
+                          ],
                         ),
                       ),
                     ),
                   ]),
                   const SizedBox(height: 8),
                   _Section('CATEGORY', [
-                    _buildTextField(
-                      label: 'Category',
-                      isRequired: true,
-                      icon: Icons.category_outlined,
-                      controller: _categoryController,
-                      hint: 'Enter category',
-                      errorText: _categoryErrorText,
-                      onChanged: (_) {
-                        if (_categoryErrorText != null) setState(() => _categoryErrorText = null);
-                      },
-                      bottomWidget: Text('e.g. Fuel, Service, Food', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                    ),
-                  ], infoIcon: true),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: _displayCategories.map((cat) {
+                          final isSelected = _categoryController.text == cat['name'];
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _categoryController.text = cat['name']!;
+                                if (_categoryErrorText != null) _categoryErrorText = null;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected ? _neonColor.withValues(alpha: 0.1) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: isSelected ? _neonColor : Colors.white.withValues(alpha: 0.05),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(cat['icon'], color: isSelected ? _neonColor : const Color(0xFF3B82F6), size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    cat['name']!,
+                                    style: TextStyle(
+                                      color: isSelected ? _neonColor : Colors.white.withValues(alpha: 0.9),
+                                      fontSize: 14,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      if (_categoryErrorText != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(_categoryErrorText!, style: TextStyle(color: _dangerColor, fontSize: 12)),
+                        ),
+                    ], infoIcon: true),
                   const SizedBox(height: 8),
                   _Section('NOTES', [
                     Container(

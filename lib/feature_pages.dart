@@ -593,7 +593,7 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
       title: 'Services',
       subtitle: 'Maintenance logs',
       action: GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage(initialCategory: 'Service', isServiceMode: true))),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage(isServiceMode: true))),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -633,11 +633,7 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
                 total: total.toInt(),
                 previousTotal: 0,
                 selectedMonth: DateTime.now(),
-                expenses: filteredServices.cast<Expense>(), // DonutChart expects Expense for now or we might need to modify it. Wait, the donut chart uses `amount` and `category`. Since it's duck-typed or explicitly typed, let's just cast or map.
-                // Wait, it expects `List<Expense>`. We should probably cast or update `_TotalSpendDonutCard` to accept a generic type or list of dynamic. Actually, let's map it.
-                // It's easier to change _TotalSpendDonutCard or just ignore the cast if it's dynamic. Let's see what `_TotalSpendDonutCard` expects.
-                // We'll fix this in a moment if it complains.
-                // Let's just leave it as filteredServices for now, but we need to check _TotalSpendDonutCard signature.
+                expenses: filteredServices.map((s) => Expense(id: s.id, userId: s.userId, vehicleId: s.vehicleId, category: s.category, title: s.title, amount: s.amount, date: s.date, notes: s.notes)).toList(),
               ),
               const SizedBox(height: 16),
               _buildCategoryFilter(allServices),
@@ -752,7 +748,7 @@ class _ServiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM');
+    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
     final dateStr = service.date != null ? dateFormat.format(service.date!) : 'Unknown Date';
     
     Color iconColor;
@@ -2130,7 +2126,7 @@ class _ExpenseTileState extends State<_ExpenseTile> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        widget.expense.date != null ? '${widget.expense.date!.day} ${_getMonth(widget.expense.date!.month)}' : 'Today',
+                        widget.expense.date != null ? DateFormat('dd MMM yyyy, hh:mm a').format(widget.expense.date!) : 'Today',
                         style: TextStyle(color: ThemeService.mutedColor, fontSize: 11),
                       ),
                     ],

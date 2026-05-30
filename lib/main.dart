@@ -19,6 +19,7 @@ import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/add_reminder_page.dart';
 import 'package:fuel_cal/add_expense_page.dart';
 import 'package:fuel_cal/widgets/connectivity_wrapper.dart';
+import 'package:fuel_cal/services/notification_service.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -42,6 +43,7 @@ void main() async {
   // Ensure Flutter widgets are initialized before running the app
   WidgetsFlutterBinding.ensureInitialized();
   await ThemeService.init();
+  await NotificationService.init();
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
@@ -218,27 +220,9 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
       0; // Stores the index of the tab active before 'More' was selected
 
   final PageController _pageController = PageController();
-
-  late final List<Widget> _pages;
-
   @override
   void initState() {
     super.initState();
-    _pages = [
-      DashboardPage(),
-      const LogsPage(onlyFuel: false),
-      StatsPage(),
-      GaragePage(),
-      ToolsPage(
-        selectedCurrencySymbol: widget.selectedCurrencySymbol,
-        selectedCurrencyCode: widget.selectedCurrencyCode,
-        onCurrencyChanged: widget.onCurrencyChanged,
-      ),
-      ProfilePage(
-        selectedCurrencyCode: widget.selectedCurrencyCode,
-        onCurrencyChanged: widget.onCurrencyChanged,
-      ),
-    ];
   }
 
   void _navigateToCurrencySelection() async {
@@ -254,14 +238,33 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: ThemeService.backgroundColor, // Match background color
-      extendBody: true, // Allow body to flow under bottom nav
-      body: Stack(
-        children: [
-          PageView(
-            controller: _pageController,
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkModeNotifier,
+      builder: (context, isDark, child) {
+        final pages = [
+          DashboardPage(),
+          LogsPage(onlyFuel: false),
+          StatsPage(),
+          GaragePage(),
+          ToolsPage(
+            selectedCurrencySymbol: widget.selectedCurrencySymbol,
+            selectedCurrencyCode: widget.selectedCurrencyCode,
+            onCurrencyChanged: widget.onCurrencyChanged,
+          ),
+          ProfilePage(
+            selectedCurrencyCode: widget.selectedCurrencyCode,
+            onCurrencyChanged: widget.onCurrencyChanged,
+          ),
+        ];
+
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: ThemeService.backgroundColor, // Match background color
+          extendBody: true, // Allow body to flow under bottom nav
+          body: Stack(
+            children: [
+              PageView(
+                controller: _pageController,
             onPageChanged: (index) {
               setState(() {
                 _selectedIndex = index;
@@ -269,13 +272,15 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
               });
               FocusManager.instance.primaryFocus?.unfocus();
             },
-            physics: const NeverScrollableScrollPhysics(),
-            children: _pages,
+                physics: const NeverScrollableScrollPhysics(),
+                children: pages,
+              ),
+              if (_isFabMenuOpen) _buildFabOverlay(),
+            ],
           ),
-          if (_isFabMenuOpen) _buildFabOverlay(),
-        ],
-      ),
-      bottomNavigationBar: _buildCustomBottomNav(),
+          bottomNavigationBar: _buildCustomBottomNav(),
+        );
+      },
     );
   }
 
@@ -317,7 +322,7 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
                     }),
                     Divider(color: Colors.white.withOpacity(0.05), height: 1),
                     _buildFabMenuItem(Icons.build_rounded, const Color(0xFF3B82F6), 'Add Service', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddExpensePage(initialCategory: 'Service')));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddExpensePage(isServiceMode: true)));
                     }),
                     Divider(color: Colors.white.withOpacity(0.05), height: 1),
                     _buildFabMenuItem(Icons.notifications_active_rounded, const Color(0xFFF59E0B), 'Add Reminder', () {

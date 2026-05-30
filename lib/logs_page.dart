@@ -40,9 +40,10 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     final fuelLogsAsync = ref.watch(fuelLogsProvider);
     final vehiclesAsync = ref.watch(vehiclesProvider);
     final expensesAsync = ref.watch(expensesProvider);
+    final servicesAsync = ref.watch(servicesProvider);
     final remindersAsync = ref.watch(remindersProvider);
 
-    final isLoading = fuelLogsAsync.isLoading || vehiclesAsync.isLoading || (!widget.onlyFuel && (expensesAsync.isLoading || remindersAsync.isLoading));
+    final isLoading = fuelLogsAsync.isLoading || vehiclesAsync.isLoading || (!widget.onlyFuel && (expensesAsync.isLoading || servicesAsync.isLoading || remindersAsync.isLoading));
     
     if (isLoading && fuelLogsAsync.valueOrNull == null) {
        return Scaffold(
@@ -60,6 +61,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
     final fuelLogsList = fuelLogsAsync.valueOrNull ?? [];
     final expensesList = expensesAsync.valueOrNull ?? [];
+    final servicesList = servicesAsync.valueOrNull ?? [];
     final remindersList = remindersAsync.valueOrNull ?? [];
     final vehiclesMap = {for (var v in (vehiclesAsync.valueOrNull ?? [])) v.id: v};
 
@@ -74,12 +76,17 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     }
 
     if (!widget.onlyFuel) {
-        // Add Expenses and Services
-        final serviceCategories = ['Service', 'Engine', 'Brakes', 'Suspension', 'General', 'Tires'];
+        // Add Expenses
         for (var expense in expensesList) {
             if (expense.date != null) {
-                final type = serviceCategories.contains(expense.category) ? LogType.service : LogType.expense;
-                unifiedLogs.add(UnifiedLog(type, expense.date!, expense));
+                unifiedLogs.add(UnifiedLog(LogType.expense, expense.date!, expense));
+            }
+        }
+        
+        // Add Services
+        for (var service in servicesList) {
+            if (service.date != null) {
+                unifiedLogs.add(UnifiedLog(LogType.service, service.date!, Expense(id: service.id, userId: service.userId, vehicleId: service.vehicleId, category: service.category, title: service.title, amount: service.amount, date: service.date, notes: service.notes)));
             }
         }
 
@@ -159,6 +166,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                   ref.invalidate(fuelLogsProvider);
                   if (!widget.onlyFuel) {
                       ref.invalidate(expensesProvider);
+                      ref.invalidate(servicesProvider);
                       ref.invalidate(remindersProvider);
                   }
                   try {
@@ -349,7 +357,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   }
 
   Widget _buildFuelLogCard(BuildContext context, FuelLog log, double mileage) {
-    final dateFormat = DateFormat('yyyy-MM-dd');
+    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
     final dateStr = log.date != null ? dateFormat.format(log.date!) : 'Unknown Date';
     final pricePerL = log.fuelQuantity > 0 ? (log.totalCost / log.fuelQuantity).toStringAsFixed(1) : '0.0';
 
@@ -513,7 +521,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   }
 
   Widget _buildExpenseCard(BuildContext context, Expense exp, LogType type) {
-    final dateFormat = DateFormat('yyyy-MM-dd');
+    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
     final dateStr = exp.date != null ? dateFormat.format(exp.date!) : 'Unknown Date';
     
     Color iconColor;
@@ -585,7 +593,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   }
 
   Widget _buildReminderCard(BuildContext context, Map<String, dynamic> rem) {
-    final dateFormat = DateFormat('yyyy-MM-dd');
+    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
     final dateStr = rem['due_date'] != null 
         ? dateFormat.format(DateTime.parse(rem['due_date'])) 
         : 'Unknown Date';

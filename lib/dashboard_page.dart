@@ -128,6 +128,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 const SizedBox(height: 20),
                 
                 vehiclesAsync.when(
+                  skipLoadingOnReload: true,
                   data: (vehicles) {
                     if (vehicles.isEmpty) {
                       return Container(
@@ -151,6 +152,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 ),
                 
                 logsAsync.when(
+                  skipLoadingOnReload: true,
                   data: (allLogs) {
                     final logs = displayVehicle != null 
                         ? allLogs.where((log) {
@@ -188,6 +190,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   onActionTap: () => _openPage(const RemindersPage()),
                 ),
                 remindersAsync.when(
+                  skipLoadingOnReload: true,
                   data: (reminders) => _buildAlertsList(reminders),
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
@@ -203,7 +206,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 ),
                 Builder(
                   builder: (context) {
-                    if (logsAsync.isLoading || expensesAsync.isLoading || remindersAsync.isLoading) {
+                    if ((logsAsync.isLoading && !logsAsync.hasValue) || 
+                        (expensesAsync.isLoading && !expensesAsync.hasValue) || 
+                        (remindersAsync.isLoading && !remindersAsync.hasValue)) {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (logsAsync.hasError) {
@@ -1270,24 +1275,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   }
 
   Widget _buildQuickActionsGrid() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          _buildQuickAction(Icons.receipt_long, 'Expense',
-              iconColor: const Color(0xFF3B82F6), page: const ExpensesPage()),
-          _buildQuickAction(Icons.location_on_outlined, 'Trip',
-              iconColor: const Color(0xFF8B5CF6), page: const TripsPage()),
-          _buildQuickAction(Icons.build, 'Service',
-              iconColor: const Color(0xFFF59E0B), page: const ServicesPage()),
-          _buildQuickAction(Icons.alarm_add_rounded, 'Reminder',
-              iconColor: const Color(0xFFEC4899), page: const RemindersPage()),
-          _buildQuickAction(Icons.local_gas_station_rounded, 'Fuel',
-              iconColor: const Color(0xFF00BFA5), page: const LogsPage(onlyFuel: true)),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildQuickAction(Icons.receipt_long, 'Expense',
+            iconColor: const Color(0xFF3B82F6), page: const ExpensesPage()),
+        _buildQuickAction(Icons.location_on_outlined, 'Trip',
+            iconColor: const Color(0xFF8B5CF6), page: const TripsPage()),
+        _buildQuickAction(Icons.build, 'Service',
+            iconColor: const Color(0xFFF59E0B), page: const ServicesPage()),
+        _buildQuickAction(Icons.alarm_add_rounded, 'Reminder',
+            iconColor: const Color(0xFFEC4899), page: const RemindersPage()),
+        _buildQuickAction(Icons.local_gas_station_rounded, 'Fuel',
+            iconColor: const Color(0xFF00BFA5), page: const LogsPage(onlyFuel: true)),
+      ],
     );
   }
 
@@ -1317,7 +1318,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         },
         behavior: HitTestBehavior.opaque,
         child: Container(
-          margin: const EdgeInsets.only(right: 24),
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

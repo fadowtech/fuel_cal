@@ -68,10 +68,35 @@ class ApiService {
         
         try {
           final meRes = await _dio.get('/users/me', options: Options(headers: {'Authorization': 'Bearer $token'}));
-          final name = meRes.data['full_name'] ?? meRes.data['name'] ?? email.split('@').first;
-          await ProfileService.saveProfile(name: name, email: email, phone: '', fromLogin: true);
+          final firstName = meRes.data['first_name'] ?? (meRes.data['full_name'] != null ? meRes.data['full_name'].toString().split(' ').first : email.split('@').first);
+          
+          String lastName = '';
+          if (meRes.data['last_name'] != null) {
+            lastName = meRes.data['last_name'];
+          } else if (meRes.data['full_name'] != null) {
+            final parts = meRes.data['full_name'].toString().split(' ');
+            if (parts.length > 1) {
+              lastName = parts.sublist(1).join(' ');
+            }
+          }
+
+          await ProfileService.saveProfile(
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            phone: '',
+            gender: meRes.data['gender'],
+            fromLogin: true,
+          );
         } catch (_) {
-          await ProfileService.saveProfile(name: email.split('@').first, email: email, phone: '', fromLogin: true);
+          final nameStr = email.split('@').first;
+          await ProfileService.saveProfile(
+            firstName: nameStr,
+            lastName: '',
+            email: email,
+            phone: '',
+            fromLogin: true,
+          );
         }
         
         return true;
@@ -84,15 +109,26 @@ class ApiService {
 
   Future<bool> signup(String name, String email, String password) async {
     try {
+      final parts = name.split(' ');
+      final firstName = parts.first;
+      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+      
       final response = await _dio.post('/auth/signup', data: {
-        'full_name': name,
+        'first_name': firstName,
+        'last_name': lastName,
         'email': email,
         'password': password,
         'currency_code': 'USD'
       });
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-         await ProfileService.saveProfile(name: name, email: email, phone: '', fromLogin: true);
+         await ProfileService.saveProfile(
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            phone: '',
+            fromLogin: true,
+         );
          return true;
       }
       return false;
