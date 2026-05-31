@@ -336,13 +336,6 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                         decoration: BoxDecoration(
                           color: _surfaceColor.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _neonColor,
-                              offset: const Offset(-4, 0),
-                              blurRadius: 0,
-                            ),
-                          ],
                         ),
                         child: Row(
                           children: [
@@ -421,16 +414,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       height: 80,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: _surfaceColor.withValues(alpha: 0.5),
+                        color: Colors.black.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _neonColor,
-                            offset: const Offset(-4, 0),
-                            blurRadius: 0,
-                          ),
-                        ],
                       ),
                       child: TextField(
                         controller: _notesController,
@@ -520,13 +506,6 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             color: _surfaceColor.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: errorText != null ? Colors.redAccent : _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
           child: Row(
