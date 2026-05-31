@@ -567,7 +567,14 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: _neonColor, width: 2),
-                ),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
+          ),
                 child: Icon(Icons.local_gas_station, color: _neonColor, size: 28),
               ),
             ],
@@ -669,6 +676,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             color: _surfaceColor.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: errorText != null ? Colors.redAccent : _surfaceColor),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
           child: Row(
@@ -813,6 +827,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             color: _surfaceColor.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
           ),
           child: Row(
             children: [
@@ -844,7 +865,14 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               color: _surfaceColor.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: _surfaceColor),
-            ),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
+          ),
             child: Row(
               children: [
                 Icon(Icons.calendar_today_outlined, color: _neonColor, size: 20),
@@ -871,6 +899,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             color: _surfaceColor.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -903,6 +938,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             color: _surfaceColor.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
           ),
           child: Column(
             children: [
@@ -1003,6 +1045,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             color: _surfaceColor.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
           ),
           child: Row(
             children: [
@@ -1033,6 +1082,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             color: _surfaceColor.withOpacity(0.5),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
           ),
           child: Row(
             children: [
@@ -1071,7 +1127,14 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           color: _surfaceColor.withOpacity(0.3),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: _surfaceColor, style: BorderStyle.solid),
-        ),
+            boxShadow: [
+              BoxShadow(
+                color: _neonColor,
+                offset: const Offset(-4, 0),
+                blurRadius: 0,
+              ),
+            ]
+          ),
         child: _billImage != null
             ? Column(
                 children: [

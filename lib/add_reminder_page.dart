@@ -123,27 +123,22 @@ class _AddReminderPageState extends State<AddReminderPage> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 children: [
-                  _buildSectionTitle('1. Select Category'),
-                  const SizedBox(height: 12),
-                  _buildCategoryFilter(),
-                  const SizedBox(height: 24),
-                  
-                  _buildSectionTitle('2. Reminder Details'),
+                  _buildSectionTitle('1. Reminder Details'),
                   const SizedBox(height: 12),
                   _buildDetailsSection(),
                   const SizedBox(height: 24),
                   
-                  _buildSectionTitle('3. Repeat'),
+                  _buildSectionTitle('2. Repeat'),
                   const SizedBox(height: 12),
                   _buildRepeatSection(),
                   const SizedBox(height: 24),
                   
-                  _buildSectionTitle('4. Notifications'),
+                  _buildSectionTitle('3. Notifications'),
                   const SizedBox(height: 12),
                   _buildNotificationsSection(),
                   const SizedBox(height: 24),
                   
-                  _buildSectionTitle('5. Priority'),
+                  _buildSectionTitle('4. Priority'),
                   const SizedBox(height: 12),
                   _buildPrioritySection(),
                   const SizedBox(height: 24),
@@ -376,7 +371,22 @@ class _AddReminderPageState extends State<AddReminderPage> {
         _buildDueDateCard(),
         const SizedBox(height: 12),
         _buildDueKmCard(),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Text('CATEGORY',
+                style: TextStyle(
+                    color: _mutedColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0)),
+            const SizedBox(width: 6),
+            Icon(Icons.info_outline, color: _mutedColor, size: 16),
+          ],
+        ),
         const SizedBox(height: 12),
+        _buildCategoryFilter(),
+        const SizedBox(height: 24),
         _buildNotesCard(),
       ],
     );
@@ -388,6 +398,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -468,6 +485,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -532,6 +556,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -605,6 +636,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,6 +703,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -726,6 +771,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -838,6 +890,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -900,6 +959,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -970,6 +1036,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Stack(
         children: [

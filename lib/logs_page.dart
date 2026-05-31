@@ -556,25 +556,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     
     String? amountStr = rem['amount']?.toString();
 
-    IconData iconData = Icons.alarm_on_outlined;
-    Color iconColor = const Color(0xFFEC4899); // default pink
-    final category = rem['category'] as String? ?? '';
-    
-    final isService = ['service', 'tires', 'engine', 'brakes', 'suspension', 'general', 'maintenance'].contains(category.toLowerCase());
-    if (isService) {
-      iconColor = Colors.orange;
-      iconData = Icons.build_circle_outlined;
-    } else if (category.isNotEmpty) {
-      switch (category.toLowerCase()) {
-        case 'insurance': iconColor = Colors.indigoAccent; iconData = Icons.health_and_safety_outlined; break;
-        case 'toll': 
-        case 'tolls recharge': iconColor = Colors.orangeAccent; iconData = Icons.receipt_long_outlined; break;
-        case 'parking': iconColor = Colors.blueAccent; iconData = Icons.local_parking_outlined; break;
-        case 'wash':
-        case 'washing': iconColor = Colors.cyan; iconData = Icons.local_car_wash_outlined; break;
-        case 'registration': iconColor = Colors.blueAccent; iconData = Icons.receipt_long_outlined; break;
-      }
-    }
+    IconData iconData = Icons.alarm;
+    Color iconColor = Colors.orangeAccent;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -600,38 +583,45 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(rem['title'] as String? ?? 'Reminder',
+                Text('Reminder Added',
                     style: TextStyle(
                         color: ThemeService.textColor,
                         fontSize: 14,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('Reminder • ${rem['category'] ?? 'General'} • $dateStr',
+                Text('${rem['category'] ?? 'General'} • ${rem['title'] ?? 'N/A'}',
                     style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: amountStr != null 
-                  ? Colors.transparent 
-                  : (status == 'pending' 
-                      ? Colors.white.withOpacity(0.1) 
-                      : const Color(0xFF10B981).withOpacity(0.1)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: amountStr != null 
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              amountStr != null 
                 ? Text('₹$amountStr',
                     style: TextStyle(
                         color: ThemeService.textColor,
                         fontSize: 14,
                         fontWeight: FontWeight.bold))
-                : Text(status.toUpperCase(),
-                    style: TextStyle(
-                        color: status == 'pending' ? Colors.white70 : const Color(0xFF10B981),
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold)),
+                : Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: status == 'pending' 
+                          ? Colors.white.withOpacity(0.1) 
+                          : const Color(0xFF10B981).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(status.toUpperCase(),
+                        style: TextStyle(
+                            color: status == 'pending' ? Colors.white70 : const Color(0xFF10B981),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold)),
+                  ),
+              const SizedBox(height: 4),
+              Text(dateStr,
+                  style: TextStyle(color: _mutedColor, fontSize: 12)),
+            ],
           ),
         ],
       ),

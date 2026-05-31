@@ -1354,7 +1354,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         if (log is FuelLog) {
           final stationName = log.stationName?.isNotEmpty == true ? log.stationName : 'Gas Station';
           final liters = log.fuelQuantity.toStringAsFixed(1);
-          final dateStr = log.date != null ? "${log.date!.year}-${log.date!.month.toString().padLeft(2, '0')}-${log.date!.day.toString().padLeft(2, '0')}" : 'Unknown';
+          final dateStr = log.date != null ? DateFormat('dd MMM yyyy').format(log.date!) : '-';
           
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
@@ -1406,7 +1406,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           );
         } else if (log is Expense) {
           final expense = log;
-          final dateStr = expense.date != null ? "${expense.date!.year}-${expense.date!.month.toString().padLeft(2, '0')}-${expense.date!.day.toString().padLeft(2, '0')}" : 'Unknown';
+          final dateStr = expense.date != null ? DateFormat('dd MMM yyyy').format(expense.date!) : '-';
           
           final isService = ['service', 'tires', 'engine', 'brakes', 'suspension', 'general', 'maintenance'].contains(expense.category.toLowerCase());
           final titleStr = isService ? 'Service Added' : 'Expense Added';
@@ -1484,26 +1484,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           
           final dtStr = reminder['created_at'] ?? reminder['due_date'];
           final dt = dtStr != null ? DateTime.tryParse(dtStr) : null;
-          final dateStr = dt != null ? "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}" : 'Unknown';
+          final dateStr = dt != null ? DateFormat('dd MMM yyyy').format(dt) : '-';
           
-          IconData iconData = Icons.alarm_on_outlined;
-          Color iconColor = const Color(0xFFEC4899); // default pink
-          
-          final isService = ['service', 'tires', 'engine', 'brakes', 'suspension', 'general', 'maintenance'].contains(category.toLowerCase());
-          if (isService) {
-            iconColor = Colors.orange;
-            iconData = Icons.build_circle_outlined;
-          } else if (category.isNotEmpty) {
-            switch (category.toLowerCase()) {
-              case 'insurance': iconColor = Colors.indigoAccent; iconData = Icons.health_and_safety_outlined; break;
-              case 'toll': 
-              case 'tolls recharge': iconColor = Colors.orangeAccent; iconData = Icons.receipt_long_outlined; break;
-              case 'parking': iconColor = Colors.blueAccent; iconData = Icons.local_parking_outlined; break;
-              case 'wash':
-              case 'washing': iconColor = Colors.cyan; iconData = Icons.local_car_wash_outlined; break;
-              case 'registration': iconColor = Colors.blueAccent; iconData = Icons.receipt_long_outlined; break;
-            }
-          }
+          IconData iconData = Icons.alarm;
+          Color iconColor = Colors.orangeAccent;
 
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
