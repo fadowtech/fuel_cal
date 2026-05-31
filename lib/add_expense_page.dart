@@ -334,7 +334,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: _surfaceColor.withValues(alpha: 0.5),
+                          color: _cardColor,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
@@ -510,7 +510,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.5),
+            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: errorText != null ? Colors.redAccent : _surfaceColor),
             boxShadow: [

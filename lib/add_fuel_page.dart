@@ -543,7 +543,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: _cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _neonColor.withOpacity(0.3)),
         boxShadow: [
@@ -680,7 +680,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.5),
+            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: errorText != null ? Colors.redAccent : _surfaceColor),
             boxShadow: [
@@ -831,7 +831,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.5),
+            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
             boxShadow: [
@@ -869,7 +869,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: _surfaceColor.withOpacity(0.5),
+              color: _cardColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: _surfaceColor),
             boxShadow: [
@@ -903,7 +903,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.5),
+            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
             boxShadow: [
@@ -942,7 +942,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.5),
+            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
             boxShadow: [
@@ -1049,7 +1049,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.5),
+            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
             boxShadow: [
@@ -1086,7 +1086,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: _surfaceColor.withOpacity(0.5),
+            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
             boxShadow: [
