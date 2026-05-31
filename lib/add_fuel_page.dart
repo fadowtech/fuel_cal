@@ -546,6 +546,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _neonColor.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: _neonColor,
+            offset: const Offset(-4, 0),
+            blurRadius: 0,
+          ),
+        ]
       ),
       child: Row(
         children: [
