@@ -345,9 +345,11 @@ class ApiService {
       return true;
     } catch (e) {
       if (e is DioException) {
-        throw Exception(e.response?.data ?? e.message);
+        print('updateReminder error response: ${e.response?.data}');
+      } else {
+        print('updateReminder error: $e');
       }
-      throw Exception(e.toString());
+      return false;
     }
   }
 

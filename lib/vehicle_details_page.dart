@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/services/theme_service.dart';
@@ -52,7 +53,7 @@ class VehicleDetailsPage extends ConsumerWidget {
       case 'Scooter': return Icons.electric_scooter;
       case 'Car':
       default:
-        return Icons.directions_car;
+        return CupertinoIcons.car_detailed;
     }
   }
 
@@ -73,6 +74,8 @@ class VehicleDetailsPage extends ConsumerWidget {
       orElse: () => this.vehicle,
     );
     final vehicleColor = _getColorFromName(vehicle.color);
+    bool isDarkColor = vehicleColor.computeLuminance() < 0.05;
+    Color iconBgColor = isDarkColor ? Colors.white.withOpacity(0.8) : vehicleColor.withOpacity(0.1);
     
     final logsAsync = ref.watch(fuelLogsProvider);
     final allLogs = logsAsync.value ?? [];
@@ -101,10 +104,23 @@ class VehicleDetailsPage extends ConsumerWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.more_vert, color: ThemeService.textColor),
-            onPressed: () {},
+          _buildTopActionButton(
+            icon: Icons.edit,
+            color: _mutedColor,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AddVehiclePage(vehicleToEdit: vehicle)),
+              );
+            },
           ),
+          const SizedBox(width: 10),
+          _buildTopActionButton(
+            icon: Icons.delete_outline,
+            color: Colors.redAccent,
+            onTap: () => _showDeleteConfirmation(context, ref),
+          ),
+          const SizedBox(width: 16),
         ],
       ),
       body: SafeArea(
@@ -122,44 +138,11 @@ class VehicleDetailsPage extends ConsumerWidget {
                     width: 140,
                     height: 140,
                     decoration: BoxDecoration(
-                      color: _surfaceColor.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _surfaceColor),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          vehicleColor.withOpacity(0.1),
-                          _backgroundColor,
-                        ],
-                      ),
+                      color: iconBgColor,
+                      borderRadius: BorderRadius.circular(24),
                     ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Icon(_getIconForType(vehicle.vehicleType), size: 80, color: vehicleColor),
-                        ),
-                        Positioned(
-                          top: 12,
-                          left: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _neonColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.water_drop_outlined, color: _neonColor, size: 10),
-                                const SizedBox(width: 4),
-                                Text(vehicle.fuelType, style: TextStyle(color: _neonColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    alignment: Alignment.center,
+                    child: Icon(_getIconForType(vehicle.vehicleType), size: 80, color: vehicleColor),
                   ),
                   const SizedBox(width: 20),
                   // Top Stats
@@ -226,60 +209,27 @@ class VehicleDetailsPage extends ConsumerWidget {
                 _buildInfoRow(Icons.palette_outlined, 'Vehicle Color', _getColorDisplayName(vehicle.color), _neonColor, isLast: true),
               ]),
 
-              const SizedBox(height: 32),
-
-              // Edit Button
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => AddVehiclePage(vehicleToEdit: vehicle)),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _neonColor, width: 1.5),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.edit_outlined, color: _neonColor, size: 18),
-                      const SizedBox(width: 8),
-                      Text('Edit Vehicle', style: TextStyle(color: _neonColor, fontSize: 14, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Delete Button
-              GestureDetector(
-                onTap: () => _showDeleteConfirmation(context, ref),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.withOpacity(0.5), width: 1.5),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.delete_outline, color: Colors.red, size: 18),
-                      const SizedBox(width: 8),
-                      Text('Delete Vehicle', style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ),
               const SizedBox(height: 24),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopActionButton({required IconData icon, required Color color, required VoidCallback onTap}) {
+    return Center(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+          ),
+          child: Icon(icon, color: color, size: 20),
         ),
       ),
     );

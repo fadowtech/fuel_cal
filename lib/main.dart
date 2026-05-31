@@ -472,6 +472,9 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
     return Expanded(
       child: GestureDetector(
         onTap: () {
+          if (index == 0) {
+            ref.invalidate(profileProvider); // Refresh profile when returning to dashboard
+          }
           setState(() {
             _selectedIndex = index;
             _bottomNavIndex = index;
@@ -483,21 +486,29 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 28,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutBack,
+              transform: Matrix4.identity()..scale(isActive ? 1.15 : 1.0),
+              child: Icon(
+                icon,
+                color: color,
+                size: 26,
+              ),
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 8),
             FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                maxLines: 1,
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
                 style: TextStyle(
                   color: color,
-                  fontSize: 13,
+                  fontSize: isActive ? 12 : 11,
                   fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                ),
+                child: Text(
+                  label,
+                  maxLines: 1,
                 ),
               ),
             ),

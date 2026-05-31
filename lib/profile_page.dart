@@ -39,7 +39,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   String _profileEmail = ProfileService.defaultEmail;
   String _profilePhone = ProfileService.defaultPhone;
   bool _notificationsEnabled = true;
-  bool _pinLockEnabled = false;
   bool _fingerprintEnabled = false;
 
   @override
@@ -69,7 +68,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       _profileEmail = profile['email']!;
       _profilePhone = profile['phone']!;
       _notificationsEnabled = prefs.getBool('notifications_enabled_$_profileEmail') ?? true;
-      _pinLockEnabled = prefs.getBool('pin_lock_enabled_$_profileEmail') ?? false;
       _fingerprintEnabled = prefs.getBool('fingerprint_enabled_$_profileEmail') ?? false;
     });
   }
@@ -233,37 +231,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ]),
               const SizedBox(height: 24),
               _buildGroup('SECURITY', [
-                _buildRow(
-                  Icons.lock_outline,
-                  'PIN lock',
-                  _pinLockEnabled ? 'On' : 'Off',
-                  suffixWidget: Transform.scale(
-                    scale: 0.7,
-                    alignment: Alignment.centerRight,
-                    child: Switch(
-                      value: _pinLockEnabled,
-                      activeColor: _neonColor,
-                      activeTrackColor: _neonColor.withOpacity(0.3),
-                      inactiveThumbColor: _mutedColor,
-                      inactiveTrackColor: _surfaceColor,
-                      onChanged: (val) async {
-                        final prefs = await SharedPreferences.getInstance();
-                        setState(() {
-                          _pinLockEnabled = val;
-                        });
-                        await prefs.setBool('pin_lock_enabled_$_profileEmail', val);
-                      },
-                    ),
-                  ),
-                  onTap: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    bool val = !_pinLockEnabled;
-                    setState(() {
-                      _pinLockEnabled = val;
-                    });
-                    await prefs.setBool('pin_lock_enabled_$_profileEmail', val);
-                  },
-                ),
                 _buildRow(
                   Icons.fingerprint,
                   'Fingerprint login',

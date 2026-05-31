@@ -387,99 +387,53 @@ class _LogsPageState extends ConsumerState<LogsPage> {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        clipBehavior: Clip.antiAlias,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: _cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
-          boxShadow: ThemeService.isDarkMode ? [
-            BoxShadow(
-              color: _neonColor.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(-5, 0),
-            )
-          ] : [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            )
-          ],
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(left: BorderSide(color: _neonColor, width: 3)),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _neonColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.local_gas_station,
-                      color: Colors.black, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station',
-                              style: TextStyle(
-                                  color: ThemeService.textColor,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold)),
-                          Row(
-                            children: [
-                              Text('₹${log.totalCost.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                      color: ThemeService.textColor,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 4),
-                              Icon(Icons.chevron_right, color: _mutedColor, size: 20),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today_outlined, color: _mutedColor, size: 14),
-                          const SizedBox(width: 4),
-                          Text('$dateStr • ODO ${log.odometer.toStringAsFixed(0)}',
-                              style: TextStyle(color: _mutedColor, fontSize: 12)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _neonColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.local_gas_station_rounded, color: _neonColor, size: 24),
             ),
-            const SizedBox(height: 12),
-            Divider(color: _surfaceColor, height: 1, thickness: 1),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Fuel Added',
+                      style: TextStyle(
+                          color: ThemeService.textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('${log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station'} • ${log.fuelQuantity.toStringAsFixed(1)}L',
+                      style: TextStyle(color: _mutedColor, fontSize: 12)),
+                ],
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _buildInfoColumn(Icons.local_gas_station_outlined, 'Quantity', '${log.fuelQuantity.toStringAsFixed(1)}L', 'filled'),
-                Container(width: 1, height: 30, color: _surfaceColor),
-                _buildInfoColumn(Icons.speed, 'Mileage', mileage > 0 ? mileage.toStringAsFixed(1) : '-', 'KM/L', isGreen: true),
-                Container(width: 1, height: 30, color: _surfaceColor),
-                _buildInfoColumn(Icons.currency_rupee, 'Price', '₹$pricePerL', '/L'),
+                Text('₹${log.totalCost.toStringAsFixed(0)}',
+                    style: TextStyle(
+                        color: ThemeService.textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold)),
+                Text(dateStr,
+                    style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
             ),
           ],
-        ),
         ),
       ),
     );
@@ -529,13 +483,6 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     if (type == LogType.service) {
         iconColor = const Color(0xFF00FF88);
         iconData = Icons.build_outlined;
-        switch (exp.category.toLowerCase()) {
-          case 'engine': iconColor = Colors.orange; iconData = Icons.settings_outlined; break;
-          case 'brakes': iconColor = Colors.redAccent; iconData = Icons.adjust_outlined; break;
-          case 'suspension': iconColor = Colors.purpleAccent; iconData = Icons.hardware_outlined; break;
-          case 'general': iconColor = Colors.blueAccent; iconData = Icons.fact_check_outlined; break;
-          case 'tires': iconColor = Colors.cyan; iconData = Icons.tire_repair_outlined; break;
-        }
     } else {
         iconColor = Colors.blueAccent;
         iconData = Icons.receipt_long_outlined;
@@ -571,22 +518,30 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(exp.title,
+                Text(type == LogType.service ? 'Service Added' : 'Expense Added',
                     style: TextStyle(
                         color: ThemeService.textColor,
                         fontSize: 14,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('${exp.category} • $dateStr',
+                Text('${exp.category} • ${exp.title}',
                     style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
             ),
           ),
-          Text('₹${exp.amount.toStringAsFixed(0)}',
-              style: TextStyle(
-                  color: ThemeService.textColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold)),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('₹${exp.amount.toStringAsFixed(0)}',
+                  style: TextStyle(
+                      color: ThemeService.textColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold)),
+              Text(dateStr,
+                  style: TextStyle(color: _mutedColor, fontSize: 12)),
+            ],
+          ),
         ],
       ),
     );

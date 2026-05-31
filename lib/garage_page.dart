@@ -67,8 +67,6 @@ class _GaragePageState extends ConsumerState<GaragePage> {
                 error: (e, s) => Text('Error: $e', style: const TextStyle(color: Colors.red)),
               ),
               
-              const SizedBox(height: 16),
-              _buildAddVehicleButton(context),
               const SizedBox(height: 100), // padding for bottom nav
             ],
           ),
@@ -100,13 +98,27 @@ class _GaragePageState extends ConsumerState<GaragePage> {
             MaterialPageRoute(builder: (context) => const AddVehiclePage()),
           ),
           child: Container(
-            width: 40,
-            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [_neonColor, const Color(0xFF00BFA5)]),
-              shape: BoxShape.circle,
+              color: _neonColor.withOpacity(0.1),
+              border: Border.all(color: _neonColor.withOpacity(0.5)),
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(Icons.add, color: Colors.black, size: 24),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, color: _neonColor, size: 20),
+                const SizedBox(width: 6),
+                Text(
+                  'Add new vehicle',
+                  style: TextStyle(
+                    color: _neonColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -155,6 +167,8 @@ class _GaragePageState extends ConsumerState<GaragePage> {
 
   Widget _buildVehicleCard(BuildContext context, Vehicle v, List<dynamic> allLogs) {
     final vehicleColor = _getColorFromName(v.color);
+    bool isDarkColor = vehicleColor.computeLuminance() < 0.05;
+    Color iconBgColor = isDarkColor ? Colors.white.withOpacity(0.8) : vehicleColor.withOpacity(0.1);
     
     final vehicleLogs = allLogs.where((l) => l.vehicleId == v.id).toList();
     double latestOdo = 0;
@@ -187,8 +201,9 @@ class _GaragePageState extends ConsumerState<GaragePage> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                      color: vehicleColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16)),
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   alignment: Alignment.center,
                   child: Icon(_getIconForType(v.vehicleType), color: vehicleColor, size: 40),
                 ),
@@ -327,53 +342,4 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     );
   }
 
-  Widget _buildAddVehicleButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const AddVehiclePage()),
-      ),
-      child: DottedBorder(
-        options: RoundedRectDottedBorderOptions(
-          color: ThemeService.isDarkMode ? _surfaceColor : ThemeService.textColor.withOpacity(0.15),
-          strokeWidth: 1.5,
-          dashPattern: const [8, 6],
-          radius: const Radius.circular(24),
-          padding: EdgeInsets.zero,
-        ),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _neonColor),
-                ),
-                child: Icon(Icons.add, color: _neonColor, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Add new vehicle',
-                      style: TextStyle(
-                          color: ThemeService.textColor, 
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('Keep track of another vehicle',
-                      style: TextStyle(
-                          color: _mutedColor, 
-                          fontSize: 12)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/models/vehicle_model.dart';
@@ -79,6 +80,17 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
 
   bool _isLoading = false;
 
+  String? _vehicleNumberError;
+  String? _brandError;
+  String? _modelError;
+  String? _tankCapacityError;
+  String? _vehicleTypeError;
+  String? _fuelTypeError;
+  String? _tankTypeError;
+  String? _highestAvgMileageError;
+  String? _avgMileageError;
+  String? _poorMileageError;
+
   final List<String> _vehicleTypes = ['Car', 'Bike', 'Truck', 'Scooter'];
   final List<String> _fuelTypes = ['Petrol', 'Diesel'];
   final List<String> _tankTypes = ['Full Tank', 'Reserve Tank'];
@@ -119,13 +131,24 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
       _selectedTankType = v.tankType ?? '';
       _selectedColorName = v.color ?? 'None';
     }
-    // Rebuild UI on keystrokes to make the preview card dynamic
-    final rebuild = () => setState(() {});
+
+    final rebuild = () => setState(() {
+      if (_brandError != null && _brandController.text.trim().isNotEmpty) _brandError = null;
+      if (_modelError != null && _modelController.text.trim().isNotEmpty) _modelError = null;
+      if (_vehicleNumberError != null && _vehicleNumberController.text.trim().isNotEmpty) _vehicleNumberError = null;
+      if (_tankCapacityError != null && _tankCapacityController.text.trim().isNotEmpty && (double.tryParse(_tankCapacityController.text.trim()) ?? 0.0) > 0) _tankCapacityError = null;
+      if (_highestAvgMileageError != null && _highestAvgMileageController.text.trim().isNotEmpty && (double.tryParse(_highestAvgMileageController.text.trim()) ?? 0.0) > 0) _highestAvgMileageError = null;
+      if (_avgMileageError != null && _avgMileageController.text.trim().isNotEmpty && (double.tryParse(_avgMileageController.text.trim()) ?? 0.0) > 0) _avgMileageError = null;
+      if (_poorMileageError != null && _poorMileageController.text.trim().isNotEmpty && (double.tryParse(_poorMileageController.text.trim()) ?? 0.0) > 0) _poorMileageError = null;
+    });
+    
     _vehicleNumberController.addListener(rebuild);
     _brandController.addListener(rebuild);
     _modelController.addListener(rebuild);
     _tankCapacityController.addListener(rebuild);
+    _highestAvgMileageController.addListener(rebuild);
     _avgMileageController.addListener(rebuild);
+    _poorMileageController.addListener(rebuild);
   }
 
   @override
@@ -159,7 +182,26 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     // Store color name directly
     final colorString = _selectedColorName == 'None' ? null : _selectedColorName;
 
-    if (brand.isEmpty || model.isEmpty || tankCapacity == 0.0 || _selectedVehicleType.isEmpty || _selectedFuelType.isEmpty || _selectedTankType.isEmpty) {
+    bool hasError = false;
+    setState(() {
+      _brandError = brand.isEmpty ? 'Brand is required' : null;
+      _modelError = model.isEmpty ? 'Model is required' : null;
+      _vehicleNumberError = vehicleNumber.isEmpty ? 'Vehicle Number is required' : null;
+      _tankCapacityError = tankCapacity == 0.0 ? 'Valid Tank Capacity is required' : null;
+      _vehicleTypeError = _selectedVehicleType.isEmpty ? 'Vehicle Type is required' : null;
+      _fuelTypeError = _selectedFuelType.isEmpty ? 'Fuel Type is required' : null;
+      _tankTypeError = _selectedTankType.isEmpty ? 'Tank Type is required' : null;
+      
+      _highestAvgMileageError = highestAvg == 0.0 ? 'Required' : null;
+      _avgMileageError = avg == 0.0 ? 'Required' : null;
+      _poorMileageError = poor == 0.0 ? 'Required' : null;
+      
+      if (_brandError != null || _modelError != null || _vehicleNumberError != null || _tankCapacityError != null || _vehicleTypeError != null || _fuelTypeError != null || _tankTypeError != null || _highestAvgMileageError != null || _avgMileageError != null || _poorMileageError != null) {
+        hasError = true;
+      }
+    });
+
+    if (hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all required fields and make your selections.')),
       );
@@ -237,19 +279,6 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
             Text(widget.vehicleToEdit != null ? 'Update your vehicle details' : 'Enter your vehicle details', style: TextStyle(color: _mutedColor, fontSize: 12)),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                border: Border.all(color: _mutedColor.withOpacity(0.5)),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.question_mark, color: _mutedColor, size: 16),
-            ),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: SafeArea(
         child: Column(
@@ -301,6 +330,34 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     );
   }
 
+  Color _getColorFromName(String? colorName) {
+    if (colorName == null || colorName == 'None') return _neonColor;
+    switch (colorName) {
+      case 'White': return Colors.white;
+      case 'Black': return Colors.black;
+      case 'Silver': return const Color(0xFFC0C0C0);
+      case 'Grey / Gunmetal Grey': return const Color(0xFF818589);
+      case 'Blue': return Colors.blue;
+      case 'Red': return Colors.red;
+      case 'Pearl White': return const Color(0xFFF0EAD6);
+      case 'Midnight Black': return const Color(0xFF2C2C2B);
+      case 'Matte Grey': return const Color(0xFF696969);
+      case 'Metallic Silver': return const Color(0xFFBCC6CC);
+      case 'Deep Ocean Blue': return const Color(0xFF000080);
+      case 'Wine Red': return const Color(0xFF722F37);
+      case 'Titanium Grey': return const Color(0xFF878681);
+      default:
+        if (colorName.startsWith('#')) {
+          try {
+            return Color(int.parse(colorName.substring(1), radix: 16) + 0xFF000000);
+          } catch (e) {
+            return _neonColor;
+          }
+        }
+        return _neonColor;
+    }
+  }
+
   Widget _buildPreviewCard() {
     final displayBrand = _brandController.text.isNotEmpty ? _brandController.text : '';
     final displayModel = _modelController.text.isNotEmpty ? _modelController.text : '';
@@ -312,11 +369,15 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     final displayMileage = _avgMileageController.text.isNotEmpty ? '${_avgMileageController.text} KM/L' : '- KM/L';
 
     IconData previewIcon;
-    if (_selectedVehicleType == 'Car') previewIcon = Icons.directions_car;
+    if (_selectedVehicleType == 'Car') previewIcon = CupertinoIcons.car_detailed;
     else if (_selectedVehicleType == 'Bike') previewIcon = Icons.motorcycle;
     else if (_selectedVehicleType == 'Truck') previewIcon = Icons.local_shipping;
     else if (_selectedVehicleType == 'Scooter') previewIcon = Icons.electric_scooter;
-    else previewIcon = Icons.directions_car; // Default fallback
+    else previewIcon = CupertinoIcons.car_detailed; // Default fallback
+
+    Color displayColor = _getColorFromName(_selectedColorName);
+    bool isDarkColor = displayColor.computeLuminance() < 0.05;
+    Color iconBgColor = isDarkColor ? Colors.white.withOpacity(0.8) : displayColor.withOpacity(0.2);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -333,10 +394,10 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: _neonColor.withOpacity(0.2),
+                  color: iconBgColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(previewIcon, color: _neonColor, size: 32),
+                child: Icon(previewIcon, color: displayColor, size: 32),
               ),
               const SizedBox(width: 16),
               Column(
@@ -422,7 +483,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, String capsType = 'none'}) {
+  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, String capsType = 'none', String? errorText}) {
     return TextField(
       controller: controller,
       textCapitalization: capsType == 'all' ? TextCapitalization.characters : (capsType == 'words' ? TextCapitalization.words : TextCapitalization.none),
@@ -435,6 +496,8 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
+        errorText: errorText,
+        errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
         filled: true,
         fillColor: _surfaceColor.withOpacity(0.5),
         border: OutlineInputBorder(
@@ -448,6 +511,14 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: _neonColor),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.redAccent),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Colors.redAccent),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
@@ -466,7 +537,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildLabel('Vehicle Number', isRequired: true),
-          _buildTextField(_vehicleNumberController, 'Enter the Vehicle Number', capsType: 'all'),
+          _buildTextField(_vehicleNumberController, 'Enter the Vehicle Number', capsType: 'all', errorText: _vehicleNumberError),
         ],
       ),
     );
@@ -484,10 +555,10 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildLabel('Brand', isRequired: true),
-          _buildTextField(_brandController, 'Brand (e.g. Toyota, Hyundai, Volkswagen, Kia)', capsType: 'words'),
+          _buildTextField(_brandController, 'Brand (e.g. Toyota, Hyundai, Volkswagen, Kia)', capsType: 'words', errorText: _brandError),
           const SizedBox(height: 12),
           _buildLabel('Model', isRequired: true),
-          _buildTextField(_modelController, 'Model (e.g. Fortuner, Creta, Polo, Seltos)', capsType: 'words'),
+          _buildTextField(_modelController, 'Model (e.g. Fortuner, Creta, Polo, Seltos)', capsType: 'words', errorText: _modelError),
           const SizedBox(height: 12),
           _buildLabel('Year'),
           _buildTextField(_yearController, 'Year (e.g. 2022)', isNumber: true),
@@ -567,7 +638,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                         child: _buildSelectableButton(
                           title: type,
                           isSelected: _selectedVehicleType == type,
-                          onTap: () => setState(() => _selectedVehicleType = type),
+                          onTap: () => setState(() { _selectedVehicleType = type; _vehicleTypeError = null; }),
                           icon: icon,
                         ),
                       ),
@@ -577,6 +648,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
               ),
             ],
           ),
+          if (_vehicleTypeError != null) Padding(padding: const EdgeInsets.only(top: 4, left: 90), child: Text(_vehicleTypeError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -590,7 +662,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                         child: _buildSelectableButton(
                           title: type,
                           isSelected: _selectedFuelType == type,
-                          onTap: () => setState(() => _selectedFuelType = type),
+                          onTap: () => setState(() { _selectedFuelType = type; _fuelTypeError = null; }),
                           icon: type == 'Petrol' ? Icons.water_drop_outlined : Icons.local_gas_station_outlined,
                         ),
                       ),
@@ -600,8 +672,10 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
               ),
             ],
           ),
+          if (_fuelTypeError != null) Padding(padding: const EdgeInsets.only(top: 4, left: 90), child: Text(_fuelTypeError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
           const SizedBox(height: 16),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -613,7 +687,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 12),
                           child: GestureDetector(
-                            onTap: () => setState(() => _selectedTankType = type),
+                            onTap: () => setState(() { _selectedTankType = type; _tankTypeError = null; }),
                             child: Row(
                               children: [
                                 Container(
@@ -635,6 +709,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                         );
                       }).toList(),
                     ),
+                    if (_tankTypeError != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(_tankTypeError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
                   ],
                 ),
               ),
@@ -652,6 +727,8 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                         hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
                         suffixText: 'L',
                         suffixStyle: const TextStyle(color: Colors.white, fontSize: 13),
+                        errorText: _tankCapacityError,
+                        errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
                         filled: true,
                         fillColor: _surfaceColor.withOpacity(0.5),
                         border: OutlineInputBorder(
@@ -666,6 +743,14 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: _neonColor),
                         ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.redAccent),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.redAccent),
+                        ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                     ),
@@ -679,7 +764,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     );
   }
 
-  Widget _buildMileageInput(String title, TextEditingController controller) {
+  Widget _buildMileageInput(String title, TextEditingController controller, {String? errorText}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -693,6 +778,8 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
             hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
             suffixText: 'KM/L',
             suffixStyle: const TextStyle(color: Colors.white, fontSize: 12),
+            errorText: errorText,
+            errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
             filled: true,
             fillColor: _surfaceColor.withOpacity(0.5),
             border: OutlineInputBorder(
@@ -706,6 +793,14 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: _neonColor),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.redAccent),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.redAccent),
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
@@ -722,13 +817,14 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _surfaceColor),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: _buildMileageInput('Highest Average Mileage', _highestAvgMileageController)),
-          const SizedBox(width: 8),
-          Expanded(child: _buildMileageInput('Average Mileage', _avgMileageController)),
-          const SizedBox(width: 8),
-          Expanded(child: _buildMileageInput('Poor Mileage', _poorMileageController)),
+          _buildMileageInput('Highest Average Mileage', _highestAvgMileageController, errorText: _highestAvgMileageError),
+          const SizedBox(height: 12),
+          _buildMileageInput('Average Mileage', _avgMileageController, errorText: _avgMileageError),
+          const SizedBox(height: 12),
+          _buildMileageInput('Poor Mileage', _poorMileageController, errorText: _poorMileageError),
         ],
       ),
     );
@@ -792,7 +888,9 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
               }).toList();
             })(),
             onChanged: (val) {
-              if (val != null) setState(() => _selectedColorName = val);
+              if (val != null) setState(() { 
+                _selectedColorName = val; 
+              });
             },
           ),
         ],

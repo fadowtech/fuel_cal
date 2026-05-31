@@ -4,6 +4,11 @@ import '../models/fuel_log_model.dart';
 import '../models/expense_model.dart';
 import '../models/service_model.dart';
 import '../providers/auth_provider.dart';
+import '../services/profile_service.dart';
+
+final profileProvider = FutureProvider<Map<String, String>>((ref) async {
+  return await ProfileService.getProfile();
+});
 
 final selectedVehicleProvider = StateProvider<Vehicle?>((ref) => null);
 

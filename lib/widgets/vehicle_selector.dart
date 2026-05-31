@@ -481,7 +481,8 @@ class VehicleSelector extends StatelessWidget {
     final hasColor = vehicle.color != null && vehicle.color!.isNotEmpty && vehicle.color != 'None';
     if (hasColor) {
       final iconColor = _parseVehicleColor(vehicle.color);
-      final bgColor = iconColor.withOpacity(0.15);
+      bool isDarkColor = iconColor.computeLuminance() < 0.05;
+      final bgColor = isDarkColor ? Colors.white.withOpacity(0.8) : iconColor.withOpacity(0.15);
       return Container(
         width: size,
         height: size,

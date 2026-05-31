@@ -41,13 +41,11 @@ class DashboardPage extends ConsumerStatefulWidget {
 
 class _DashboardPageState extends ConsumerState<DashboardPage>
     with AutomaticKeepAliveClientMixin {
-  String _profileName = ProfileService.defaultName;
   Set<int> _seenReminderIds = {};
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
     _loadSeenReminders();
   }
 
@@ -71,14 +69,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     }
   }
 
-  Future<void> _loadProfile() async {
-    final profile = await ProfileService.getProfile();
-    if (mounted) {
-      setState(() {
-        _profileName = profile['name']!;
-      });
-    }
-  }
+  // Profile is now loaded via riverpod provider
 
   @override
   bool get wantKeepAlive => true;
@@ -113,6 +104,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             ref.invalidate(fuelLogsProvider);
             ref.invalidate(expensesProvider);
             ref.invalidate(remindersProvider);
+            ref.invalidate(profileProvider);
             // Optionally await the primary data to show the loading spinner until done
             try {
               await ref.read(fuelLogsProvider.future);
@@ -124,7 +116,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(hasUnreadAlerts, currentPendingReminders),
+                _buildHeader(hasUnreadAlerts, currentPendingReminders, ref.watch(profileProvider).value?['name'] ?? ProfileService.defaultName),
                 const SizedBox(height: 20),
                 
                 vehiclesAsync.when(
@@ -295,8 +287,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildHeader(bool hasUnreadAlerts, List<dynamic> currentPendingReminders) {
-    final name = (_profileName != null && (_profileName as dynamic) != null) ? _profileName : 'Tom Hardy';
+  Widget _buildHeader(bool hasUnreadAlerts, List<dynamic> currentPendingReminders, String profileName) {
+    final name = profileName.isNotEmpty ? profileName : 'Tom Hardy';
     final firstLetter = name.isNotEmpty
         ? name.trim()[0].toUpperCase()
         : 'T';
@@ -376,7 +368,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   context,
                   MaterialPageRoute(builder: (context) => const ProfilePage()),
                 );
-                _loadProfile();
+                ref.invalidate(profileProvider);
               },
               child: Container(
                 width: 40,
