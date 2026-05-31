@@ -394,19 +394,19 @@ class _AddReminderPageState extends State<AddReminderPage> {
 
   Widget _buildTitleCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _titleErrorText != null ? Colors.redAccent : Colors.white.withOpacity(0.1)),
           ),
-        ],
-      ),
-      child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -476,24 +476,26 @@ class _AddReminderPageState extends State<AddReminderPage> {
           ),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   Widget _buildDueDateCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
-        ],
-      ),
-      child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -547,24 +549,26 @@ class _AddReminderPageState extends State<AddReminderPage> {
           ),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   Widget _buildDueKmCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
-        ],
-      ),
-      child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -627,24 +631,26 @@ class _AddReminderPageState extends State<AddReminderPage> {
           ),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   Widget _buildAmountCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
-        ],
-      ),
-      child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -694,24 +700,26 @@ class _AddReminderPageState extends State<AddReminderPage> {
           ),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   Widget _buildNotesCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
-        ],
-      ),
-      child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -763,23 +771,26 @@ class _AddReminderPageState extends State<AddReminderPage> {
           ),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   Widget _buildRepeatSection() {
     return Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _surfaceColor),
           ),
-        ],
-      ),
-      child: Column(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
@@ -843,7 +854,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
           ),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   void _showIntervalPicker() {
@@ -886,19 +899,19 @@ class _AddReminderPageState extends State<AddReminderPage> {
 
   Widget _buildNotificationsSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _surfaceColor),
           ),
-        ],
-      ),
-      child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
         children: [
           const Icon(Icons.notifications_active_outlined, color: Color(0xFFEAB308), size: 24),
           const SizedBox(width: 16),
@@ -919,7 +932,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
           _buildNotifyPill(1, '1 Day'),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   Widget _buildNotifyPill(int days, String label) {
@@ -955,19 +970,19 @@ class _AddReminderPageState extends State<AddReminderPage> {
 
   Widget _buildPrioritySection() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _surfaceColor),
           ),
-        ],
-      ),
-      child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
         children: [
           Icon(Icons.flag_outlined, color: _dangerColor, size: 24),
           const SizedBox(width: 16),
@@ -988,7 +1003,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
           _buildPriorityPill('Low', Color(0xFF22C55E)),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   Widget _buildPriorityPill(String label, Color color) {
@@ -1033,18 +1050,19 @@ class _AddReminderPageState extends State<AddReminderPage> {
     else priorityColor = Color(0xFF22C55E);
 
     return Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _surfaceColor),
           ),
-        ],
-      ),
-      child: Stack(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Stack(
         children: [
           Positioned(
             left: 0,
@@ -1146,6 +1164,8 @@ class _AddReminderPageState extends State<AddReminderPage> {
           ),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 }

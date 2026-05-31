@@ -332,19 +332,19 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     GestureDetector(
                       onTap: _pickDate,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _neonColor,
-                              offset: const Offset(-4, 0),
-                              blurRadius: 0,
-                            ),
-                          ]
-                        ),
-                        child: Row(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _surfaceColor),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
                           children: [
                             Icon(Icons.calendar_today_outlined, color: _neonColor, size: 24),
                             const SizedBox(width: 16),
@@ -364,7 +364,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                             Icon(Icons.chevron_right, color: _mutedColor, size: 20),
                           ],
                         ),
-                      ),
+            ),
+          ),
+        ),
                     ),
                   ]),
                   const SizedBox(height: 8),
@@ -510,19 +512,18 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: errorText != null ? Colors.redAccent : _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              child: Row(
             children: [
               Icon(icon, color: errorText != null ? Colors.redAccent : _neonColor, size: 20),
               const SizedBox(width: 12),
@@ -543,6 +544,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
               ),
               if (suffix != null) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 14)),
             ],
+          ),
+            ),
           ),
         ),
         if (errorText != null)

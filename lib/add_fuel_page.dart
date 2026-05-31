@@ -541,20 +541,19 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
   Widget _buildCurrentStatusCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _neonColor.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: _neonColor,
-            offset: const Offset(-4, 0),
-            blurRadius: 0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _neonColor.withOpacity(0.3)),
           ),
-        ]
-      ),
-      child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,21 +568,21 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               ),
               const SizedBox(height: 16),
               Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _neonColor, width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _neonColor, width: 2),
           ),
-                child: Icon(Icons.local_gas_station, color: _neonColor, size: 28),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
               ),
+              child: Icon(Icons.local_gas_station, color: _neonColor, size: 28),
+            ),
+          ),
+        ),
             ],
           ),
           const SizedBox(width: 24),
@@ -645,7 +644,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           ),
         ],
       ),
-    );
+            ),
+          ),
+        );
   }
 
   Widget _buildTextField({
@@ -680,19 +681,18 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: errorText != null ? Colors.redAccent : _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              child: Row(
             children: [
               Icon(icon, color: errorText != null ? Colors.redAccent : _neonColor, size: 20),
               const SizedBox(width: 12),
@@ -713,6 +713,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               ),
               if (suffix != null) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 14)),
             ],
+          ),
+            ),
           ),
         ),
         if (errorText != null)
@@ -829,20 +831,19 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
           ),
-          child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
             children: [
               Icon(Icons.local_gas_station_outlined, color: _neonColor, size: 20),
               const SizedBox(width: 12),
@@ -862,25 +863,26 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               ),
             ],
           ),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         GestureDetector(
           onTap: _pickDate,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            decoration: BoxDecoration(
-              color: _cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _surfaceColor),
           ),
-            child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Row(
               children: [
                 Icon(Icons.calendar_today_outlined, color: _neonColor, size: 20),
                 const SizedBox(width: 12),
@@ -897,24 +899,25 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 Icon(Icons.chevron_right, color: _mutedColor),
               ],
             ),
+            ),
           ),
+        ),
         ),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
           ),
-          child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
@@ -931,6 +934,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               ),
             ],
           ),
+            ),
+          ),
         ),
       ],
     );
@@ -940,20 +945,19 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _cardColor,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
           ),
-          child: Column(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(19),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
             children: [
               Row(
                 children: [
@@ -1044,23 +1048,24 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               ),
             ],
           ),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
           ),
-          child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
             children: [
               Icon(Icons.notes, color: _neonColor, size: 20),
               const SizedBox(width: 12),
@@ -1081,23 +1086,24 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               ),
             ],
           ),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: _cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _surfaceColor),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
           ),
-          child: Row(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
             children: [
               Icon(Icons.credit_card, color: _neonColor, size: 20),
               const SizedBox(width: 12),
@@ -1119,6 +1125,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               ),
             ],
           ),
+            ),
+          ),
         ),
       ],
     );
@@ -1128,21 +1136,19 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     return GestureDetector(
       onTap: _pickImage,
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: _surfaceColor.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _surfaceColor, style: BorderStyle.solid),
-            boxShadow: [
-              BoxShadow(
-                color: _neonColor,
-                offset: const Offset(-4, 0),
-                blurRadius: 0,
-              ),
-            ]
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _surfaceColor, style: BorderStyle.solid),
           ),
-        child: _billImage != null
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _cardColor,
+                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: _billImage != null
             ? Column(
                 children: [
                   Icon(Icons.check_circle, color: _neonColor, size: 24),
@@ -1168,7 +1174,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                       Text('Optional • JPG, PNG up to 5MB', style: TextStyle(color: _mutedColor, fontSize: 12)),
                     ],
                   ),
-      ),
+            ),
+          ),
+        ),
     );
   }
 
