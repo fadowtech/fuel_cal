@@ -68,9 +68,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       _profileName = profile['name']!;
       _profileEmail = profile['email']!;
       _profilePhone = profile['phone']!;
-      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-      _pinLockEnabled = prefs.getBool('pin_lock_enabled') ?? false;
-      _fingerprintEnabled = prefs.getBool('fingerprint_enabled') ?? false;
+      _notificationsEnabled = prefs.getBool('notifications_enabled_$_profileEmail') ?? true;
+      _pinLockEnabled = prefs.getBool('pin_lock_enabled_$_profileEmail') ?? false;
+      _fingerprintEnabled = prefs.getBool('fingerprint_enabled_$_profileEmail') ?? false;
     });
   }
 
@@ -99,7 +99,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     setState(() {
       _notificationsEnabled = val;
     });
-    await prefs.setBool('notifications_enabled', val);
+    await prefs.setBool('notifications_enabled_$_profileEmail', val);
   }
 
   void _showSettingsDialog() {
@@ -251,7 +251,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         setState(() {
                           _pinLockEnabled = val;
                         });
-                        await prefs.setBool('pin_lock_enabled', val);
+                        await prefs.setBool('pin_lock_enabled_$_profileEmail', val);
                       },
                     ),
                   ),
@@ -261,7 +261,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     setState(() {
                       _pinLockEnabled = val;
                     });
-                    await prefs.setBool('pin_lock_enabled', val);
+                    await prefs.setBool('pin_lock_enabled_$_profileEmail', val);
                   },
                 ),
                 _buildRow(
@@ -315,7 +315,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         setState(() {
                           _fingerprintEnabled = val;
                         });
-                        await prefs.setBool('fingerprint_enabled', val);
+                        await prefs.setBool('fingerprint_enabled_$_profileEmail', val);
                       },
                     ),
                   ),
@@ -358,7 +358,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     setState(() {
                       _fingerprintEnabled = val;
                     });
-                    await prefs.setBool('fingerprint_enabled', val);
+                    await prefs.setBool('fingerprint_enabled_$_profileEmail', val);
                   },
                 ),
               ]),

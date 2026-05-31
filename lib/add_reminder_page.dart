@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fuel_cal/services/api_service.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/notification_service.dart';
+import 'package:fuel_cal/services/profile_service.dart';
 import 'package:intl/intl.dart';
 
 class AddReminderPage extends StatefulWidget {
@@ -228,8 +229,10 @@ class _AddReminderPageState extends State<AddReminderPage> {
     setState(() => _isLoading = false);
 
     if (success) {
+      final profile = await ProfileService.getProfile();
+      final email = profile['email'] ?? '';
       final prefs = await SharedPreferences.getInstance();
-      final notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+      final notificationsEnabled = prefs.getBool('notifications_enabled_$email') ?? true;
       if (notificationsEnabled && _dueDate != null) {
         final id = widget.editData != null ? widget.editData!['raw_data']['id'] : DateTime.now().millisecondsSinceEpoch.remainder(100000);
         await NotificationService.scheduleNotification(

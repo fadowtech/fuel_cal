@@ -9,6 +9,7 @@ import '../sign_up_page.dart';
 import '../dashboard_page.dart';
 import '../providers/auth_provider.dart';
 import '../services/currency_service.dart';
+import '../services/profile_service.dart';
 import '../main.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -66,8 +67,10 @@ class _MainDashboardWrapperState extends State<MainDashboardWrapper> {
   }
 
   Future<void> _checkLockAndLoad() async {
+    final profile = await ProfileService.getProfile();
+    final email = profile['email'] ?? '';
     final prefs = await SharedPreferences.getInstance();
-    final fpEnabled = prefs.getBool('fingerprint_enabled') ?? false;
+    final fpEnabled = prefs.getBool('fingerprint_enabled_$email') ?? false;
     if (fpEnabled) {
       setState(() => _isLocked = true);
       _promptBiometrics();

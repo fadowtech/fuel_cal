@@ -8,6 +8,30 @@ class ApiService {
   final Dio _dio = Dio(BaseOptions(baseUrl: baseUrl));
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   void Function()? onUnauthenticated;
+  
+  Future<bool>? _refreshFuture;
+
+  Future<bool> _refreshToken() async {
+    final email = await _storage.read(key: 'user_email');
+    final password = await _storage.read(key: 'user_password');
+    
+    if (email != null && password != null) {
+      try {
+        final dioRetry = Dio(BaseOptions(baseUrl: baseUrl));
+        final retryResponse = await dioRetry.post('/auth/login', data: {
+          'email': email,
+          'password': password,
+        });
+        
+        final newToken = retryResponse.data['access_token'];
+        if (newToken != null) {
+          await _storage.write(key: 'access_token', value: newToken);
+          return true;
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
 
   ApiService() {
     _dio.interceptors.add(InterceptorsWrapper(
@@ -20,26 +44,22 @@ class ApiService {
       },
       onError: (DioException e, handler) async {
         if (e.response?.statusCode == 401 && !e.requestOptions.path.contains('/auth/login')) {
-          final email = await _storage.read(key: 'user_email');
-          final password = await _storage.read(key: 'user_password');
-          
-          if (email != null && password != null) {
+          bool success = false;
+          if (_refreshFuture != null) {
+            success = await _refreshFuture!;
+          } else {
+            _refreshFuture = _refreshToken();
+            success = await _refreshFuture!;
+            _refreshFuture = null;
+          }
+
+          if (success) {
             try {
-              final dioRetry = Dio(BaseOptions(baseUrl: baseUrl));
-              final retryResponse = await dioRetry.post('/auth/login', data: {
-                'email': email,
-                'password': password,
-              });
-              
-              final newToken = retryResponse.data['access_token'];
-              if (newToken != null) {
-                await _storage.write(key: 'access_token', value: newToken);
-                
-                final options = e.requestOptions;
-                options.headers['Authorization'] = 'Bearer $newToken';
-                final cloneReq = await _dio.fetch(options);
-                return handler.resolve(cloneReq);
-              }
+              final newToken = await _storage.read(key: 'access_token');
+              final options = e.requestOptions;
+              options.headers['Authorization'] = 'Bearer $newToken';
+              final cloneReq = await _dio.fetch(options);
+              return handler.resolve(cloneReq);
             } catch (_) {}
           }
           
