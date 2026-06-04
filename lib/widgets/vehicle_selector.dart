@@ -34,12 +34,16 @@ class VehicleSelector extends StatelessWidget {
   final Vehicle? selectedVehicle;
   final List<Vehicle> vehicles;
   final ValueChanged<Vehicle?> onVehicleSelected;
+  final double? currentOdometer;
+  final Map<int, double>? vehicleOdometers;
 
   const VehicleSelector({
     super.key,
-    required this.selectedVehicle,
     required this.vehicles,
     required this.onVehicleSelected,
+    this.selectedVehicle,
+    this.currentOdometer,
+    this.vehicleOdometers,
   });
 
   @override
@@ -68,13 +72,39 @@ class VehicleSelector extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4.0),
-                  Text(
-                    selectedVehicle?.displayName ?? 'Select a vehicle',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18.0,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          selectedVehicle?.displayName ?? 'Select a vehicle',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (currentOdometer != null) ...[
+                        const SizedBox(width: 8),
+                        const Text('•', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 14),
+                        const SizedBox(width: 4),
+                        const Text('ODO', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 0.5)),
+                        const SizedBox(width: 4),
+                        Text.rich(
+                          TextSpan(
+                            text: currentOdometer!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
+                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                            children: const [
+                              TextSpan(text: ' km', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.normal)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   if (selectedVehicle != null) ...[
                     const SizedBox(height: 4.0),
@@ -423,8 +453,21 @@ class VehicleSelector extends StatelessWidget {
                             style: const TextStyle(
                                 color: Color(0xFF00BFA5),
                                 fontSize: 11,
-                                fontWeight: FontWeight.w500)),
+                                fontWeight: FontWeight.bold)),
                       ),
+                      if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
+                        const SizedBox(width: 8),
+                        const Text('•', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 10),
+                        const SizedBox(width: 4),
+                        const Text('ODO', style: TextStyle(color: Colors.grey, fontSize: 9, letterSpacing: 0.5)),
+                        const SizedBox(width: 4),
+                        Text(
+                          vehicleOdometers![vehicle.id]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ],
                   ),
                 ],

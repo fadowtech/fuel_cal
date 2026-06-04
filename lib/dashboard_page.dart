@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/models/fuel_log_model.dart';
+import 'package:fuel_cal/widgets/odometer_gauge_painter.dart';
 import 'package:fuel_cal/models/expense_model.dart';
 import 'package:fuel_cal/mock_data.dart' hide Vehicle, FuelLog;
 import 'package:fuel_cal/feature_pages.dart';
@@ -42,6 +43,7 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage>
     with AutomaticKeepAliveClientMixin {
   Set<int> _seenReminderIds = {};
+  DateTime _overviewMonth = DateTime.now();
 
   @override
   void initState() {
@@ -131,9 +133,29 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         ),
                       );
                     }
+                    double? currentOdo;
+                    Map<int, double> odos = {};
+                    if (logsAsync.value != null && vehicles.isNotEmpty) {
+                      for (var v in vehicles) {
+                        final vLogs = logsAsync.value!.where((log) {
+                          if (log.vehicleId == v.id) return true;
+                          if (log.vehicleId == null && vehicles.first.id == v.id) return true;
+                          return false;
+                        }).toList();
+                        if (vLogs.isNotEmpty) {
+                          vLogs.sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+                          odos[v.id] = vLogs.last.odometer;
+                          if (displayVehicle != null && v.id == displayVehicle.id) {
+                            currentOdo = vLogs.last.odometer;
+                          }
+                        }
+                      }
+                    }
                     return VehicleSelector(
                       selectedVehicle: displayVehicle,
                       vehicles: vehicles,
+                      currentOdometer: currentOdo,
+                      vehicleOdometers: odos,
                       onVehicleSelected: (v) {
                         ref.read(selectedVehicleProvider.notifier).state = v;
                       },
@@ -154,7 +176,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                             return false;
                           }).toList() 
                         : <FuelLog>[];
-                    final totalCost = logs.fold(0.0, (sum, log) => sum + log.totalCost);
                     
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,12 +183,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         const SizedBox(height: 16),
                         _buildFuelHeroCard(logs, displayVehicle),
                         const SizedBox(height: 16),
-                        _buildMetricCards(logs),
-                        const SizedBox(height: 16),
                         _buildDistanceToEmptyCard(logs, displayVehicle),
                         const SizedBox(height: 24),
-                        _buildSectionTitle('Odometer'),
-                        _buildOdometerCard(logs, totalCost),
+                        _buildVehicleOverview(logs),
                       ],
                     );
                   },
@@ -577,7 +595,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   Expanded(
                     child: _buildStatusItem(
                       icon: Icons.account_balance_wallet_rounded,
-                      title: 'CURRENT FUEL',
+                      title: 'FUEL COST',
                       value: '₹${todayCost.toStringAsFixed(0)}',
                       subtitle: 'Amount fueled',
                       valueColor: ThemeService.textColor,
@@ -916,128 +934,456 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildMetricCards(List<FuelLog> logs) {
-    double bestMileage = 0.0;
-    double totalDistance = 0.0;
-    double totalFuelUsed = 0.0;
-    double thisMonthTotal = 0.0;
-    
+  Widget _buildVehicleOverview(List<FuelLog> logs) {
+    final overviewMonth = _overviewMonth;
     final now = DateTime.now();
     
-    final sortedLogs = List<FuelLog>.from(logs)
-      ..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
+    final currentMonth = DateTime(overviewMonth.year, overviewMonth.month);
+    final lastMonth = overviewMonth.month == 1 ? DateTime(overviewMonth.year - 1, 12) : DateTime(overviewMonth.year, overviewMonth.month - 1);
+    
+    double lifetimeDistance = 0.0;
+    
+    double thisMonthDistance = 0.0;
+    double lastMonthDistance = 0.0;
+    double thisMonthFuel = 0.0;
+    double lastMonthFuel = 0.0;
+    double thisMonthSpend = 0.0;
+    double lastMonthSpend = 0.0;
 
-    for (int i = 1; i < sortedLogs.length; i++) {
-      final prevLog = sortedLogs[i - 1];
-      final currentLog = sortedLogs[i];
-      
-      final distance = currentLog.odometer - prevLog.odometer;
-      if (distance > 0 && prevLog.fuelQuantity > 0) {
-        if (currentLog.isFullTank) {
-          final mileage = distance / prevLog.fuelQuantity;
-          if (mileage > bestMileage) {
-            bestMileage = mileage;
+    if (logs.isNotEmpty) {
+      final sortedLogs = List<FuelLog>.from(logs)..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
+      lifetimeDistance = sortedLogs.last.odometer;
+
+      for (int i = 1; i < sortedLogs.length; i++) {
+        final log = sortedLogs[i];
+        final prevLog = sortedLogs[i - 1];
+        
+        if (log.date != null) {
+          final dist = log.odometer - prevLog.odometer;
+          if (dist > 0) {
+            if (log.date!.year == currentMonth.year && log.date!.month == currentMonth.month) {
+              thisMonthDistance += dist;
+              thisMonthFuel += log.fuelQuantity;
+              thisMonthSpend += log.totalCost;
+            } else if (log.date!.year == lastMonth.year && log.date!.month == lastMonth.month) {
+              lastMonthDistance += dist;
+              lastMonthFuel += log.fuelQuantity;
+              lastMonthSpend += log.totalCost;
+            }
           }
-          totalDistance += distance;
-          totalFuelUsed += prevLog.fuelQuantity;
-        } else {
-           // Basic fallback for non-full tanks
-           final mileage = distance / prevLog.fuelQuantity;
-           if (mileage > bestMileage) {
-             bestMileage = mileage;
-           }
-           totalDistance += distance;
-           totalFuelUsed += prevLog.fuelQuantity;
         }
       }
     }
-    
-    final avgMileage = totalFuelUsed > 0 ? (totalDistance / totalFuelUsed) : 0.0;
-    
-    for (final log in logs) {
-      if (log.date != null && log.date!.year == now.year && log.date!.month == now.month) {
-        thisMonthTotal += log.totalCost;
-      }
-    }
 
-    return Row(
+    double thisMonthEfficiency = thisMonthFuel > 0 ? thisMonthDistance / thisMonthFuel : 0.0;
+    double lastMonthEfficiency = lastMonthFuel > 0 ? lastMonthDistance / lastMonthFuel : 0.0;
+
+    double efficiencyDiff = lastMonthEfficiency > 0 ? ((thisMonthEfficiency - lastMonthEfficiency) / lastMonthEfficiency) * 100 : 0.0;
+    double spendDiff = lastMonthSpend > 0 ? ((thisMonthSpend - lastMonthSpend) / lastMonthSpend) * 100 : 0.0;
+
+    final formatter = NumberFormat('#,##0');
+    final monthFormat = DateFormat('MMM yyyy');
+    final thisMonthStr = monthFormat.format(currentMonth);
+    final lastMonthStr = monthFormat.format(lastMonth);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _buildMetricCard(
-            icon: Icons.speed,
-            title: 'Mileage',
-            value: avgMileage > 0 ? avgMileage.toStringAsFixed(1) : '-',
-            unit: 'KM/L',
-            footerIcon: Icons.trending_up,
-            footerText: bestMileage > 0 ? 'Best ${bestMileage.toStringAsFixed(1)}' : 'No data',
-            footerColor: _neonColor,
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1522), // Deep dark blue
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.directions_car, color: Colors.blueAccent, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Vehicle Overview', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
+              const SizedBox(height: 20),
+              _buildGaugeSection(lifetimeDistance, formatter),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PopupMenuButton<int>(
+                      offset: const Offset(0, 30),
+                      color: const Color(0xFF1B283E),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (month) {
+                        setState(() {
+                          _overviewMonth = DateTime(_overviewMonth.year, month);
+                        });
+                      },
+                      itemBuilder: (context) {
+                        return List.generate(12, (i) {
+                          final m = i + 1;
+                          final isSelected = m == _overviewMonth.month;
+                          final monthName = DateFormat('MMM').format(DateTime(2000, m));
+                          return PopupMenuItem(
+                            value: m,
+                            child: Text(
+                              monthName,
+                              style: TextStyle(
+                                color: isSelected ? Colors.blueAccent : Colors.white,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          );
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.calendar_today, color: Colors.grey, size: 14),
+                            const SizedBox(width: 6),
+                            Text(DateFormat('MMM').format(_overviewMonth), style: const TextStyle(color: Colors.white, fontSize: 13)),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    PopupMenuButton<int>(
+                      offset: const Offset(0, 30),
+                      color: const Color(0xFF1B283E),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (year) {
+                        setState(() {
+                          _overviewMonth = DateTime(year, _overviewMonth.month);
+                        });
+                      },
+                      itemBuilder: (context) {
+                        final currentYear = DateTime.now().year;
+                        return List.generate(5, (i) {
+                          final y = currentYear - i;
+                          final isSelected = y == _overviewMonth.year;
+                          return PopupMenuItem(
+                            value: y,
+                            child: Text(
+                              y.toString(),
+                              style: TextStyle(
+                                color: isSelected ? Colors.blueAccent : Colors.white,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          );
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(_overviewMonth.year.toString(), style: const TextStyle(color: Colors.white, fontSize: 13)),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Column(
+                children: [
+                  _buildMetricCardBox(
+                    icon: Icons.calendar_month,
+                    iconColor: const Color(0xFF00E676), // match bright green from screenshot
+                    iconBgColor: const Color(0xFF00E676).withValues(alpha: 0.1),
+                    title: 'DISTANCE THIS MONTH',
+                    mainValue: formatter.format(thisMonthDistance),
+                    lastMonthValue: formatter.format(lastMonthDistance),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricCard(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'This month',
-            value: '₹${thisMonthTotal.toStringAsFixed(0)}',
-            unit: '',
-            footerIcon: Icons.trending_down,
-            footerText: 'Total spent',
-            footerColor: _dangerColor,
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F1522), // Dark container background
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.local_gas_station, color: Colors.greenAccent, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Fuel Summary', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
+              const SizedBox(height: 20),
+              _buildCompactPerformanceCard(
+                icon: Icons.speed,
+                color: const Color(0xFF00E676), // Bright green
+                title: 'FUEL EFFICIENCY',
+                value: thisMonthEfficiency > 0 ? thisMonthEfficiency.toStringAsFixed(1) : '-',
+                unit: ' KM/L',
+                subtitle: 'Last Month: ${lastMonthEfficiency > 0 ? lastMonthEfficiency.toStringAsFixed(1) : '-'}',
+              ),
+              const SizedBox(height: 16),
+              _buildCompactPerformanceCard(
+                icon: Icons.account_balance_wallet,
+                color: const Color(0xFFFF5252), // Bright red
+                title: 'FUEL SPEND',
+                value: '₹${formatter.format(thisMonthSpend)}',
+                unit: '',
+                subtitle: 'Last Month: ₹${formatter.format(lastMonthSpend)}',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.grey, size: 16),
+            const SizedBox(width: 8),
+            Text('All comparisons are against the previous month.', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildMetricCard(
-      {required IconData icon,
-      required String title,
-      required String value,
-      required String unit,
-      required IconData footerIcon,
-      required String footerText,
-      required Color footerColor}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _getCardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  Widget _buildGaugeSection(double lifetimeDistance, NumberFormat formatter) {
+    // Dynamic max based on current ODO. E.g., if 18,194 -> max could be 30k.
+    double maxOdo = 30000;
+    if (lifetimeDistance > 20000) {
+      maxOdo = ((lifetimeDistance / 10000).ceil() + 1) * 10000.0;
+    }
+
+    double percentage = lifetimeDistance / maxOdo;
+    if (percentage > 1.0) percentage = 1.0;
+    
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          height: 160,
+          width: 160,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Icon(icon, color: _mutedColor, size: 16),
-              const SizedBox(width: 8),
-              Text(title,
-                  style: TextStyle(color: _mutedColor, fontSize: 12)),
+              CustomPaint(
+                size: const Size(160, 160),
+                painter: OdometerGaugePainter(
+                  percentage: percentage,
+                  trackColor: const Color(0xFF1B283E),
+                  gradientColors: [const Color(0xFF0052D4), const Color(0xFF4364F7), const Color(0xFF6FB1FC), const Color(0xFF00FF9D)],
+                  strokeWidth: 10,
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.directions_car, color: Colors.grey, size: 24),
+                  const SizedBox(height: 6),
+                  const Text('ODO • LIFETIME\nDISTANCE', 
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 10, height: 1.2, letterSpacing: 0.5)),
+                  const SizedBox(height: 8),
+                  Text(
+                    formatter.format(lifetimeDistance),
+                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, height: 1.0),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('KM', style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.0)),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          RichText(
-            text: TextSpan(
-              text: value,
-              style: TextStyle(
-                  color: _textColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('0', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(width: 140),
+            Text('${(maxOdo / 1000).toStringAsFixed(0)}K', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.show_chart, color: Colors.blueAccent, size: 16),
+            const SizedBox(width: 8),
+            Text('Total distance driven', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactPerformanceCard({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String value,
+    required String unit,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A2130), // slightly lighter than wrapper
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withValues(alpha: 0.3), width: 2.0),
+              color: color.withValues(alpha: 0.05),
+            ),
+            child: Icon(icon, color: color, size: 32),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (unit.isNotEmpty)
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: Container(height: 1, color: color.withValues(alpha: 0.3)),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(title, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 4,
+                      child: Container(height: 1, color: color.withValues(alpha: 0.3)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text.rich(
                   TextSpan(
-                      text: ' $unit',
-                      style: TextStyle(
-                          color: _mutedColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.normal)),
+                    text: value,
+                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, height: 1.0),
+                    children: [
+                      if (unit.isNotEmpty)
+                        TextSpan(text: unit, style: const TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.normal)),
+                    ],
+                  ),
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                ]
               ],
             ),
           ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(footerIcon, color: footerColor, size: 12),
-              const SizedBox(width: 4),
-              Text(footerText,
-                  style: TextStyle(color: footerColor, fontSize: 11)),
-            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricCardBox({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String title,
+    required String mainValue,
+    required String lastMonthValue,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161E2E), // slightly lighter than background
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              shape: BoxShape.circle,
+              border: Border.all(color: iconColor.withValues(alpha: 0.3), width: 1.5),
+            ),
+            child: Icon(icon, color: iconColor, size: 32),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: Colors.grey, fontSize: 13, letterSpacing: 1.0)),
+                const SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
+                    text: mainValue,
+                    style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, height: 1.0),
+                    children: const [
+                      TextSpan(text: ' KM', style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.normal)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
+                    text: 'Last month: ',
+                    style: TextStyle(color: iconColor, fontSize: 15),
+                    children: [
+                      TextSpan(text: lastMonthValue, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      const TextSpan(text: ' KM', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.normal)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1062,61 +1408,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               child: Text(action,
                   style: TextStyle(color: _neonColor, fontSize: 12)),
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStat(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label.toUpperCase(),
-            style: TextStyle(
-                color: _mutedColor, fontSize: 10, letterSpacing: 1.0)),
-        const SizedBox(height: 4),
-        Text(value,
-            style: TextStyle(
-                color: _textColor,
-                fontSize: 14,
-                fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  Widget _buildOdometerCard(List<FuelLog> logs, double totalCost) {
-    double maxOdometer = 0.0;
-    double thisMonthDistance = 0.0;
-    
-    if (logs.isNotEmpty) {
-      final now = DateTime.now();
-      final sortedLogs = List<FuelLog>.from(logs)..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
-      
-      maxOdometer = sortedLogs.last.odometer;
-      
-      for (int i = 1; i < sortedLogs.length; i++) {
-        final currentLog = sortedLogs[i];
-        final prevLog = sortedLogs[i - 1];
-        
-        if (currentLog.date != null && currentLog.date!.year == now.year && currentLog.date!.month == now.month) {
-          final dist = currentLog.odometer - prevLog.odometer;
-          if (dist > 0) {
-            thisMonthDistance += dist;
-          }
-        }
-      }
-    }
-    
-    final formatter = NumberFormat('#,##0');
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _getCardDecoration(),
-      child: Row(
-        children: [
-          Expanded(child: _buildStat('ODO', formatter.format(maxOdometer))),
-          Expanded(child: _buildStat('This month', '${formatter.format(thisMonthDistance)} KM')),
-          Expanded(child: _buildStat('Total Cost', '₹${formatter.format(totalCost)}')),
         ],
       ),
     );

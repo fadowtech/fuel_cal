@@ -274,6 +274,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                             icon: Icons.mail_outline_rounded,
                             hint: 'Enter your email address',
                             keyboardType: TextInputType.emailAddress,
+                            readOnly: true,
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
                                 return 'Please enter your email';
@@ -380,6 +381,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
     required String hint,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    bool readOnly = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,6 +400,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
           controller: controller,
           keyboardType: keyboardType,
           validator: validator,
+          readOnly: readOnly,
           style: TextStyle(
             color: ThemeService.textColor,
             fontSize: 15,

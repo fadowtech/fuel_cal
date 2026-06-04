@@ -404,5 +404,80 @@ class ApiService {
       return false;
     }
   }
+  Future<List<dynamic>> getStations() async {
+    try {
+      final response = await _dio.get('/manage/', queryParameters: {'type': 'station'});
+      return response.data as List<dynamic>;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<bool> createStation(Map<String, dynamic> data) async {
+    try {
+      data['type'] = 'station';
+      await _dio.post('/manage/', data: data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateStation(int id, Map<String, dynamic> data) async {
+    try {
+      data['type'] = 'station';
+      await _dio.put('/manage/$id', data: data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteStation(int id) async {
+    try {
+      await _dio.delete('/manage/$id');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<List<dynamic>> getFuelPrices() async {
+    try {
+      final response = await _dio.get('/manage/', queryParameters: {'type': 'fuel'});
+      return response.data as List<dynamic>;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<bool> createFuelPrice(Map<String, dynamic> data) async {
+    try {
+      data['type'] = 'fuel';
+      await _dio.post('/manage/', data: data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateFuelPrice(int id, Map<String, dynamic> data) async {
+    try {
+      data['type'] = 'fuel';
+      await _dio.put('/manage/$id', data: data);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteFuelPrice(int id) async {
+    try {
+      await _dio.delete('/manage/$id');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }
 

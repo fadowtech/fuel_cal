@@ -406,7 +406,7 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
                     const SizedBox(width: 62),
                     _buildNavItem(Icons.directions_car_outlined, 'Garage', 3),
                     _buildNavItem(Icons.calculate_outlined, 'Fuel Cal', 4),
-                    _buildNavItem(Icons.person_outline_rounded, 'Profile', 5),
+                    _buildNavItem(Icons.person_outline_rounded, 'Settings', 5),
                   ],
                 ),
               ),

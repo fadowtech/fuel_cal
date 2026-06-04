@@ -147,3 +147,19 @@ class Service(ServiceBase):
 
     class Config:
         from_attributes = True
+
+class ManageBase(BaseModel):
+    type: str
+    name: str
+    price: Optional[float] = None
+
+class ManageCreate(ManageBase):
+    pass
+
+class Manage(ManageBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+

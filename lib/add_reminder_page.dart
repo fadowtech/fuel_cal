@@ -143,6 +143,8 @@ class _AddReminderPageState extends State<AddReminderPage> {
                   _buildPrioritySection(),
                   const SizedBox(height: 24),
                   
+                  _buildNotesCard(),
+                  const SizedBox(height: 24),
                   _buildSectionTitle('Summary'),
                   const SizedBox(height: 12),
                   _buildSummarySection(),
@@ -251,19 +253,29 @@ class _AddReminderPageState extends State<AddReminderPage> {
 
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.chevron_left_rounded, color: Colors.white),
+            ),
           ),
           const SizedBox(width: 16),
-          Text(
-            widget.editData != null ? 'Edit Reminder' : 'Add Reminder',
-            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.editData != null ? 'Edit reminder' : 'Add reminder', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('Set your alert', style: TextStyle(color: _mutedColor, fontSize: 13)),
+            ],
           ),
-          const Spacer(),
         ],
       ),
     );
@@ -320,25 +332,48 @@ class _AddReminderPageState extends State<AddReminderPage> {
                     if (_categoryErrorText != null) _categoryErrorText = null;
                   });
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                      color: isSelected ? _neonColor.withValues(alpha: 0.1) : Colors.transparent,
-                      border: Border.all(color: isSelected ? _neonColor : Colors.white.withValues(alpha: 0.05)),
-                      borderRadius: BorderRadius.circular(20)),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(cat['icon'] as IconData, color: isSelected ? _neonColor : Colors.blueAccent, size: 18),
-                      const SizedBox(width: 8),
-                      Text(cat['name'] as String,
-                          style: TextStyle(
-                              color: isSelected ? _neonColor : Colors.white,
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500)),
-                    ],
-                  ),
-                ),
+                child: isSelected
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _cardColor,
+                            border: Border(left: BorderSide(color: _neonColor, width: 4)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(cat['icon'] as IconData, color: _neonColor, size: 18),
+                              const SizedBox(width: 8),
+                              Text(cat['name'] as String,
+                                  style: TextStyle(
+                                      color: _neonColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                            borderRadius: BorderRadius.circular(20)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(cat['icon'] as IconData, color: Colors.blueAccent, size: 18),
+                            const SizedBox(width: 8),
+                            Text(cat['name'] as String,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
               );
             }).toList(),
           ),
@@ -386,8 +421,6 @@ class _AddReminderPageState extends State<AddReminderPage> {
         ),
         const SizedBox(height: 12),
         _buildCategoryFilter(),
-        const SizedBox(height: 24),
-        _buildNotesCard(),
       ],
     );
   }

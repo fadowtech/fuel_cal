@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import models, database
-from routers import auth_router, user_router, vehicle_router, log_router, expense_router, reminder_router, service_router
+from routers import auth_router, user_router, vehicle_router, log_router, expense_router, reminder_router, service_router, manage_router
 
 # Initialize the database tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -28,6 +28,7 @@ app.include_router(log_router.router)
 app.include_router(expense_router.router)
 app.include_router(reminder_router.router)
 app.include_router(service_router.router)
+app.include_router(manage_router.router)
 
 @app.get("/")
 def root():

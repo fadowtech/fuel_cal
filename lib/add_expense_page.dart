@@ -383,31 +383,47 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                 if (_categoryErrorText != null) _categoryErrorText = null;
                               });
                             },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected ? _neonColor.withValues(alpha: 0.1) : Colors.transparent,
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: isSelected ? _neonColor : Colors.white.withValues(alpha: 0.05),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(cat['icon'], color: isSelected ? _neonColor : const Color(0xFF3B82F6), size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    cat['name']!,
-                                    style: TextStyle(
-                                      color: isSelected ? _neonColor : Colors.white.withValues(alpha: 0.9),
-                                      fontSize: 14,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            child: isSelected
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(24),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: _cardColor,
+                                        border: Border(left: BorderSide(color: _neonColor, width: 4)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(cat['icon'], color: _neonColor, size: 20),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            cat['name']!,
+                                            style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(cat['icon'], color: const Color(0xFF3B82F6), size: 20),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          cat['name']!,
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 13),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
                           );
                         }).toList(),
                       ),

@@ -66,8 +66,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   String? _existingImageUrl;
   final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+  Future<void> _pickImage(ImageSource source) async {
+    final XFile? image = await _picker.pickImage(source: source);
     if (image != null) {
       setState(() {
         _billImage = image;
@@ -486,6 +486,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     _buildSectionTitle('ADDITIONAL (OPTIONAL)'),
                     _buildAdditional(),
                     const SizedBox(height: 24),
+                    _buildSectionTitle('ADD YOUR RECEIPT'),
                     _buildUploadBill(),
                     const SizedBox(height: 32),
                   ],
@@ -568,21 +569,16 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               ),
               const SizedBox(height: 16),
               Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _neonColor, width: 2),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: Container(
-              decoration: BoxDecoration(
-                color: _cardColor,
-                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _neonColor, width: 2),
+                ),
+                child: Center(
+                  child: Icon(Icons.local_gas_station, color: _neonColor, size: 32),
+                ),
               ),
-              child: Icon(Icons.local_gas_station, color: _neonColor, size: 28),
-            ),
-          ),
-        ),
             ],
           ),
           const SizedBox(width: 24),
@@ -1133,50 +1129,117 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   }
 
   Widget _buildUploadBill() {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _surfaceColor, style: BorderStyle.solid),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: Container(
-              decoration: BoxDecoration(
-                color: _cardColor,
-                border: Border(left: BorderSide(color: _neonColor, width: 4)),
+    if (_billImage != null || _existingImageUrl != null) {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _surfaceColor, style: BorderStyle.solid),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Container(
+            decoration: BoxDecoration(
+              color: _cardColor,
+              border: Border(left: BorderSide(color: _neonColor, width: 4)),
+            ),
+            child: GestureDetector(
+              onTap: () => _pickImage(ImageSource.gallery),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  children: [
+                    Icon(_billImage != null ? Icons.check_circle : Icons.image_outlined, color: _neonColor, size: 24),
+                    const SizedBox(height: 8),
+                    Text(
+                      _billImage != null ? _billImage!.name : 'Image already uploaded',
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    Text('Tap to change', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                  ],
+                ),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: _billImage != null
-            ? Column(
-                children: [
-                  Icon(Icons.check_circle, color: _neonColor, size: 24),
-                  const SizedBox(height: 8),
-                  Text(_billImage!.name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                  Text('Tap to change', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                ],
-              )
-            : _existingImageUrl != null
-                ? Column(
-                    children: [
-                      Icon(Icons.image_outlined, color: _neonColor, size: 24),
-                      const SizedBox(height: 8),
-                      const Text('Image already uploaded', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                      Text('Tap to change', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      Icon(Icons.camera_alt_outlined, color: _neonColor, size: 24),
-                      const SizedBox(height: 8),
-                      const Text('Upload bill image', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                      Text('Optional • JPG, PNG up to 5MB', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                    ],
-                  ),
             ),
           ),
         ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _pickImage(ImageSource.gallery),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _neonColor, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _surfaceColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.upload_file, color: _neonColor, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Upload', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text('Select files to upload', style: TextStyle(color: _mutedColor, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _pickImage(ImageSource.camera),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _neonColor, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _surfaceColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.camera_alt_outlined, color: _neonColor, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Camera', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text('Take a photo', style: TextStyle(color: _mutedColor, fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

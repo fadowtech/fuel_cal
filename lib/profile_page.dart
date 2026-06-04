@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/currency_selection_page.dart';
+import 'package:fuel_cal/manage_fuel_page.dart';
 import 'package:fuel_cal/services/currency_service.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/profile_update_page.dart';
@@ -214,6 +215,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                   ),
                   onTap: () => _handleNotificationToggle(!_notificationsEnabled),
+                ),
+              ]),
+              const SizedBox(height: 24),
+              _buildGroup('MANAGE', [
+                _buildRow(
+                  Icons.local_gas_station_outlined,
+                  'Manage Fuel',
+                  null,
+                  subtitle: 'Price & Fuel Station',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ManageFuelPage()),
+                    );
+                  },
                 ),
               ]),
               const SizedBox(height: 24),
@@ -464,7 +480,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildRow(IconData icon, String label, String? trailing,
-      {VoidCallback? onTap, Widget? suffixWidget}) {
+      {String? subtitle, VoidCallback? onTap, Widget? suffixWidget}) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -482,8 +498,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
             const SizedBox(width: 12),
             Expanded(
-                child: Text(label,
-                    style: TextStyle(color: ThemeService.textColor, fontSize: 14))),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(label,
+                      style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: TextStyle(color: _mutedColor, fontSize: 10)),
+                  ],
+                ],
+              ),
+            ),
             if (trailing != null)
               Text(trailing,
                   style: TextStyle(color: _mutedColor, fontSize: 12)),

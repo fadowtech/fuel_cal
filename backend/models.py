@@ -112,3 +112,15 @@ class Service(Base):
     
     user = relationship("User")
     vehicle = relationship("Vehicle")
+
+class Manage(Base):
+    __tablename__ = "manages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    type = Column(String, index=True) # "fuel" or "station"
+    name = Column(String)
+    price = Column(Float, nullable=True) # Used for fuel
+    
+    user = relationship("User")
+
