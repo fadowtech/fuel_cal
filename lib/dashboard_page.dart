@@ -16,6 +16,8 @@ import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/reminders_page.dart';
 import 'package:fuel_cal/notifications_page.dart';
 import 'package:fuel_cal/reminder_details_page.dart';
+import 'package:fuel_cal/expense_details_page.dart';
+import 'package:fuel_cal/fuel_log_details_page.dart';
 import 'package:fuel_cal/widgets/vehicle_selector.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
@@ -82,6 +84,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final vehiclesAsync = ref.watch(vehiclesProvider);
     final logsAsync = ref.watch(fuelLogsProvider);
     final expensesAsync = ref.watch(expensesProvider);
+    final servicesAsync = ref.watch(servicesProvider);
     final remindersAsync = ref.watch(remindersProvider);
     final _selectedVehicle = ref.watch(selectedVehicleProvider);
 
@@ -165,6 +168,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
                 ),
                 
+                const SizedBox(height: 24),
+                _buildSectionTitle('Vehicle Logbook'),
+                _buildQuickActionsGrid(),
+                const SizedBox(height: 8),
+
                 logsAsync.when(
                   skipLoadingOnReload: true,
                   data: (allLogs) {
@@ -205,10 +213,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
                 ),
-                const SizedBox(height: 24),
-                _buildSectionTitle('Quick actions'),
-                _buildQuickActionsGrid(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
                 _buildSectionTitle(
                   'Recent activity',
                   action: 'View all',
@@ -218,6 +223,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   builder: (context) {
                     if ((logsAsync.isLoading && !logsAsync.hasValue) || 
                         (expensesAsync.isLoading && !expensesAsync.hasValue) || 
+                        (servicesAsync.isLoading && !servicesAsync.hasValue) || 
                         (remindersAsync.isLoading && !remindersAsync.hasValue)) {
                       return const Center(child: CircularProgressIndicator());
                     }
@@ -227,12 +233,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     if (expensesAsync.hasError) {
                       return Text('Error: ${expensesAsync.error}', style: TextStyle(color: _dangerColor));
                     }
+                    if (servicesAsync.hasError) {
+                      return Text('Error: ${servicesAsync.error}', style: TextStyle(color: _dangerColor));
+                    }
                     if (remindersAsync.hasError) {
                       return Text('Error: ${remindersAsync.error}', style: TextStyle(color: _dangerColor));
                     }
                     
                     final allLogs = logsAsync.value ?? [];
                     final allExpenses = expensesAsync.value ?? [];
+                    final allServices = servicesAsync.value ?? [];
                     final allReminders = remindersAsync.value ?? [];
                     
                     final fuelLogs = displayVehicle != null 
@@ -251,6 +261,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                           }).toList() 
                         : <Expense>[];
 
+                    final filteredServices = displayVehicle != null 
+                        ? allServices.where((srv) {
+                            if (srv.vehicleId == displayVehicle.id) return true;
+                            if (srv.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+                            return false;
+                          }).map((srv) => Expense(id: srv.id, userId: srv.userId, vehicleId: srv.vehicleId, category: srv.category, title: srv.title, amount: srv.amount, date: srv.date, notes: srv.notes)).toList() 
+                        : <Expense>[];
+
                     final filteredReminders = displayVehicle != null 
                         ? allReminders.where((rem) {
                             if (rem['vehicle_id'] == displayVehicle.id) return true;
@@ -259,7 +277,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                           }).toList() 
                         : <dynamic>[];
 
-                    final combinedList = [...fuelLogs, ...filteredExpenses, ...filteredReminders];
+                    final combinedList = [...fuelLogs, ...filteredExpenses, ...filteredServices, ...filteredReminders];
                     
                     DateTime _getDate(dynamic item) {
                       if (item is FuelLog) return item.date ?? DateTime.now();
@@ -423,104 +441,56 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     if (tankCapacity <= 0) tankCapacity = 50.0;
 
     double lastFillCost = 0.0;
-    double avgMileage = 15.0; // Fallback
-    double fuelPercent = 0.0;
-    double remainingL = 0.0;
-    double rangeKM = 0.0;
+    double lastFillQuantity = 0.0;
+    String lastFillDateStr = 'No Data';
 
     if (logs.isNotEmpty) {
       final sortedLogs = List<FuelLog>.from(logs)
         ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
         
-      lastFillCost = sortedLogs.first.totalCost;
-      
-      // Chronological calculation
-      final ascLogs = List<FuelLog>.from(logs)
-        ..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
-        
-      double currentFuel = 0.0;
-      double currentRange = 0.0;
-      
-      double currentMileage = vehicle?.avgMileage ?? 15.0;
-      if (ascLogs.length > 1) {
-         double totDist = ascLogs.last.odometer - ascLogs.first.odometer;
-         double totFuel = ascLogs.map((l) => l.fuelQuantity).reduce((a, b) => a + b);
-         if (totFuel > 0 && totDist > 0) {
-            currentMileage = totDist / totFuel;
-         }
-      }
-      if (currentMileage <= 0) currentMileage = 15.0;
-
-      for (int i = 0; i < ascLogs.length; i++) {
-        final log = ascLogs[i];
-        
-        if (i > 0) {
-          double dist = log.odometer - ascLogs[i - 1].odometer;
-          if (dist > 0) {
-            double burned = dist / currentMileage;
-            currentFuel -= burned;
-            if (currentFuel < 0) currentFuel = 0;
-          }
-        }
-        
-        if (log.isFullTank) {
-          currentFuel = tankCapacity;
-        } else {
-          currentFuel += log.fuelQuantity;
-          if (currentFuel > tankCapacity) currentFuel = tankCapacity;
-        }
-        
-        currentRange = currentFuel * currentMileage;
-      }
-      
-      double remainingFuelAtLastFill = currentFuel;
-      double rangeAtLastFill = currentRange;
-      avgMileage = currentMileage;
-
-      // Apply time/distance decay since the last log
       final lastLog = sortedLogs.first;
-      final daysSinceLastLog = DateTime.now().difference(lastLog.date ?? DateTime.now()).inDays.clamp(0, 30);
-      
-      double avgDailyDistance = 0;
-      if (ascLogs.length > 1) {
-        double totalDistance = ascLogs.last.odometer - ascLogs.first.odometer;
-        final totalDays = (ascLogs.last.date ?? DateTime.now()).difference(ascLogs.first.date ?? DateTime.now()).inDays;
-        if (totalDays > 0) {
-          avgDailyDistance = totalDistance / totalDays;
-        } else {
-          avgDailyDistance = 30.0; // Fallback
-        }
-      } else {
-        avgDailyDistance = 30.0;
-      }
-      
-      double estimatedDistanceSinceLastLog = 0.0; // Removed time decay to match explicitly logged values
-      
-      rangeKM = (rangeAtLastFill - estimatedDistanceSinceLastLog).clamp(0.0, 9999.0);
-      remainingL = (rangeKM / avgMileage).clamp(0.0, tankCapacity);
-      fuelPercent = (remainingL / tankCapacity) * 100;
-    }
-
-    String lastFillDateStr = 'No Data';
-    if (logs.isNotEmpty) {
-      final sortedForDate = List<FuelLog>.from(logs)
-        ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
-      final date = sortedForDate.first.date;
-      if (date != null) {
-        lastFillDateStr = DateFormat('dd MMM yyyy').format(date);
+      lastFillCost = lastLog.totalCost;
+      lastFillQuantity = lastLog.fuelQuantity;
+      if (lastLog.date != null) {
+        lastFillDateStr = DateFormat('dd MMM yyyy').format(lastLog.date!);
       }
     }
 
-    // Cost today calculation (since screenshot says "CURRENT FUEL (TODAY)")
-    // The previous implementation used lastFillCost.
-    double todayCost = lastFillCost; // We keep last fill cost or change label slightly, let's keep it to lastFillCost for now as per previous logic.
+    double percentage = (lastFillQuantity / tankCapacity).clamp(0.0, 1.0) * 100;
+    final Color accentColor = ThemeService.neonColor;
+    final Color bgColor = ThemeService.isDarkMode ? const Color(0xFF0D1117) : Colors.white;
+    final Color innerBgColor = ThemeService.isDarkMode ? const Color(0xFF161B22) : const Color(0xFFF0F2F5);
+    final Color textColor = ThemeService.textColor;
+    final Color mutedColor = _mutedColor;
+
+    if (logs.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: ThemeService.isDarkMode ? Colors.black.withOpacity(0.5) : Colors.grey.withOpacity(0.3),
+              blurRadius: 20,
+              spreadRadius: 2,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text("No fuel data found", style: TextStyle(color: textColor, fontSize: 16)),
+        ),
+      );
+    }
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: ThemeService.isDarkMode ? const Color(0xFF0D1117) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.15), width: 1),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accentColor.withOpacity(0.3)),
         boxShadow: [
           BoxShadow(
             color: ThemeService.isDarkMode ? Colors.black.withOpacity(0.5) : Colors.grey.withOpacity(0.3),
@@ -530,85 +500,166 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Header Row
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  border: Border.all(color: _neonColor.withOpacity(0.5)),
-                  borderRadius: BorderRadius.circular(10),
-                  color: _neonColor.withOpacity(0.05),
-                ),
-                child: Icon(Icons.local_gas_station_rounded, color: _neonColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'CURRENT FUEL STATUS',
-                    style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Fuel currently in your tank',
-                    style: TextStyle(color: _mutedColor, fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
+          // Faint gas pump watermark icon on the right
+          Positioned(
+            right: -10,
+            top: 70,
+            child: Icon(Icons.local_gas_station_rounded, color: Colors.white.withOpacity(0.02), size: 140),
           ),
-          const SizedBox(height: 32),
-          // 2x2 Grid for Metrics
           Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header Row
               Row(
                 children: [
-                  Expanded(
-                    child: _buildStatusItem(
-                      icon: Icons.water_drop,
-                      title: 'REMAINING FUEL',
-                      value: '${remainingL.toStringAsFixed(1)} L',
-                      subtitle: 'Remaining in tank',
-                      valueColor: _neonColor,
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: accentColor, width: 1.5),
+                      color: accentColor.withOpacity(0.05),
                     ),
+                    child: Icon(Icons.local_gas_station_rounded, color: accentColor, size: 20),
                   ),
-                  _buildStatusDivider(),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: _buildStatusItem(
-                      icon: Icons.add_road_rounded,
-                      title: 'ESTIMATED RANGE',
-                      value: '${rangeKM.toStringAsFixed(0)} KM',
-                      subtitle: 'Travel range',
-                      valueColor: _neonColor,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Last Fuel Entry', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Text('Details of your most recent refuel', style: TextStyle(color: mutedColor, fontSize: 11)),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              // Top Left Pill Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: accentColor.withOpacity(0.2)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.water_drop, color: accentColor, size: 12),
+                    const SizedBox(width: 4),
+                    Text('FUEL ADDED', style: TextStyle(color: accentColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Main Value and Icon row
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: _buildStatusItem(
-                      icon: Icons.account_balance_wallet_rounded,
-                      title: 'FUEL COST',
-                      value: '₹${todayCost.toStringAsFixed(0)}',
-                      subtitle: 'Amount fueled',
-                      valueColor: ThemeService.textColor,
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: accentColor.withOpacity(0.08),
+                      border: Border.all(color: accentColor.withOpacity(0.2)),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.water_drop, color: accentColor, size: 28),
                     ),
                   ),
-                  _buildStatusDivider(),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: _buildStatusItem(
-                      icon: Icons.calendar_month_rounded,
-                      title: 'LAST FILL',
-                      value: lastFillDateStr,
-                      subtitle: 'Date',
-                      valueColor: ThemeService.textColor,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(lastFillQuantity.toStringAsFixed(1), style: TextStyle(color: accentColor, fontSize: 36, fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 4),
+                            Text('L', style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text('Fuel added during last refuel', style: TextStyle(color: mutedColor, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Divider(color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1), height: 1),
+              const SizedBox(height: 16),
+              // Bottom Cards as a row without inner containers
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: accentColor.withOpacity(0.08),
+                            border: Border.all(color: accentColor.withOpacity(0.2)),
+                          ),
+                          child: Icon(Icons.account_balance_wallet, color: accentColor, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Amount Paid', style: TextStyle(color: textColor, fontSize: 11)),
+                              const SizedBox(height: 2),
+                              Text('₹${lastFillCost.toStringAsFixed(0)}', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 2),
+                              Text('Total paid for last refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.blueAccent.withOpacity(0.08),
+                            border: Border.all(color: Colors.blueAccent.withOpacity(0.2)),
+                          ),
+                          child: const Icon(Icons.calendar_month, color: Colors.blueAccent, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Refuel Date', style: TextStyle(color: textColor, fontSize: 11)),
+                              const SizedBox(height: 2),
+                              Text(lastFillDateStr, style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 2),
+                              Text('Date of last refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -617,63 +668,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatusDivider() {
-    return Container(
-      height: 60,
-      width: 1.5,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.15) : Colors.black.withOpacity(0.15),
-    );
-  }
-
-  Widget _buildStatusItem({
-    required IconData icon,
-    required String title,
-    required String value,
-    required String subtitle,
-    required Color valueColor,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: ThemeService.isDarkMode ? const Color(0xFF161B22) : const Color(0xFFF0F2F5),
-                border: Border.all(color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
-              ),
-              child: Icon(icon, color: _neonColor, size: 16),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(color: _mutedColor, fontSize: 9, letterSpacing: 0.5, fontWeight: FontWeight.w600),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(color: valueColor, fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          subtitle,
-          style: TextStyle(color: _mutedColor, fontSize: 10),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
     );
   }
 
@@ -761,11 +755,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       return Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              border: Border.all(color: blueAccent.withOpacity(0.5)),
-              borderRadius: BorderRadius.circular(10),
-              color: blueAccent.withOpacity(0.05),
+              border: Border.all(color: blueAccent, width: 1.5),
+              borderRadius: BorderRadius.circular(12),
+              color: blueAccent.withOpacity(0.1),
             ),
             child: const Icon(Icons.local_gas_station_rounded, color: blueAccent, size: 20),
           ),
@@ -776,7 +770,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               children: [
                 Text(
                   'DISTANCE TO EMPTY',
-                  style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  style: TextStyle(color: ThemeService.textColor, fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -833,60 +827,68 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     fuelPercent = (totalRemainingL / tankCapacity) * 100;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: _getCardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           buildHeader(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 110,
-                height: 110,
-                child: Stack(
-                  alignment: Alignment.center,
+              // Left half
+              Expanded(
+                flex: 1,
+                child: Column(
                   children: [
-                    CustomPaint(
-                      size: const Size(110, 110),
-                      painter: _ConicGradientPainter(percentage: fuelPercent, color: blueAccent),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            text: fuelPercent.toStringAsFixed(0),
-                            style: TextStyle(color: ThemeService.textColor, fontSize: 32, fontWeight: FontWeight.bold),
-                            children: [
-                              TextSpan(text: '%', style: TextStyle(color: _mutedColor, fontSize: 14)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text('DISTANCE\nTO EMPTY', textAlign: TextAlign.center, style: TextStyle(color: _mutedColor, fontSize: 8, letterSpacing: 0.5)),
-                      ],
-                    ),
+                    _buildFuelGaugeRow('BEFORE FUEL', currentFuelRange, 'Distance before\nreserve', blueAccent, Icons.local_gas_station_rounded),
+                    const SizedBox(height: 20),
+                    _buildFuelGaugeRow('AFTER FUEL', totalRange, 'Distance until\nempty', blueAccent, Icons.local_gas_station_rounded),
                   ],
                 ),
               ),
-              const SizedBox(width: 20),
+              // Vertical divider
+              Container(
+                height: 180,
+                width: 1,
+                color: Colors.white.withOpacity(0.15),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              // Right half
               Expanded(
-                child: Column(
+                flex: 1,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildDteStatItem(Icons.local_gas_station_rounded, 'CURRENT FUEL RANGE', '${currentFuelRange.toStringAsFixed(0)} KM', 'Distance before reserve', blueAccent),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4.0),
-                      child: Icon(Icons.add, color: blueAccent, size: 16),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.05),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      child: const Icon(Icons.tune, color: blueAccent, size: 16),
                     ),
-                    _buildDteStatItem(Icons.local_gas_station_rounded, 'DISTANCE TO EMPTY', '${reserveRange.toStringAsFixed(0)} KM', 'Distance until empty', blueAccent),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: Divider(color: Colors.white10, height: 1),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('TOTAL DISTANCE\nTO EMPTY', style: TextStyle(color: _mutedColor, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.5, height: 1.4)),
+                          const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(totalRange.toStringAsFixed(0), style: TextStyle(color: ThemeService.textColor, fontSize: 28, fontWeight: FontWeight.bold)),
+                              const SizedBox(width: 4),
+                              Text('KM', style: TextStyle(color: _mutedColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    _buildDteStatItem(Icons.add_road_rounded, 'TOTAL DISTANCE', '${totalRange.toStringAsFixed(0)} KM', 'Current + Reserve', blueAccent),
                   ],
                 ),
               ),
@@ -897,38 +899,56 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildDteStatItem(IconData icon, String title, String value, String subtitle, Color color) {
-    return Row(
+  Widget _buildFuelGaugeRow(String label, double value, String subtitle, Color color, IconData icon) {
+    double percentage = (value / 1000).clamp(0.0, 1.0) * 100; // Using 1000 KM as max for visual
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: ThemeService.isDarkMode ? const Color(0xFF161B22) : const Color(0xFFF0F2F5),
-            border: Border.all(color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
-          ),
-          child: Icon(icon, color: color, size: 18),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: TextStyle(color: _mutedColor, fontSize: 10, letterSpacing: 0.5, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(value.split(' ')[0], style: TextStyle(color: ThemeService.textColor, fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 4),
-                  Text('KM', style: TextStyle(color: _mutedColor, fontSize: 12, fontWeight: FontWeight.w600)),
-                ],
+              Text(label, style: TextStyle(color: _mutedColor, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.05),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: Icon(icon, color: color, size: 14),
               ),
-              const SizedBox(height: 2),
-              Text(subtitle, style: TextStyle(color: _mutedColor, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
           ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            SizedBox(
+              width: 110,
+              height: 110,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(110, 110),
+                    painter: _ConicGradientPainter(percentage: percentage, color: color),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(value.toStringAsFixed(0), style: TextStyle(color: ThemeService.textColor, fontSize: 26, fontWeight: FontWeight.bold)),
+                      Text('KM', style: TextStyle(color: _mutedColor, fontSize: 11, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: _mutedColor, fontSize: 9)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1132,10 +1152,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         ),
         const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
             color: const Color(0xFF0F1522), // Dark container background
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           ),
           child: Column(
@@ -1147,17 +1167,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: Colors.greenAccent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Icon(Icons.local_gas_station, color: Colors.greenAccent, size: 20),
+                    child: const Icon(Icons.local_gas_station, color: Colors.greenAccent, size: 16),
                   ),
-                  const SizedBox(width: 12),
-                  const Text('Fuel Summary', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 10),
+                  const Text('Fuel Summary', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               _buildCompactPerformanceCard(
                 icon: Icons.speed,
                 color: const Color(0xFF00E676), // Bright green
@@ -1166,7 +1186,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 unit: ' KM/L',
                 subtitle: 'Last Month: ${lastMonthEfficiency > 0 ? lastMonthEfficiency.toStringAsFixed(1) : '-'}',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _buildCompactPerformanceCard(
                 icon: Icons.account_balance_wallet,
                 color: const Color(0xFFFF5252), // Bright red
@@ -1181,9 +1201,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         const SizedBox(height: 16),
         Row(
           children: [
-            const Icon(Icons.info_outline, color: Colors.grey, size: 16),
-            const SizedBox(width: 8),
-            Text('All comparisons are against the previous month.', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+            const Icon(Icons.info_outline, color: Colors.grey, size: 14),
+            const SizedBox(width: 6),
+            Text('All comparisons are against the previous month.', style: TextStyle(color: Colors.grey[400], fontSize: 11)),
           ],
         ),
       ],
@@ -1204,41 +1224,47 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         SizedBox(
-          height: 160,
-          width: 160,
+          height: 120, // Increased to prevent overflow
+          width: 180,
           child: Stack(
-            alignment: Alignment.center,
+            alignment: Alignment.bottomCenter, // Align bottom to sit on the flat edge
             children: [
-              CustomPaint(
-                size: const Size(160, 160),
-                painter: OdometerGaugePainter(
-                  percentage: percentage,
-                  trackColor: const Color(0xFF1B283E),
-                  gradientColors: [const Color(0xFF0052D4), const Color(0xFF4364F7), const Color(0xFF6FB1FC), const Color(0xFF00FF9D)],
-                  strokeWidth: 10,
+              Positioned(
+                top: 0,
+                child: CustomPaint(
+                  size: const Size(180, 180),
+                  painter: OdometerGaugePainter(
+                    percentage: percentage,
+                    trackColor: const Color(0xFF1B283E),
+                    gradientColors: [const Color(0xFF0052D4), const Color(0xFF4364F7), const Color(0xFF6FB1FC)],
+                    strokeWidth: 12,
+                  ),
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.directions_car, color: Colors.grey, size: 24),
-                  const SizedBox(height: 6),
-                  const Text('ODO • LIFETIME\nDISTANCE', 
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey, fontSize: 10, height: 1.2, letterSpacing: 0.5)),
-                  const SizedBox(height: 8),
-                  Text(
-                    formatter.format(lifetimeDistance),
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, height: 1.0),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text('KM', style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.0)),
-                ],
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12), // Adjusted for better centering within the arc
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.directions_car, color: Colors.grey, size: 20),
+                    const SizedBox(height: 2),
+                    const Text('ODO • LIFETIME\nDISTANCE', 
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, fontSize: 9, height: 1.2, letterSpacing: 0.5)),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatter.format(lifetimeDistance),
+                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, height: 1.0),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text('KM', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 1.0)),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1253,7 +1279,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           children: [
             const Icon(Icons.show_chart, color: Colors.blueAccent, size: 16),
             const SizedBox(width: 8),
-            Text('Total distance driven', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+            Text('Total distance driven', style: TextStyle(color: Colors.grey, fontSize: 12)),
           ],
         ),
       ],
@@ -1269,24 +1295,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     required String subtitle,
   }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1A2130), // slightly lighter than wrapper
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: color.withValues(alpha: 0.3), width: 2.0),
+              border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
               color: color.withValues(alpha: 0.05),
             ),
-            child: Icon(icon, color: color, size: 32),
+            child: Icon(icon, color: color, size: 24),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1297,29 +1323,29 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       flex: 1,
                       child: Container(height: 1, color: color.withValues(alpha: 0.3)),
                     ),
-                    const SizedBox(width: 12),
-                    Text(title, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
+                    Text(title, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                    const SizedBox(width: 10),
                     Expanded(
                       flex: 4,
                       child: Container(height: 1, color: color.withValues(alpha: 0.3)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text.rich(
                   TextSpan(
                     text: value,
-                    style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, height: 1.0),
+                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, height: 1.0),
                     children: [
                       if (unit.isNotEmpty)
-                        TextSpan(text: unit, style: const TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.normal)),
+                        TextSpan(text: unit, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.normal)),
                     ],
                   ),
                 ),
                 if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 ]
               ],
             ),
@@ -1338,44 +1364,44 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     required String lastMonthValue,
   }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF161E2E), // slightly lighter than background
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: iconBgColor,
               shape: BoxShape.circle,
               border: Border.all(color: iconColor.withValues(alpha: 0.3), width: 1.5),
             ),
-            child: Icon(icon, color: iconColor, size: 32),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.grey, fontSize: 13, letterSpacing: 1.0)),
-                const SizedBox(height: 8),
+                Text(title, style: const TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 1.0)),
+                const SizedBox(height: 4),
                 Text.rich(
                   TextSpan(
                     text: mainValue,
-                    style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, height: 1.0),
+                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, height: 1.0),
                     children: const [
-                      TextSpan(text: ' KM', style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.normal)),
+                      TextSpan(text: ' KM', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.normal)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Text.rich(
                   TextSpan(
                     text: 'Last month: ',
-                    style: TextStyle(color: iconColor, fontSize: 15),
+                    style: TextStyle(color: iconColor, fontSize: 12),
                     children: [
                       TextSpan(text: lastMonthValue, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       const TextSpan(text: ' KM', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.normal)),
@@ -1543,9 +1569,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                               color: _textColor,
                               fontSize: 14,
                               fontWeight: FontWeight.w500)),
-                      Text('${r['category'] ?? 'General'} • $timeLeft',
-                          style:
-                              TextStyle(color: _mutedColor, fontSize: 12)),
+                      Text.rich(
+                        TextSpan(
+                          style: TextStyle(color: _mutedColor, fontSize: 12),
+                          children: [
+                            TextSpan(text: '${r['category'] ?? 'General'} • '),
+                            TextSpan(
+                              text: timeLeft,
+                              style: TextStyle(
+                                color: severity == 'danger' ? _dangerColor : _mutedColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1647,11 +1684,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           final liters = log.fuelQuantity.toStringAsFixed(1);
           final dateStr = log.date != null ? DateFormat('dd MMM yyyy').format(log.date!) : '-';
           
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: _getCardDecoration(),
-            child: Row(
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => FuelLogDetailsPage(fuelLog: log)));
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: _getCardDecoration(),
+              child: Row(
               children: [
                 Container(
                   width: 40,
@@ -1694,6 +1735,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 ),
               ],
             ),
+          ),
           );
         } else if (log is Expense) {
           final expense = log;
@@ -1706,8 +1748,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           IconData iconData = Icons.receipt_long_outlined;
           Color iconColor = Colors.blueAccent;
           if (isService) {
-            iconColor = Colors.orange;
-            iconData = Icons.build_circle_outlined;
+            iconColor = Colors.deepOrangeAccent;
+            iconData = Icons.build_outlined;
           } else {
             switch (expense.category.toLowerCase()) {
               case 'insurance': iconColor = Colors.indigoAccent; iconData = Icons.health_and_safety_outlined; break;
@@ -1720,11 +1762,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             }
           }
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: _getCardDecoration(),
-            child: Row(
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ExpenseDetailsPage(expense: expense, isServiceMode: isService)));
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: _getCardDecoration(),
+              child: Row(
               children: [
                 Container(
                   width: 40,
@@ -1766,6 +1812,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 ),
               ],
             ),
+          ),
           );
         } else if (log is Map<String, dynamic>) {
           final reminder = log;
@@ -1780,11 +1827,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           IconData iconData = Icons.alarm;
           Color iconColor = Colors.orangeAccent;
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: _getCardDecoration(),
-            child: Row(
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ReminderDetailsPage(data: reminder)));
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: _getCardDecoration(),
+              child: Row(
               children: [
                 Container(
                   width: 40,
@@ -1826,6 +1877,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 ),
               ],
             ),
+          ),
           );
         }
         return const SizedBox.shrink();

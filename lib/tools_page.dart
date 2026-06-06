@@ -52,182 +52,189 @@ class _ToolsPageState extends State<ToolsPage> {
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> tools = [
       {
-        'title': 'Efficiency',
-        'icon': Icons.speed,
-        'color': const Color(0xFF00FF88), // Neon green
-        'page': const EfficiencyCalculatorPage(),
-        'description': 'Calculate fuel efficiency in KM/L or MPG',
+        'title': 'Trip Cost',
+        'icon': Icons.local_offer_outlined,
+        'color': const Color(0xFF6366F1), // Indigo
+        'pageIndex': 1,
+        'description': 'Estimate the cost of your trip',
       },
       {
-        'title': 'Trip Cost',
-        'icon': Icons.directions_car_outlined,
-        'color': const Color(0xFF00FF88),
-        'page': TripCostCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
-        'description': 'Estimate the cost of your trip',
+        'title': 'Efficiency',
+        'icon': Icons.speed,
+        'color': const Color(0xFF22C55E), // Green
+        'pageIndex': 0,
+        'description': 'Calculate fuel efficiency\nin KM/L or MPG',
       },
       {
         'title': 'Fuel Needed',
         'icon': Icons.local_gas_station_outlined,
-        'color': const Color(0xFF00FF88),
-        'page': FuelNeededCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
-        'description': 'Calculate how much fuel you need',
+        'color': const Color(0xFFF97316), // Orange
+        'pageIndex': 2,
+        'description': 'Calculate how much\nfuel you need',
       },
       {
         'title': 'Max Distance',
-        'icon': Icons.map_outlined,
-        'color': const Color(0xFF00FF88),
-        'page': const MaxDistanceCalculatorPage(),
-        'description': 'Find maximum distance on available fuel',
+        'icon': Icons.route_outlined,
+        'color': const Color(0xFF3B82F6), // Blue
+        'pageIndex': 3,
+        'description': 'Find maximum distance on\navailable fuel',
       },
       {
         'title': 'Distance & Time',
         'icon': Icons.timer_outlined,
-        'color': const Color(0xFF00FF88),
-        'page': const DistanceTimeCalculatorPage(),
-        'description': 'Calculate distance and travel time',
+        'color': const Color(0xFF14B8A6), // Teal
+        'pageIndex': 4,
+        'description': 'Calculate distance and\ntravel time',
       },
       {
         'title': 'Fuel Quantity',
-        'icon': Icons.payments_outlined,
-        'color': const Color(0xFF00FF88),
-        'page': FuelQuantityCalculatorPage(selectedCurrencySymbol: _selectedCurrencySymbol),
-        'description': 'Convert between different fuel quantities',
+        'icon': Icons.water_drop_outlined,
+        'color': const Color(0xFFEC4899), // Pink
+        'pageIndex': 5,
+        'description': 'Convert between different\nfuel quantities',
       },
     ];
 
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: Text('Calculators', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Calculators', style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            Text('Smart tools for every drive', style: TextStyle(color: _mutedColor, fontSize: 13, fontWeight: FontWeight.normal)),
+          ],
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: _textColor),
       ),
       body: SafeArea(
-        child: GridView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.12, // Shortened top/bottom box size
-          ),
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
           itemCount: tools.length,
           itemBuilder: (context, index) {
             final tool = tools[index];
+            final toolColor = tool['color'] as Color;
             
-            return Container(
-              decoration: BoxDecoration(
-                color: _surfaceColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: _neonColor,
-                  width: 1.2,
-                ),
-                boxShadow: ThemeService.isDarkMode ? [
-                  BoxShadow(
-                    color: _neonColor.withOpacity(0.08),
-                    blurRadius: 10,
-                    spreadRadius: 0,
-                  ),
-                ] : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    spreadRadius: 0,
-                  )
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Stack(
-                  children: [
-                    // Dot matrix pattern on the right side
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: DotMatrixPainter(
-                          dotColor: const Color(0xFF00FF88),
-                        ),
-                      ),
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => _CalculatorWrapper(
+                      initialIndex: tool['pageIndex'] as int,
+                      selectedCurrencySymbol: _selectedCurrencySymbol,
+                      selectedCurrencyCode: _selectedCurrencyCode,
+                      onCurrencyChanged: () async {
+                        widget.onCurrencyChanged();
+                        await _loadCurrency();
+                      },
                     ),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => _CalculatorWrapper(
-                                initialIndex: index,
-                                selectedCurrencySymbol: _selectedCurrencySymbol,
-                                selectedCurrencyCode: _selectedCurrencyCode,
-                                onCurrencyChanged: () async {
-                                  widget.onCurrencyChanged();
-                                  await _loadCurrency();
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(24),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0), // Compact top/bottom padding
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Circular icon container
-                              Container(
-                                width: 46,
-                                height: 46,
-                                decoration: BoxDecoration(
-                                  color: ThemeService.isDarkMode ? const Color(0xFF171923) : const Color(0xFFECEFF1),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: _neonColor.withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _neonColor.withOpacity(0.08),
-                                      blurRadius: 6,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(
-                                  tool['icon'],
-                                  size: 22,
-                                  color: _neonColor,
-                                ),
-                              ),
-                              const Spacer(),
-                              // Title
-                              Text(
-                                tool['title'],
-                                style: TextStyle(
-                                  color: _textColor,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              // Description
-                              Text(
-                                tool['description'],
-                                style: TextStyle(
-                                  color: _mutedColor,
-                                  fontSize: 10.5,
-                                  height: 1.3,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: ThemeService.cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    children: [
+                      // Subtle glow effect behind the icon
+                      Positioned(
+                        left: -20,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: toolColor.withOpacity(0.15),
+                                blurRadius: 40,
+                                spreadRadius: 20,
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            // Big squircle icon
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: toolColor,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: toolColor.withOpacity(0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                tool['icon'],
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tool['title'],
+                                    style: TextStyle(
+                                      color: _textColor,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    tool['description'],
+                                    style: TextStyle(
+                                      color: _mutedColor,
+                                      fontSize: 13,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Trailing arrow icon
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.chevron_right,
+                                color: toolColor,
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

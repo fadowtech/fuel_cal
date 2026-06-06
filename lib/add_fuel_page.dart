@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
+import 'package:fuel_cal/services/manage_fuel_service.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -43,7 +44,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   String? _priceErrorText;
   String? _amountErrorText;
 
-  final List<String> _stations = ['Shell', 'BP', 'Mobil', 'Exxon', 'Local Station'];
+  List<String> _stations = [];
   final List<String> _paymentMethods = ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Other'];
 
   // Base dynamic values
@@ -62,6 +63,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   bool _isInitialized = false;
   
   bool _isFetchingLocation = false;
+  bool _priceAutoFilled = false;
+  List<Map<String, dynamic>> _manageFuels = [];
   XFile? _billImage;
   String? _existingImageUrl;
   final ImagePicker _picker = ImagePicker();
@@ -140,6 +143,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   @override
   void initState() {
     super.initState();
+    _loadManageFuels();
     if (widget.existingLog != null) {
       final log = widget.existingLog!;
       _fuelLitersController.text = log['liters']?.toString() ?? '';
@@ -161,6 +165,55 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       }
       if (log['bill_image_path'] != null && log['bill_image_path'].toString().isNotEmpty) {
         _existingImageUrl = log['bill_image_path'];
+      }
+    }
+  }
+
+  Future<void> _loadManageFuels() async {
+    try {
+      final fuels = await ManageFuelService.getFuels();
+      final stations = await ManageFuelService.getStations();
+      if (mounted) {
+        setState(() {
+          _manageFuels = fuels;
+          if (stations.isNotEmpty) {
+            _stations = stations.map((s) => s['name'].toString()).toList();
+            if (_selectedStation != null && !_stations.contains(_selectedStation)) {
+              _stations.add(_selectedStation!);
+            }
+          }
+        });
+        _tryAutoFillPrice();
+      }
+    } catch (e) {}
+  }
+
+  void _tryAutoFillPrice() {
+    if (_priceAutoFilled || widget.existingLog != null || _fuelPriceController.text.isNotEmpty) return;
+    
+    final vehiclesAsync = ref.read(vehiclesProvider);
+    if (vehiclesAsync.isLoading) return;
+    
+    final vehicles = vehiclesAsync.value ?? [];
+    final selectedVehicle = ref.read(selectedVehicleProvider);
+    final activeVehicle = selectedVehicle ?? (vehicles.isNotEmpty ? vehicles.first : null);
+    
+    if (activeVehicle != null && _manageFuels.isNotEmpty) {
+      final fuelType = activeVehicle.fuelType;
+      final matchingFuel = _manageFuels.firstWhere(
+        (f) => f['name'].toString().toLowerCase() == fuelType.toLowerCase(),
+        orElse: () => <String, dynamic>{},
+      );
+      if (matchingFuel.isNotEmpty && matchingFuel['price'] != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _fuelPriceController.text = matchingFuel['price'].toString();
+              _priceAutoFilled = true;
+              _calculateTotal();
+            });
+          }
+        });
       }
     }
   }
@@ -255,6 +308,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       }
     }
     
+    _tryAutoFillPrice();
     _calculateTotal(); // Calculate initial state immediately
     _isInitialized = true;
   }
@@ -852,8 +906,20 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     icon: Icon(Icons.keyboard_arrow_down, color: _mutedColor),
                     isExpanded: true,
                     style: const TextStyle(color: Colors.white, fontSize: 14),
-                    onChanged: (v) => setState(() => _selectedStation = v),
-                    items: _stations.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    onChanged: (v) {
+                      if (v == 'Add New Station') {
+                        _showAddStationDialog(context);
+                      } else {
+                        setState(() => _selectedStation = v);
+                      }
+                    },
+                    items: [
+                      ..._stations.map((s) => DropdownMenuItem(value: s, child: Text(s))),
+                      DropdownMenuItem(
+                        value: 'Add New Station',
+                        child: Text('+ Add New Station', style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1240,6 +1306,86 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showAddStationDialog(BuildContext context) {
+    final TextEditingController stationController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: _cardColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Add New Station', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close, color: Colors.white),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: stationController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Enter station name',
+                    hintStyle: TextStyle(color: _mutedColor),
+                    prefixIcon: Icon(Icons.local_gas_station_outlined, color: _neonColor),
+                    filled: true,
+                    fillColor: _backgroundColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: _mutedColor.withOpacity(0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: _neonColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (stationController.text.trim().isNotEmpty) {
+                        final newStation = {'name': stationController.text.trim()};
+                        setState(() {
+                          _stations.add(stationController.text.trim());
+                          _selectedStation = stationController.text.trim();
+                        });
+                        await ManageFuelService.saveStation(newStation);
+                      }
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _neonColor,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Save Station', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

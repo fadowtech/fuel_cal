@@ -5,13 +5,7 @@ class ManageFuelService {
 
   static Future<List<Map<String, dynamic>>> getFuels() async {
     final List<dynamic> response = await _apiService.getFuelPrices();
-    if (response.isNotEmpty) {
-      return response.map((e) => Map<String, dynamic>.from(e)).toList();
-    }
-    return [
-      {'name': 'Petrol', 'price': 103.45},
-      {'name': 'Diesel', 'price': 90.21},
-    ];
+    return response.map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   static Future<void> saveFuels(List<Map<String, dynamic>> fuels) async {
@@ -34,19 +28,10 @@ class ManageFuelService {
 
   static Future<List<Map<String, dynamic>>> getStations() async {
     final List<dynamic> response = await _apiService.getStations();
-    if (response.isNotEmpty) {
-      return response.map((e) {
-        if (e is String) return {'name': e};
-        return Map<String, dynamic>.from(e);
-      }).toList();
-    }
-    return [
-      {'name': 'IndianOil Petrol Pump'},
-      {'name': 'HP Petrol Pump'},
-      {'name': 'BP Fuel Station'},
-      {'name': 'Shell Fuel Station'},
-      {'name': 'Reliance Petrol Pump'},
-    ];
+    return response.map((e) {
+      if (e is String) return {'name': e};
+      return Map<String, dynamic>.from(e);
+    }).toList();
   }
 
   static Future<bool> saveStation(Map<String, dynamic> station) async {
@@ -55,5 +40,9 @@ class ManageFuelService {
     } else {
       return await _apiService.createStation(station);
     }
+  }
+
+  static Future<bool> deleteStation(int id) async {
+    return await _apiService.deleteStation(id);
   }
 }

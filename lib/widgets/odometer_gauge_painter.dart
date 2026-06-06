@@ -19,8 +19,8 @@ class OdometerGaugePainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - (strokeWidth / 2);
 
-    final startAngle = 140 * math.pi / 180;
-    final sweepAngle = 260 * math.pi / 180;
+    final startAngle = 180 * math.pi / 180;
+    final sweepAngle = 180 * math.pi / 180;
 
     // Background track
     final trackPaint = Paint()
@@ -69,7 +69,7 @@ class OdometerGaugePainter extends CustomPainter {
       final dotY = center.dy + radius * math.sin(currentAngle);
 
       final dotPaint = Paint()
-        ..color = gradientColors.last
+        ..color = const Color(0xFF00FF9D) // explicit bright green dot
         ..style = PaintingStyle.fill;
       
       canvas.drawCircle(Offset(dotX, dotY), strokeWidth * 0.7, dotPaint);
@@ -78,7 +78,7 @@ class OdometerGaugePainter extends CustomPainter {
       final dotX = center.dx + radius * math.cos(startAngle);
       final dotY = center.dy + radius * math.sin(startAngle);
       final dotPaint = Paint()
-        ..color = gradientColors.first
+        ..color = const Color(0xFF00FF9D) // explicit bright green dot
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(dotX, dotY), strokeWidth * 0.7, dotPaint);
     }

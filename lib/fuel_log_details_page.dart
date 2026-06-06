@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:fuel_cal/models/expense_model.dart';
+import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
-import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
-import 'package:fuel_cal/add_expense_page.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
+import 'package:fuel_cal/add_fuel_page.dart';
 
 Color get _backgroundColor => ThemeService.backgroundColor;
 Color get _cardColor => ThemeService.cardColor;
@@ -13,11 +13,10 @@ Color get _surfaceColor => ThemeService.surfaceColor;
 Color get _mutedColor => ThemeService.mutedColor;
 Color get _neonColor => ThemeService.neonColor;
 
-class ExpenseDetailsPage extends ConsumerWidget {
-  final Expense expense;
-  final bool isServiceMode;
+class FuelLogDetailsPage extends ConsumerWidget {
+  final FuelLog fuelLog;
 
-  const ExpenseDetailsPage({super.key, required this.expense, this.isServiceMode = false});
+  const FuelLogDetailsPage({super.key, required this.fuelLog});
 
   Widget _buildActionButton({
     required IconData icon,
@@ -113,18 +112,11 @@ class ExpenseDetailsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dateFormat = DateFormat('dd MMMM yyyy');
-    final dateStr = expense.date != null ? dateFormat.format(expense.date!) : 'Unknown Date';
+    final dateStr = fuelLog.date != null ? dateFormat.format(fuelLog.date!) : 'Unknown Date';
 
-    Color iconColor;
-    IconData iconData;
-    switch (expense.category.toLowerCase()) {
-      case 'engine': iconColor = Colors.orange; iconData = Icons.settings_outlined; break;
-      case 'brakes': iconColor = Colors.redAccent; iconData = Icons.adjust_outlined; break;
-      case 'suspension': iconColor = Colors.purpleAccent; iconData = Icons.hardware_outlined; break;
-      case 'general': iconColor = Colors.blueAccent; iconData = Icons.fact_check_outlined; break;
-      case 'tires': iconColor = Colors.cyan; iconData = Icons.tire_repair_outlined; break;
-      default: iconColor = Colors.deepOrangeAccent; iconData = Icons.build_outlined; break;
-    }
+    final iconColor = _neonColor;
+    final iconData = Icons.local_gas_station_outlined;
+    final stationName = fuelLog.stationName?.isNotEmpty == true ? fuelLog.stationName! : 'Gas Station';
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -135,7 +127,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Service Details', style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: const Text('Fuel Details', style: TextStyle(color: Colors.white, fontSize: 18)),
         actions: [
           _buildActionButton(
             icon: Icons.edit,
@@ -143,7 +135,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
             onTap: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: expense, isServiceMode: isServiceMode)),
+                MaterialPageRoute(builder: (_) => AddFuelPage(existingLog: fuelLog.toJson())),
               );
               if (context.mounted) {
                 Navigator.pop(context);
@@ -171,26 +163,20 @@ class ExpenseDetailsPage extends ConsumerWidget {
                     TextButton(
                       onPressed: () async {
                         Navigator.pop(ctx);
-                        if (expense.id == expense.id.hashCode && expense.date == null) {
+                        if (fuelLog.id == fuelLog.id.hashCode && fuelLog.date == null) {
                            Navigator.pop(context);
                            return;
                         }
-                        final success = isServiceMode 
-                            ? await ref.read(apiServiceProvider).deleteService(expense.id)
-                            : await ref.read(apiServiceProvider).deleteExpense(expense.id);
+                        final success = await ref.read(apiServiceProvider).deleteFuelLog(fuelLog.id);
                         if (success) {
-                          if (isServiceMode) {
-                            ref.invalidate(servicesProvider);
-                          } else {
-                            ref.invalidate(expensesProvider);
-                          }
+                          ref.invalidate(fuelLogsProvider);
                           if (context.mounted) {
                             Navigator.pop(context);
                           }
                         } else {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Failed to delete expense.')),
+                              const SnackBar(content: Text('Failed to delete fuel log.')),
                             );
                           }
                         }
@@ -224,14 +210,14 @@ class ExpenseDetailsPage extends ConsumerWidget {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: iconColor,
+                      color: iconColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(iconData, color: Colors.black87, size: 40),
+                    child: Icon(iconData, color: iconColor, size: 40),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    expense.title,
+                    stationName,
                     style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
@@ -243,8 +229,8 @@ class ExpenseDetailsPage extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      expense.category,
-                      style: TextStyle(color: iconColor, fontSize: 12, fontWeight: FontWeight.bold),
+                      '${fuelLog.fuelQuantity.toStringAsFixed(1)} Liters',
+                      style: TextStyle(color: iconColor, fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -258,7 +244,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
                         ),
                         VerticalDivider(color: Colors.white.withOpacity(0.05), width: 32),
                         Expanded(
-                          child: _buildHeaderInfo(Icons.currency_rupee_rounded, const Color(0xFF3B82F6), 'Amount', '₹${expense.amount.toStringAsFixed(0)}'),
+                          child: _buildHeaderInfo(Icons.currency_rupee_rounded, const Color(0xFF3B82F6), 'Total Cost', '₹${fuelLog.totalCost.toStringAsFixed(0)}'),
                         ),
                       ],
                     ),
@@ -276,18 +262,52 @@ class ExpenseDetailsPage extends ConsumerWidget {
               child: Column(
                 children: [
                   _buildListTile(
-                    icon: Icons.category,
-                    iconColor: const Color(0xFF8B5CF6),
-                    title: 'CATEGORY',
-                    subtitle: expense.category,
+                    icon: Icons.speed,
+                    iconColor: Colors.deepPurpleAccent,
+                    title: 'ODOMETER',
+                    subtitle: '${fuelLog.odometer.toStringAsFixed(0)} KM',
                   ),
                   Divider(color: Colors.white.withOpacity(0.05), height: 1),
-                  if (expense.notes != null && expense.notes!.isNotEmpty)
+                  if (fuelLog.fuelPrice != null) ...[
+                    _buildListTile(
+                      icon: Icons.price_change_outlined,
+                      iconColor: Colors.amber,
+                      title: 'FUEL PRICE',
+                      subtitle: '₹${fuelLog.fuelPrice!.toStringAsFixed(2)} / L',
+                    ),
+                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  ],
+                  if (fuelLog.paymentMethod != null && fuelLog.paymentMethod!.isNotEmpty) ...[
+                    _buildListTile(
+                      icon: Icons.payment,
+                      iconColor: Colors.teal,
+                      title: 'PAYMENT METHOD',
+                      subtitle: fuelLog.paymentMethod,
+                    ),
+                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  ],
+                  if (fuelLog.location != null && fuelLog.location!.isNotEmpty) ...[
+                    _buildListTile(
+                      icon: Icons.location_on_outlined,
+                      iconColor: Colors.redAccent,
+                      title: 'LOCATION',
+                      subtitle: fuelLog.location,
+                    ),
+                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  ],
+                  _buildListTile(
+                    icon: Icons.local_gas_station,
+                    iconColor: Colors.green,
+                    title: 'FULL TANK',
+                    subtitle: fuelLog.isFullTank ? 'Yes' : 'No',
+                  ),
+                  Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  if (fuelLog.notes != null && fuelLog.notes!.isNotEmpty)
                     _buildListTile(
                       icon: Icons.notes,
                       iconColor: const Color(0xFFF59E0B),
                       title: 'NOTES',
-                      subtitle: expense.notes,
+                      subtitle: fuelLog.notes,
                     )
                   else
                     _buildListTile(

@@ -481,7 +481,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     Color iconColor;
     IconData iconData;
     if (type == LogType.service) {
-        iconColor = const Color(0xFF00FF88);
+        iconColor = Colors.deepOrangeAccent;
         iconData = Icons.build_outlined;
     } else {
         iconColor = Colors.blueAccent;

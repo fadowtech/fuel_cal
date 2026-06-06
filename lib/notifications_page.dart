@@ -150,7 +150,20 @@ class NotificationsPage extends ConsumerWidget {
                 children: [
                   Text(r['title'] ?? 'Alert', style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text('${r['category'] ?? 'General'} • $timeLeft', style: TextStyle(color: ThemeService.mutedColor, fontSize: 13)),
+                  Text.rich(
+                    TextSpan(
+                      style: TextStyle(color: ThemeService.mutedColor, fontSize: 13),
+                      children: [
+                        TextSpan(text: '${r['category'] ?? 'General'} • '),
+                        TextSpan(
+                          text: timeLeft,
+                          style: TextStyle(
+                            color: timeLeft.contains('overdue') ? ThemeService.dangerColor : ThemeService.mutedColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

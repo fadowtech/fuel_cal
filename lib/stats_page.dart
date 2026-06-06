@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/models/expense_model.dart';
+import 'package:fuel_cal/models/service_model.dart';
 import 'package:fuel_cal/mock_data.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 
@@ -27,6 +28,8 @@ class _StatsPageState extends ConsumerState<StatsPage> {
   String _fuelChartFilter = 'By month';
   String _mileageChartFilter = 'By month';
   String _monthlyComparisonFilter = 'This year';
+  int _expenseMonth = DateTime.now().month;
+  int _expenseYear = DateTime.now().year;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +45,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           onRefresh: () async {
             ref.invalidate(fuelLogsProvider);
             ref.invalidate(expensesProvider);
+            ref.invalidate(servicesProvider);
             try {
               await ref.read(fuelLogsProvider.future);
             } catch (_) {}
@@ -53,12 +57,14 @@ class _StatsPageState extends ConsumerState<StatsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
-              const SizedBox(height: 16),
-              _buildTabs(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               fuelLogsAsync.when(
                 data: (logs) => expensesAsync.when(
-                  data: (expenses) => _buildKpiGrid(logs, expenses),
+                  data: (expenses) => ref.watch(servicesProvider).when(
+                    data: (services) => _buildKpiGrid(logs, expenses, services),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, s) => const SizedBox(),
+                  ),
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (e, s) => const SizedBox(),
                 ),
@@ -70,7 +76,10 @@ class _StatsPageState extends ConsumerState<StatsPage> {
               if (fuelLogsAsync.hasValue) _buildMileageChart(fuelLogsAsync.value!) else _buildPlaceholderChart(),
               if (fuelLogsAsync.hasValue) _buildMonthlyComparisonChart(fuelLogsAsync.value!) else _buildCard('Monthly comparison', _buildPlaceholderChart()),
               const SizedBox(height: 16),
-              if (fuelLogsAsync.hasValue && expensesAsync.hasValue) _buildExpenseBreakdown(fuelLogsAsync.value!, expensesAsync.value!) else _buildCard('Expense breakdown', _buildPlaceholderChart()),
+              if (fuelLogsAsync.hasValue && expensesAsync.hasValue && ref.read(servicesProvider).hasValue) 
+                _buildExpenseBreakdown(fuelLogsAsync.value!, expensesAsync.value!, ref.read(servicesProvider).value!) 
+              else 
+                _buildCard('Expense breakdown', _buildPlaceholderChart()),
               const SizedBox(height: 24),
               if (fuelLogsAsync.hasValue) _buildSmartInsights(fuelLogsAsync.value!) else const SizedBox(),
               const SizedBox(height: 100),
@@ -92,82 +101,48 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     );
   }
 
-  Widget _buildTabs() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: _surfaceColor,
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final tabs = ['Weekly', 'Monthly', 'Yearly', 'Lifetime'];
-          final tabWidth = constraints.maxWidth / tabs.length;
-          final selectedIndex = tabs.indexOf(_selectedTab);
+  Widget _buildTabsDropdown() {
+    final bool isDark = ThemeService.isDarkMode;
+    final borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05);
 
-          return Stack(
-            children: [
-              // Sliding animated pill background
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                left: selectedIndex * tabWidth,
-                top: 0,
-                bottom: 0,
-                width: tabWidth,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00E676),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-              ),
-              // Interactive text row
-              Row(
-                children: tabs.map((t) {
-                  final isSelected = _selectedTab == t;
-                  return Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _selectedTab = t),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        alignment: Alignment.center,
-                        child: Text(
-                          t,
-                          style: TextStyle(
-                            color: isSelected 
-                                ? (ThemeService.isDarkMode ? Colors.black : Colors.white)
-                                : _mutedColor,
-                            fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          );
-        }
+    return PopupMenuButton<String>(
+      onSelected: (val) => setState(() => _selectedTab = val),
+      color: isDark ? const Color(0xFF23252A) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      itemBuilder: (context) => ['Weekly', 'Monthly', 'Yearly', 'Lifetime'].map((t) => 
+        PopupMenuItem(value: t, child: Text(t, style: TextStyle(color: isDark ? Colors.white : Colors.black87)))
+      ).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_selectedTab, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(width: 8),
+            Icon(Icons.keyboard_arrow_down, color: isDark ? Colors.white54 : Colors.black54, size: 16),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildKpiGrid(List<FuelLog> logs, List<Expense> expenses) {
+  Widget _buildKpiGrid(List<FuelLog> logs, List<Expense> expenses, List<Service> services) {
     final now = DateTime.now();
     DateTime startDate;
     
     switch (_selectedTab) {
       case 'Weekly':
-        startDate = now.subtract(const Duration(days: 7));
+        startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
         break;
       case 'Monthly':
-        startDate = now.subtract(const Duration(days: 30));
+        startDate = DateTime(now.year, now.month, 1);
         break;
       case 'Yearly':
-        startDate = now.subtract(const Duration(days: 365));
+        startDate = DateTime(now.year, 1, 1);
         break;
       case 'Lifetime':
       default:
@@ -183,11 +158,11 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         dynamicTrendText = 'vs last week';
         break;
       case 'Monthly':
-        prevStartDate = startDate.subtract(const Duration(days: 30));
+        prevStartDate = DateTime(startDate.year, startDate.month - 1, 1);
         dynamicTrendText = 'vs last month';
         break;
       case 'Yearly':
-        prevStartDate = startDate.subtract(const Duration(days: 365));
+        prevStartDate = DateTime(startDate.year - 1, 1, 1);
         dynamicTrendText = 'vs last year';
         break;
       case 'Lifetime':
@@ -199,33 +174,49 @@ class _StatsPageState extends ConsumerState<StatsPage> {
 
     final filteredLogs = logs.where((l) => l.date != null && l.date!.isAfter(startDate)).toList();
     final filteredExpenses = expenses.where((e) => e.date != null && e.date!.isAfter(startDate)).toList();
-
-    final prevLogs = logs.where((l) => l.date != null && l.date!.isAfter(prevStartDate) && l.date!.isBefore(startDate)).toList();
-    final prevExpenses = expenses.where((e) => e.date != null && e.date!.isAfter(prevStartDate) && e.date!.isBefore(startDate)).toList();
+    final filteredServices = services.where((s) => s.date != null && s.date!.isAfter(startDate)).toList();
 
     double totalSpend = 0.0;
     for (var l in filteredLogs) totalSpend += l.totalCost;
     for (var e in filteredExpenses) totalSpend += e.amount;
+    for (var s in filteredServices) totalSpend += s.amount;
+
+    final prevLogs = logs.where((l) => l.date != null && l.date!.isAfter(prevStartDate) && l.date!.isBefore(startDate)).toList();
+    final prevExpenses = expenses.where((e) => e.date != null && e.date!.isAfter(prevStartDate) && e.date!.isBefore(startDate)).toList();
+    final prevServices = services.where((s) => s.date != null && s.date!.isAfter(prevStartDate) && s.date!.isBefore(startDate)).toList();
 
     double prevSpend = 0.0;
     for (var l in prevLogs) prevSpend += l.totalCost;
     for (var e in prevExpenses) prevSpend += e.amount;
+    for (var s in prevServices) prevSpend += s.amount;
+
+    final allSortedLogs = List<FuelLog>.from(logs)..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
 
     double totalDistance = 0.0;
     double totalFuelLiters = 0.0;
-    
-    // Sort logs to calculate distance safely
-    final sortedLogs = List<FuelLog>.from(filteredLogs)..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
-    
-    for (int i = 1; i < sortedLogs.length; i++) {
-      final dist = sortedLogs[i].odometer - sortedLogs[i-1].odometer;
-      if (dist > 0 && sortedLogs[i-1].fuelQuantity > 0) {
-        totalDistance += dist;
-        totalFuelLiters += sortedLogs[i-1].fuelQuantity;
+    double prevDistance = 0.0;
+    double prevFuelLiters = 0.0;
+
+    for (int i = 1; i < allSortedLogs.length; i++) {
+      final logDate = allSortedLogs[i].date;
+      if (logDate == null) continue;
+      
+      final dist = allSortedLogs[i].odometer - allSortedLogs[i-1].odometer;
+      final fuel = allSortedLogs[i-1].fuelQuantity;
+      
+      if (dist > 0 && fuel > 0) {
+        if (logDate.isAfter(startDate)) {
+          totalDistance += dist;
+          totalFuelLiters += fuel;
+        } else if (logDate.isAfter(prevStartDate) && !logDate.isAfter(startDate)) {
+          prevDistance += dist;
+          prevFuelLiters += fuel;
+        }
       }
     }
 
     final avgMileage = totalFuelLiters > 0 ? totalDistance / totalFuelLiters : 0.0;
+    final prevAvgMileage = prevFuelLiters > 0 ? prevDistance / prevFuelLiters : 0.0;
     
     double avgPrice = 0.0;
     double totalFuelCost = 0.0;
@@ -238,18 +229,6 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       avgPrice = totalFuelCost / totalVolume;
     }
 
-    double prevDistance = 0.0;
-    double prevFuelLiters = 0.0;
-    final prevSortedLogs = List<FuelLog>.from(prevLogs)..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
-    for (int i = 1; i < prevSortedLogs.length; i++) {
-      final dist = prevSortedLogs[i].odometer - prevSortedLogs[i-1].odometer;
-      if (dist > 0 && prevSortedLogs[i-1].fuelQuantity > 0) {
-        prevDistance += dist;
-        prevFuelLiters += prevSortedLogs[i-1].fuelQuantity;
-      }
-    }
-    final prevAvgMileage = prevFuelLiters > 0 ? prevDistance / prevFuelLiters : 0.0;
-    
     double prevAvgPrice = 0.0;
     double prevTotalFuelCost = 0.0;
     double prevTotalVolume = 0.0;
@@ -265,15 +244,18 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     List<double> mileageData = [];
     List<double> priceData = [];
     
-    for (int i = 1; i < sortedLogs.length; i++) {
-      spendData.add(sortedLogs[i].totalCost);
-      final dist = sortedLogs[i].odometer - sortedLogs[i-1].odometer;
-      if (dist > 0 && sortedLogs[i].fuelQuantity > 0) {
-        distanceData.add(dist);
-        mileageData.add(dist / sortedLogs[i-1].fuelQuantity);
-      }
-      if (sortedLogs[i].fuelQuantity > 0) {
-        priceData.add(sortedLogs[i].totalCost / sortedLogs[i].fuelQuantity);
+    for (int i = 1; i < allSortedLogs.length; i++) {
+      final logDate = allSortedLogs[i].date;
+      if (logDate != null && logDate.isAfter(startDate)) {
+        spendData.add(allSortedLogs[i].totalCost);
+        final dist = allSortedLogs[i].odometer - allSortedLogs[i-1].odometer;
+        if (dist > 0 && allSortedLogs[i].fuelQuantity > 0) {
+          distanceData.add(dist);
+          mileageData.add(dist / allSortedLogs[i-1].fuelQuantity);
+        }
+        if (allSortedLogs[i].fuelQuantity > 0) {
+          priceData.add(allSortedLogs[i].totalCost / allSortedLogs[i].fuelQuantity);
+        }
       }
     }
     
@@ -293,14 +275,24 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     final mileageTrend = calcRealTrend(avgMileage, prevAvgMileage);
     final priceTrend = calcRealTrend(avgPrice, prevAvgPrice);
 
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.15,
+    return Column(
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Overview', style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+            _buildTabsDropdown(),
+          ],
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 1.15,
+          children: [
         SparklineKpiCard(
           title: 'Total spend',
           value: '₹${NumberFormat('#,##0').format(totalSpend)}',
@@ -341,6 +333,8 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           themeColor: const Color(0xFFFF9100),
           sparklineData: priceData,
         ),
+      ],
+    ),
       ],
     );
   }
@@ -599,39 +593,44 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       case 'tires': return {'color': const Color(0xFF00E5FF), 'icon': Icons.tire_repair_outlined};
       case 'service': return {'color': const Color(0xFF2979FF), 'icon': Icons.build_outlined};
       case 'repairs': return {'color': const Color(0xFF00E5FF), 'icon': Icons.home_repair_service_outlined};
+      case 'expense': return {'color': const Color(0xFFA533FF), 'icon': Icons.account_balance_wallet_outlined};
       default: return {'color': Colors.grey, 'icon': Icons.more_horiz};
     }
   }
-  Widget _buildExpenseBreakdown(List<FuelLog> logs, List<Expense> expenses) {
+  Widget _buildExpenseBreakdown(List<FuelLog> logs, List<Expense> expenses, List<Service> services) {
+    final filteredLogs = logs.where((l) => l.date != null && l.date!.month == _expenseMonth && l.date!.year == _expenseYear).toList();
+    final filteredExpenses = expenses.where((e) => e.date != null && e.date!.month == _expenseMonth && e.date!.year == _expenseYear).toList();
+    final filteredServices = services.where((s) => s.date != null && s.date!.month == _expenseMonth && s.date!.year == _expenseYear).toList();
+
     final Map<String, double> categoryTotals = {};
     
     // Add fuel cost to 'Fuel' category
     double totalFuelCost = 0;
-    for (var l in logs) {
-      totalFuelCost += l.totalCost;
-    }
-    if (totalFuelCost > 0) {
-      categoryTotals['Fuel'] = totalFuelCost;
-    }
+    for (var l in filteredLogs) totalFuelCost += l.totalCost;
+    if (totalFuelCost > 0) categoryTotals['Fuel'] = totalFuelCost;
 
-    // Add other expenses
-    for (var e in expenses) {
-      categoryTotals[e.category] = (categoryTotals[e.category] ?? 0) + e.amount;
-    }
+    // Add general expenses
+    double totalExpenseCost = 0;
+    for (var e in filteredExpenses) totalExpenseCost += e.amount;
+    if (totalExpenseCost > 0) categoryTotals['Expense'] = totalExpenseCost;
+
+    // Add services
+    double totalServiceCost = 0;
+    for (var s in filteredServices) totalServiceCost += s.amount;
+    if (totalServiceCost > 0) categoryTotals['Service'] = totalServiceCost;
 
     final total = categoryTotals.values.fold(0.0, (sum, val) => sum + val);
+    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+    Widget content;
     if (total == 0) {
-      return _buildCard('Expense breakdown', _buildEmptyChart('No expenses recorded'));
-    }
+      content = _buildEmptyChart('No expenses recorded for ${monthNames[_expenseMonth - 1]} $_expenseYear');
+    } else {
+      // Sort by value descending
+      final sortedCategories = categoryTotals.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Sort by value descending
-    final sortedCategories = categoryTotals.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return _buildCard(
-      'Expense breakdown',
-      Column(
+      content = Column(
         children: sortedCategories.map((entry) {
           final percentage = (entry.value / total * 100).round();
           final style = _getCategoryStyle(entry.key);
@@ -662,6 +661,90 @@ class _StatsPageState extends ConsumerState<StatsPage> {
             ),
           );
         }).toList(),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor, 
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: ThemeService.isDarkMode ? [] : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Expense breakdown', style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  _buildDropdownSelector(
+                    value: monthNames[_expenseMonth - 1],
+                    items: monthNames,
+                    icon: Icons.calendar_today_outlined,
+                    onChanged: (val) {
+                      setState(() {
+                        _expenseMonth = monthNames.indexOf(val) + 1;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildDropdownSelector(
+                    value: _expenseYear.toString(),
+                    items: List.generate(5, (i) => (DateTime.now().year - i).toString()),
+                    onChanged: (val) {
+                      setState(() {
+                        _expenseYear = int.parse(val);
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          content,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownSelector({
+    required String value,
+    required List<String> items,
+    IconData? icon,
+    required Function(String) onChanged,
+  }) {
+    return PopupMenuButton<String>(
+      onSelected: onChanged,
+      color: ThemeService.isDarkMode ? const Color(0xFF23252A) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      itemBuilder: (context) => items.map((item) => PopupMenuItem(value: item, child: Text(item, style: TextStyle(color: ThemeService.isDarkMode ? Colors.white : Colors.black87)))).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: _mutedColor, size: 14),
+              const SizedBox(width: 6),
+            ],
+            Text(value, style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down, color: _mutedColor, size: 14),
+          ],
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/router/app_router.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:fuel_cal/currency_selection_page.dart';
 import 'package:fuel_cal/services/currency_service.dart';
 import 'package:fuel_cal/dashboard_page.dart';
@@ -114,17 +115,17 @@ class _FuelCalculatorAppState extends ConsumerState<FuelCalculatorApp> {
             visualDensity: VisualDensity.adaptivePlatformDensity,
             scaffoldBackgroundColor: const Color(0xFFF4F6F8),
             cardColor: const Color(0xFFFFFFFF),
-            textTheme: const TextTheme(
-              displayLarge: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
-              titleLarge: TextStyle(
+            textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme).copyWith(
+              displayLarge: const TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold),
+              titleLarge: const TextStyle(
                   fontSize: 28.0,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87),
-              titleMedium: TextStyle(
+              titleMedium: const TextStyle(
                   fontSize: 22.0,
                   fontWeight: FontWeight.bold,
                   color: Colors.green), // Adjusted for result titles
-              bodyMedium: TextStyle(fontSize: 16.0, color: Colors.black87),
+              bodyMedium: const TextStyle(fontSize: 16.0, color: Colors.black87),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
@@ -184,6 +185,7 @@ class _FuelCalculatorAppState extends ConsumerState<FuelCalculatorApp> {
             visualDensity: VisualDensity.adaptivePlatformDensity,
             scaffoldBackgroundColor: const Color(0xFF121217),
             cardColor: const Color(0xFF25252D),
+            textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
           ),
           themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
         );
@@ -360,58 +362,46 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
 
   Widget _buildCustomBottomNav() {
     return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: SizedBox(
-        height: 116,
+        height: 100,
         child: Stack(
-          alignment: Alignment.topCenter,
+          alignment: Alignment.bottomCenter,
           children: [
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                height: 96,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      ThemeService.cardColor,
-                      ThemeService.surfaceColor,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: ThemeService.isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.06),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: ThemeService.isDarkMode 
-                          ? Colors.black.withOpacity(0.45) 
-                          : Colors.black.withOpacity(0.04),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+            Container(
+              height: 80,
+              decoration: BoxDecoration(
+                color: ThemeService.isDarkMode ? const Color(0xFF161B22) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                  width: 1,
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                child: Row(
-                  children: [
-                    _buildNavItem(Icons.grid_view_rounded, 'Home', 0),
-                    _buildNavItem(Icons.receipt_long_outlined, 'Logs', 1),
-                    _buildNavItem(Icons.bar_chart_rounded, 'Stats', 2),
-                    const SizedBox(width: 62),
-                    _buildNavItem(Icons.directions_car_outlined, 'Garage', 3),
-                    _buildNavItem(Icons.calculate_outlined, 'Fuel Cal', 4),
-                    _buildNavItem(Icons.person_outline_rounded, 'Settings', 5),
-                  ],
-                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Row(
+                children: [
+                  _buildNavItem(Icons.home_rounded, 'Home', 0),
+                  _buildNavItem(Icons.receipt_long_rounded, 'Logs', 1),
+                  _buildNavItem(Icons.pie_chart_rounded, 'Stats', 2),
+                  const SizedBox(width: 74), // Space for FAB
+                  _buildNavItem(Icons.directions_car_rounded, 'Garage', 3),
+                  _buildNavItem(Icons.calculate_rounded, 'Fuel Calc', 4),
+                  _buildNavItem(Icons.settings_rounded, 'Settings', 5),
+                ],
               ),
             ),
-            _buildAddFuelButton(),
+            Positioned(
+              top: 0,
+              child: _buildAddFuelButton(),
+            ),
           ],
         ),
       ),
@@ -436,31 +426,21 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
           });
         }
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 64,
-        height: 64,
+      child: Container(
+        width: 68,
+        height: 68,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF34FF7A), Color(0xFF00D99A)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: ThemeService.neonColor,
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF00FF88).withOpacity(0.42),
-              blurRadius: 22,
-              spreadRadius: 3,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          border: Border.all(
+            color: const Color(0xFF161E2E), // Match the dark navbar background perfectly
+            width: 6, // Make the border a bit thicker as in screenshot
+          ),
         ),
         child: Icon(
           _isFabMenuOpen ? Icons.close_rounded : Icons.add_rounded,
-          color: Colors.black,
-          size: 35,
-          weight: 600,
+          color: Colors.black, // Changed from white to black
+          size: 32,
         ),
       ),
     );
@@ -469,11 +449,12 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
   Widget _buildNavItem(IconData icon, String label, int index) {
     final isActive = _bottomNavIndex == index;
     final color = isActive ? ThemeService.neonColor : ThemeService.mutedColor;
+    
     return Expanded(
       child: GestureDetector(
         onTap: () {
           if (index == 0) {
-            ref.invalidate(profileProvider); // Refresh profile when returning to dashboard
+            ref.invalidate(profileProvider);
           }
           setState(() {
             _selectedIndex = index;
@@ -482,37 +463,32 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
           });
         },
         behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutBack,
-              transform: Matrix4.identity()..scale(isActive ? 1.15 : 1.0),
-              child: Icon(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
                 icon,
                 color: color,
-                size: 26,
+                size: isActive ? 28 : 24,
               ),
-            ),
-            const SizedBox(height: 8),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 300),
-                style: TextStyle(
-                  color: color,
-                  fontSize: isActive ? 12 : 11,
-                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
-                ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
                 child: Text(
                   label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                  ),
                   maxLines: 1,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

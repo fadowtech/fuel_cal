@@ -501,7 +501,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
       {'name': 'Parking', 'icon': Icons.local_parking_outlined, 'color': Colors.blueAccent},
       {'name': 'Washing', 'icon': Icons.local_car_wash_outlined, 'color': Colors.cyan},
       {'name': 'Tires', 'icon': Icons.tire_repair_outlined, 'color': Colors.teal},
-      {'name': 'Service', 'icon': Icons.build_outlined, 'color': const Color(0xFF00FF88)},
+      {'name': 'Service', 'icon': Icons.build_outlined, 'color': Colors.deepOrangeAccent},
       {'name': 'Other', 'icon': Icons.more_horiz, 'color': Colors.grey},
     ];
 
@@ -664,7 +664,7 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
 
     final List<Map<String, dynamic>> categories = [
       {'name': 'All', 'icon': Icons.grid_view_rounded, 'color': ThemeService.neonColor},
-      {'name': 'Service', 'icon': Icons.build_outlined, 'color': const Color(0xFF00FF88)},
+      {'name': 'Service', 'icon': Icons.build_outlined, 'color': Colors.deepOrangeAccent},
       {'name': 'Engine', 'icon': Icons.settings_outlined, 'color': Colors.orange},
       {'name': 'Brakes', 'icon': Icons.adjust_outlined, 'color': Colors.redAccent},
       {'name': 'Suspension', 'icon': Icons.hardware_outlined, 'color': Colors.purpleAccent},
@@ -759,7 +759,7 @@ class _ServiceTile extends StatelessWidget {
       case 'suspension': iconColor = Colors.purpleAccent; iconData = Icons.hardware_outlined; break;
       case 'general': iconColor = Colors.blueAccent; iconData = Icons.fact_check_outlined; break;
       case 'tires': iconColor = Colors.cyan; iconData = Icons.tire_repair_outlined; break;
-      default: iconColor = const Color(0xFF00FF88); iconData = Icons.build_outlined; break;
+      default: iconColor = Colors.deepOrangeAccent; iconData = Icons.build_outlined; break;
     }
 
     return GestureDetector(
@@ -2019,7 +2019,7 @@ class _ExpenseTileState extends State<_ExpenseTile> {
       case 'parking': iconColor = Colors.blueAccent; iconData = Icons.local_parking_outlined; break;
       case 'washing': iconColor = Colors.cyan; iconData = Icons.local_car_wash_outlined; break;
       case 'tires': iconColor = Colors.teal; iconData = Icons.tire_repair_outlined; break;
-      case 'service': iconColor = const Color(0xFF00FF88); iconData = Icons.build_outlined; break;
+      case 'service': iconColor = Colors.deepOrangeAccent; iconData = Icons.build_outlined; break;
       default: iconColor = Colors.grey; iconData = Icons.more_horiz; break;
     }
 

@@ -26,8 +26,30 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
   Future<void> _loadData() async {
     final fuels = await ManageFuelService.getFuels();
     final stations = await ManageFuelService.getStations();
+    
+    List<Map<String, dynamic>> defaultFuels = [
+      {'name': 'Petrol', 'price': null},
+      {'name': 'Diesel', 'price': null}
+    ];
+
+    for (var i = 0; i < defaultFuels.length; i++) {
+      final existing = fuels.cast<Map<String, dynamic>?>().firstWhere(
+        (f) => f != null && f['name']?.toString().toLowerCase() == defaultFuels[i]['name']?.toString().toLowerCase(),
+        orElse: () => null,
+      );
+      if (existing != null) {
+        defaultFuels[i] = existing;
+      }
+    }
+
+    for (var f in fuels) {
+      if (f['name']?.toString().toLowerCase() != 'petrol' && f['name']?.toString().toLowerCase() != 'diesel') {
+        defaultFuels.add(f);
+      }
+    }
+
     setState(() {
-      _fuels = fuels;
+      _fuels = defaultFuels;
       _stations = stations;
       _isLoading = false;
     });
@@ -133,7 +155,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
               ),
             ),
             Text(
-              '₹ ${fuel['price']} /L',
+              fuel['price'] != null ? '₹ ${fuel['price']} /L' : '₹ -- /L',
               style: TextStyle(color: ThemeService.textColor, fontSize: 14),
             ),
             const SizedBox(width: 16),
@@ -201,7 +223,39 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
       child: ListTile(
         leading: Icon(Icons.menu, color: ThemeService.mutedColor),
         title: Text(station['name'] ?? '', style: TextStyle(color: ThemeService.textColor)),
-        trailing: Icon(Icons.more_vert, color: ThemeService.mutedColor),
+        trailing: PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert, color: ThemeService.mutedColor),
+          color: ThemeService.cardColor,
+          onSelected: (value) {
+            if (value == 'edit') {
+              _showAddStationDialog(context, existingStation: station);
+            } else if (value == 'delete') {
+              _showDeleteConfirmationDialog(context, station);
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            PopupMenuItem<String>(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit, color: ThemeService.textColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Edit', style: TextStyle(color: ThemeService.textColor)),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete, color: ThemeService.dangerColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Delete', style: TextStyle(color: ThemeService.dangerColor)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -237,8 +291,8 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
     );
   }
 
-  void _showAddStationDialog(BuildContext context) {
-    final TextEditingController stationController = TextEditingController();
+  void _showAddStationDialog(BuildContext context, {Map<String, dynamic>? existingStation}) {
+    final TextEditingController stationController = TextEditingController(text: existingStation?['name'] ?? '');
     showDialog(
       context: context,
       builder: (context) {
@@ -254,7 +308,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Add New Station', style: TextStyle(color: ThemeService.textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(existingStation != null ? 'Edit Station' : 'Add New Station', style: TextStyle(color: ThemeService.textColor, fontSize: 18, fontWeight: FontWeight.bold)),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
                       child: Icon(Icons.close, color: ThemeService.textColor),
@@ -301,11 +355,18 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                   child: ElevatedButton(
                     onPressed: () async {
                       if (stationController.text.trim().isNotEmpty) {
-                        final newStation = {'name': stationController.text.trim()};
-                        setState(() {
-                          _stations.add(newStation);
-                        });
-                        await ManageFuelService.saveStation(newStation);
+                        if (existingStation != null) {
+                          setState(() {
+                            existingStation['name'] = stationController.text.trim();
+                          });
+                          await ManageFuelService.saveStation(existingStation);
+                        } else {
+                          final newStation = {'name': stationController.text.trim()};
+                          setState(() {
+                            _stations.add(newStation);
+                          });
+                          await ManageFuelService.saveStation(newStation);
+                        }
                       }
                       Navigator.pop(context);
                     },
@@ -315,7 +376,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Save Station', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: Text(existingStation != null ? 'Update Station' : 'Save Station', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -326,8 +387,39 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
     );
   }
 
+  void _showDeleteConfirmationDialog(BuildContext context, Map<String, dynamic> station) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: ThemeService.cardColor,
+          title: Text('Delete Station', style: TextStyle(color: ThemeService.textColor)),
+          content: Text('Are you sure you want to delete ${station['name']}?', style: TextStyle(color: ThemeService.textColor)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: ThemeService.mutedColor)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                if (station['id'] != null) {
+                  await ManageFuelService.deleteStation(station['id']);
+                }
+                setState(() {
+                  _stations.remove(station);
+                });
+              },
+              child: Text('Delete', style: TextStyle(color: ThemeService.dangerColor)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showEditFuelDialog(BuildContext context, Map<String, dynamic> fuel) {
-    final TextEditingController priceController = TextEditingController(text: fuel['price'].toString());
+    final TextEditingController priceController = TextEditingController(text: fuel['price'] != null ? fuel['price'].toString() : '');
     
     showDialog(
       context: context,
@@ -434,7 +526,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                       child: ElevatedButton(
                         onPressed: () async {
                           setState(() {
-                            fuel['price'] = double.tryParse(priceController.text) ?? fuel['price'];
+                            fuel['price'] = priceController.text.trim().isEmpty ? null : double.tryParse(priceController.text);
                           });
                           await ManageFuelService.updateFuel(fuel);
                           Navigator.pop(context);
