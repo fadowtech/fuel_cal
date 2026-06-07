@@ -53,6 +53,7 @@ class FuelLog(Base):
     total_cost = Column(Float)
     fuel_price = Column(Float, nullable=True)
     remaining_range = Column(Float, nullable=True)
+    remaining_range_after = Column(Float, nullable=True)
     is_full_tank = Column(Boolean, default=False)
     station_name = Column(String, nullable=True)
     location = Column(String, nullable=True)

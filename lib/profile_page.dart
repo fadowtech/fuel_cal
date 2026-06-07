@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/currency_selection_page.dart';
+import 'package:fuel_cal/upgrade_page.dart';
 import 'package:fuel_cal/manage_fuel_page.dart';
 import 'package:fuel_cal/services/currency_service.dart';
 import 'package:fuel_cal/services/profile_service.dart';
@@ -146,7 +147,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               const SizedBox(height: 16),
               _buildProfileCard(),
               const SizedBox(height: 16),
-              _buildUpgradeButton(),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UpgradePage()),
+                  );
+                },
+                child: _buildUpgradeButton(),
+              ),
               const SizedBox(height: 24),
               _buildGroup('APP', [
                 _buildRow(
@@ -171,7 +180,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ThemeService.toggleTheme();
                   },
                 ),
-                _buildRow(Icons.language, 'Language', 'English'),
                 _buildRow(
                   Icons.monetization_on_outlined,
                   'Currency',

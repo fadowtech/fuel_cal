@@ -34,9 +34,10 @@ class _AddReminderPageState extends State<AddReminderPage> {
   DateTime? _dueDate;
   bool _repeatReminder = false;
   String? _repeatInterval;
+  DateTime? _repeatUntilDate;
   
   // Notification days selected
-  final Set<int> _selectedNotifications = {30}; // e.g., 30, 7, 1
+  final Set<int> _selectedNotifications = {30, 7, 1}; // e.g., 30, 7, 1
   
   // High, Medium, Low
   String _priority = 'High';
@@ -56,25 +57,30 @@ class _AddReminderPageState extends State<AddReminderPage> {
     super.initState();
     if (widget.editData != null) {
       final raw = widget.editData!['raw_data'];
-      _selectedCategory = raw['category'] ?? '';
-      _titleController.text = raw['title'] ?? '';
-      _kmController.text = raw['due_km']?.toString() ?? '';
-      
-      _amountController.text = raw['amount'] != null ? raw['amount'].toString() : '';
-      _notesController.text = raw['notes'] ?? '';
-      if (raw['due_date'] != null) {
-        _dueDate = DateTime.parse(raw['due_date']);
-      }
-      _repeatReminder = raw['repeat'] ?? false;
-      _repeatInterval = raw['repeat_interval'];
-      if (raw['notify_before_days'] != null) {
-        _selectedNotifications.clear();
-        for (var d in raw['notify_before_days'].split(',')) {
-          final val = int.tryParse(d);
-          if (val != null) _selectedNotifications.add(val);
+      if (raw != null) {
+        _selectedCategory = raw['category'] ?? '';
+        _titleController.text = raw['title'] ?? '';
+        _kmController.text = raw['due_km']?.toString() ?? '';
+        
+        _amountController.text = raw['amount'] != null ? raw['amount'].toString() : '';
+        _notesController.text = raw['notes'] ?? '';
+        if (raw['due_date'] != null) {
+          _dueDate = DateTime.parse(raw['due_date']);
         }
+        _repeatReminder = raw['repeat'] ?? false;
+        _repeatInterval = raw['repeat_interval'];
+        if (raw['repeat_until'] != null) {
+          _repeatUntilDate = DateTime.parse(raw['repeat_until']);
+        }
+        if (raw['notify_before_days'] != null) {
+          _selectedNotifications.clear();
+          for (var d in raw['notify_before_days'].split(',')) {
+            final val = int.tryParse(d);
+            if (val != null) _selectedNotifications.add(val);
+          }
+        }
+        _priority = raw['priority'] ?? 'High';
       }
-      _priority = raw['priority'] ?? 'High';
     }
   }
 
@@ -107,7 +113,10 @@ class _AddReminderPageState extends State<AddReminderPage> {
       },
     );
     if (date != null) {
-      setState(() => _dueDate = date);
+      setState(() {
+        _dueDate = date;
+        if (_dateErrorText != null) _dateErrorText = null;
+      });
     }
   }
 
@@ -163,6 +172,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
   bool _isLoading = false;
   String? _titleErrorText;
   String? _categoryErrorText;
+  String? _dateErrorText;
 
   Future<void> _saveReminder() async {
     bool hasError = false;
@@ -179,6 +189,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
       hasError = true;
     } else {
       setState(() => _titleErrorText = null);
+    }
+
+    if (_dueDate == null) {
+      setState(() => _dateErrorText = 'Required');
+      hasError = true;
+    } else {
+      setState(() => _dateErrorText = null);
     }
 
     if (hasError) return;
@@ -203,6 +220,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
       'notes': finalNotes,
       'repeat': _repeatReminder,
       'repeat_interval': _repeatInterval,
+      'repeat_until': _repeatUntilDate?.toIso8601String(),
       'notify_before_days': _selectedNotifications.join(','),
       'priority': _priority,
     };
@@ -518,7 +536,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
     return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: _dateErrorText != null ? Colors.redAccent : Colors.white.withOpacity(0.1)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
@@ -577,6 +595,18 @@ class _AddReminderPageState extends State<AddReminderPage> {
                     ),
                   ),
                 ),
+                if (_dateErrorText != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, top: 4),
+                    child: Text(
+                      _dateErrorText!,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -876,7 +906,10 @@ class _AddReminderPageState extends State<AddReminderPage> {
                       children: [
                         const Text('Repeat Every', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
                         const SizedBox(height: 2),
-                        Text(_repeatInterval ?? 'Select interval', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                        Text(
+                          _getRepeatText(), 
+                          style: TextStyle(color: _mutedColor, fontSize: 12),
+                        ),
                       ],
                     ),
                     Icon(Icons.chevron_right, color: _mutedColor, size: 20),
@@ -892,11 +925,52 @@ class _AddReminderPageState extends State<AddReminderPage> {
         );
   }
 
+  String _getRepeatText() {
+    if (_repeatInterval == null) return 'Select interval';
+    
+    DateTime baseDate = _dueDate ?? DateTime.now();
+    DateTime nextDate = baseDate;
+    bool hasNext = false;
+
+    if (_repeatInterval == 'Monthly') {
+      nextDate = DateTime(baseDate.year, baseDate.month + 1, baseDate.day);
+      hasNext = true;
+    } else if (_repeatInterval == 'Quarterly (3 Months)') {
+      nextDate = DateTime(baseDate.year, baseDate.month + 3, baseDate.day);
+      hasNext = true;
+    } else if (_repeatInterval == 'Half-Yearly (6 Months)') {
+      nextDate = DateTime(baseDate.year, baseDate.month + 6, baseDate.day);
+      hasNext = true;
+    } else if (_repeatInterval == 'Yearly') {
+      nextDate = DateTime(baseDate.year + 1, baseDate.month, baseDate.day);
+      hasNext = true;
+    } else if (_repeatInterval!.startsWith('Every ')) {
+      final parts = _repeatInterval!.split(' ');
+      if (parts.length >= 3) {
+        final n = int.tryParse(parts[1]) ?? 0;
+        final unit = parts[2];
+        if (n > 0) {
+          if (unit == 'Days') nextDate = baseDate.add(Duration(days: n));
+          else if (unit == 'Weeks') nextDate = baseDate.add(Duration(days: n * 7));
+          else if (unit == 'Months') nextDate = DateTime(baseDate.year, baseDate.month + n, baseDate.day);
+          else if (unit == 'Years') nextDate = DateTime(baseDate.year + n, baseDate.month, baseDate.day);
+          hasNext = true;
+        }
+      }
+    }
+
+    if (hasNext) {
+      return '$_repeatInterval (Next: ${DateFormat('dd MMM yyyy').format(nextDate)})';
+    }
+    
+    return _repeatInterval!;
+  }
+
   void _showIntervalPicker() {
-    final options = ['1 Month', '3 Months', '6 Months', '1 Year'];
     showModalBottomSheet(
       context: context,
       backgroundColor: _cardColor,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -906,25 +980,205 @@ class _AddReminderPageState extends State<AddReminderPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
               const Text(
-                'Select Interval',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                'Repeat Reminder',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              ...options.map((option) => ListTile(
-                title: Text(option, style: const TextStyle(color: Colors.white)),
-                trailing: _repeatInterval == option 
-                    ? Icon(Icons.check, color: _neonColor) 
-                    : null,
+              _buildIntervalOption('Monthly', Icons.calendar_today, context),
+              _buildIntervalOption('Quarterly (3 Months)', Icons.calendar_view_week, context),
+              _buildIntervalOption('Half-Yearly (6 Months)', Icons.calendar_view_month, context),
+              _buildIntervalOption('Yearly', Icons.calendar_month, context),
+              Divider(color: Colors.white.withOpacity(0.05)),
+              ListTile(
+                title: Text('Custom Interval', style: TextStyle(color: _neonColor, fontWeight: FontWeight.w500)),
+                trailing: Icon(Icons.chevron_right, color: _neonColor, size: 20),
                 onTap: () {
-                  setState(() {
-                    _repeatInterval = option;
-                  });
                   Navigator.pop(context);
+                  _showCustomIntervalPicker();
                 },
-              )).toList(),
+              ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildIntervalOption(String title, IconData icon, BuildContext sheetContext) {
+    bool isSelected = false;
+    if (title == 'Never') isSelected = !_repeatReminder;
+    else isSelected = _repeatReminder && _repeatInterval == title;
+
+    return ListTile(
+      leading: Icon(icon, color: _mutedColor, size: 20),
+      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      trailing: isSelected 
+          ? Icon(Icons.radio_button_checked, color: _neonColor, size: 20)
+          : Icon(Icons.radio_button_unchecked, color: _mutedColor, size: 20),
+      onTap: () {
+        setState(() {
+          if (title == 'Never') {
+            _repeatReminder = false;
+            _repeatInterval = null;
+            _repeatUntilDate = null;
+          } else {
+            _repeatReminder = true;
+            _repeatInterval = title;
+            _repeatUntilDate = null;
+          }
+        });
+        Navigator.pop(sheetContext);
+      },
+    );
+  }
+
+  void _showCustomIntervalPicker() {
+    int customNumber = 3;
+    String customUnit = 'Months';
+    bool isForever = true;
+    DateTime? customEndDate = _repeatUntilDate;
+
+    // Try to parse existing custom interval if it matches "Every X Unit" pattern
+    if (_repeatInterval != null && _repeatInterval!.startsWith('Every ')) {
+      final parts = _repeatInterval!.split(' ');
+      if (parts.length >= 3) {
+        customNumber = int.tryParse(parts[1]) ?? 3;
+        customUnit = parts[2];
+      }
+      isForever = _repeatUntilDate == null;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showIntervalPicker();
+                          },
+                          child: const Icon(Icons.arrow_back, color: Colors.white),
+                        ),
+                        const Expanded(
+                          child: Center(
+                            child: Text(
+                              'Custom Interval',
+                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 24), // Balance the row
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Repeat Every', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _backgroundColor,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                            ),
+                            child: TextField(
+                              controller: TextEditingController(text: customNumber.toString())..selection = TextSelection.collapsed(offset: customNumber.toString().length),
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              onChanged: (val) {
+                                final n = int.tryParse(val);
+                                if (n != null && n > 0) customNumber = n;
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: _backgroundColor,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: customUnit,
+                                dropdownColor: _backgroundColor,
+                                isExpanded: true,
+                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                items: ['Days', 'Weeks', 'Months', 'Years']
+                                    .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setSheetState(() => customUnit = val);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _repeatReminder = true;
+                          _repeatInterval = 'Every $customNumber $customUnit';
+                          _repeatUntilDate = null;
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(color: _neonColor, borderRadius: BorderRadius.circular(16)),
+                        alignment: Alignment.center,
+                        child: const Text('Save', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

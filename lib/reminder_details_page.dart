@@ -161,9 +161,13 @@ class ReminderDetailsPage extends StatelessWidget {
                       onPressed: () async {
                         final navigator = Navigator.of(context);
                         navigator.pop(); // Close dialog
-                        final success = await ApiService().deleteReminder(data['raw_data']['id']);
-                        if (success) {
-                          navigator.pop(true); // Pop details page
+                        if (data['raw_data'] != null && data['raw_data']['id'] != null) {
+                          final success = await ApiService().deleteReminder(data['raw_data']['id']);
+                          if (success) {
+                            navigator.pop(true); // Pop details page
+                          }
+                        } else {
+                          navigator.pop(true);
                         }
                       },
                       child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),

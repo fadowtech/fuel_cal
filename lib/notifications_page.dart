@@ -3,13 +3,41 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/reminder_details_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class NotificationsPage extends ConsumerWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   final Set<int> seenReminderIds;
   const NotificationsPage({super.key, required this.seenReminderIds});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
+  late Set<int> _localSeenIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _localSeenIds = Set.from(widget.seenReminderIds);
+  }
+
+  Future<void> _markAsSeen(int id) async {
+    if (!_localSeenIds.contains(id)) {
+      setState(() {
+        _localSeenIds.add(id);
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final seenList = prefs.getStringList('seen_reminders') ?? [];
+      if (!seenList.contains(id.toString())) {
+        seenList.add(id.toString());
+        await prefs.setStringList('seen_reminders', seenList);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final remindersAsync = ref.watch(remindersProvider);
     
     return Scaffold(
@@ -52,8 +80,8 @@ class NotificationsPage extends ConsumerWidget {
             itemCount: pendingReminders.length,
             itemBuilder: (context, index) {
               final r = pendingReminders[index];
-              final isUnread = !seenReminderIds.contains(r['id'] as int);
-              return _buildNotificationCard(context, ref, r, isUnread);
+              final isUnread = !_localSeenIds.contains(r['id'] as int);
+              return _buildNotificationCard(context, r, isUnread);
             },
           );
         },
@@ -63,7 +91,7 @@ class NotificationsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildNotificationCard(BuildContext context, WidgetRef ref, Map<String, dynamic> r, bool isUnread) {
+  Widget _buildNotificationCard(BuildContext context, Map<String, dynamic> r, bool isUnread) {
     final dueDateStr = r['due_date'] as String?;
     DateTime? dueDate;
     if (dueDateStr != null) dueDate = DateTime.tryParse(dueDateStr);
@@ -91,6 +119,7 @@ class NotificationsPage extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () async {
+        await _markAsSeen(r['id'] as int);
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -135,7 +164,7 @@ class NotificationsPage extends ConsumerWidget {
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
-                        color: ThemeService.neonColor,
+                        color: Colors.redAccent,
                         shape: BoxShape.circle,
                         border: Border.all(color: ThemeService.cardColor, width: 2),
                       ),

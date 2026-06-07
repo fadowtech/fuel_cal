@@ -18,6 +18,10 @@ import 'package:fuel_cal/notifications_page.dart';
 import 'package:fuel_cal/reminder_details_page.dart';
 import 'package:fuel_cal/expense_details_page.dart';
 import 'package:fuel_cal/fuel_log_details_page.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fuel_cal/add_expense_page.dart';
+import 'package:fuel_cal/add_reminder_page.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/widgets/vehicle_selector.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
@@ -190,8 +194,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       children: [
                         const SizedBox(height: 16),
                         _buildFuelHeroCard(logs, displayVehicle),
-                        const SizedBox(height: 16),
-                        _buildDistanceToEmptyCard(logs, displayVehicle),
                         const SizedBox(height: 24),
                         _buildVehicleOverview(logs),
                       ],
@@ -360,13 +362,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             GestureDetector(
               onTap: () async {
                 final currentSeen = Set<int>.from(_seenReminderIds);
-                if (hasUnreadAlerts) {
-                  _markRemindersAsSeen(currentPendingReminders);
-                }
                 await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => NotificationsPage(seenReminderIds: currentSeen)),
                 );
+                _loadSeenReminders();
               },
               child: Container(
                 width: 40,
@@ -384,13 +384,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       Positioned(
                         right: 10,
                         top: 10,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _neonColor,
-                            shape: BoxShape.circle,
-                          ),
+                        child: const BlinkingDot(
+                          color: Colors.redAccent,
+                          size: 10.0,
                         ),
                       ),
                   ],
@@ -444,6 +440,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     double lastFillQuantity = 0.0;
     String lastFillDateStr = 'No Data';
 
+    double rangeKM = 0.0;
+    double reserveRange = 0.0;
+
     if (logs.isNotEmpty) {
       final sortedLogs = List<FuelLog>.from(logs)
         ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
@@ -454,7 +453,49 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       if (lastLog.date != null) {
         lastFillDateStr = DateFormat('dd MMM yyyy').format(lastLog.date!);
       }
+      if (lastLog.remainingRange != null) {
+        reserveRange = lastLog.remainingRange!;
+      }
+
+      final ascLogs = List<FuelLog>.from(logs)
+        ..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+      
+      double currentFuel = 0.0;
+      double currentRange = 0.0;
+      double currentMileage = vehicle?.avgMileage ?? 15.0;
+      
+      if (ascLogs.length > 1) {
+         double totDist = ascLogs.last.odometer - ascLogs.first.odometer;
+         double totFuel = ascLogs.map((l) => l.fuelQuantity).reduce((a, b) => a + b);
+         if (totFuel > 0 && totDist > 0) {
+            currentMileage = totDist / totFuel;
+         }
+      }
+      if (currentMileage <= 0) currentMileage = 15.0;
+
+      for (int i = 0; i < ascLogs.length; i++) {
+        final log = ascLogs[i];
+        if (i > 0) {
+          double dist = log.odometer - ascLogs[i - 1].odometer;
+          if (dist > 0) {
+            double burned = dist / currentMileage;
+            currentFuel -= burned;
+            if (currentFuel < 0) currentFuel = 0;
+          }
+        }
+        if (log.isFullTank) {
+          currentFuel = tankCapacity;
+        } else {
+          currentFuel += log.fuelQuantity;
+          if (currentFuel > tankCapacity) currentFuel = tankCapacity;
+        }
+        currentRange = currentFuel * currentMileage;
+      }
+      rangeKM = currentRange;
     }
+
+    double rangeBefore = reserveRange;
+    double rangeAfter = rangeKM + reserveRange;
 
     double percentage = (lastFillQuantity / tankCapacity).clamp(0.0, 1.0) * 100;
     final Color accentColor = ThemeService.neonColor;
@@ -656,6 +697,77 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                               Text(lastFillDateStr, style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 2),
                               Text('Date of last refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Divider(color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1), height: 1),
+              const SizedBox(height: 16),
+              // Range Before and After Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: accentColor.withOpacity(0.08),
+                            border: Border.all(color: accentColor.withOpacity(0.2)),
+                          ),
+                          child: Icon(Icons.speed, color: accentColor, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Range Before Refuel', style: TextStyle(color: textColor, fontSize: 11)),
+                              const SizedBox(height: 2),
+                              Text('${rangeBefore.toStringAsFixed(0)} KM', style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 2),
+                              Text('Distance to empty\nbefore refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: ThemeService.isDarkMode ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: accentColor.withOpacity(0.08),
+                            border: Border.all(color: accentColor.withOpacity(0.2)),
+                          ),
+                          child: Icon(Icons.speed, color: accentColor, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Range After Refuel', style: TextStyle(color: textColor, fontSize: 11)),
+                              const SizedBox(height: 2),
+                              Text('${rangeAfter.toStringAsFixed(0)} KM', style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 2),
+                              Text('Distance to empty\nafter refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
                             ],
                           ),
                         ),
@@ -1682,64 +1794,158 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         if (log is FuelLog) {
           final stationName = log.stationName?.isNotEmpty == true ? log.stationName : 'Gas Station';
           final liters = log.fuelQuantity.toStringAsFixed(1);
-          final dateStr = log.date != null ? DateFormat('dd MMM yyyy').format(log.date!) : '-';
+          final timeFormat = DateFormat('hh:mm a');
+          final dateStr = log.date != null ? timeFormat.format(log.date!) : '-';
           
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => FuelLogDetailsPage(fuelLog: log)));
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: _getCardDecoration(),
-              child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _surfaceColor,
-                    borderRadius: BorderRadius.circular(12),
+          final mockLog = {
+            'id': log.id,
+            'station': stationName,
+            'date': DateFormat('dd MMM yyyy, hh:mm a').format(log.date ?? DateTime.now()),
+            'rawDate': log.date,
+            'amount': log.totalCost,
+            'liters': log.fuelQuantity,
+            'odo': log.odometer.toStringAsFixed(0),
+            'remainingRange': log.remainingRange,
+            'pricePerL': log.fuelQuantity > 0 ? (log.totalCost / log.fuelQuantity).toStringAsFixed(1) : '0.0',
+            'mileage': '-',
+            'fullTank': log.isFullTank,
+            'payment': log.paymentMethod ?? 'Not specified',
+            'location': log.location ?? 'Unknown location',
+            'notes': log.notes ?? 'No notes provided',
+            'bill_image_path': log.billImagePath,
+          };
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Slidable(
+              key: ValueKey(log.id),
+              endActionPane: ActionPane(
+                motion: const ScrollMotion(),
+                extentRatio: 0.45,
+                children: [
+                  CustomSlidableAction(
+                    onPressed: (context) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => AddFuelPage(existingLog: mockLog)));
+                    },
+                    backgroundColor: const Color(0xFF3B3B45),
+                    foregroundColor: Colors.white,
+                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [Icon(Icons.edit_outlined, size: 20), SizedBox(height: 4), Text('Edit', style: TextStyle(fontSize: 12))],
+                    ),
                   ),
-                  child: Icon(Icons.local_gas_station_outlined,
-                      color: _neonColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Fuel Added',
-                          style: TextStyle(
-                              color: _textColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500)),
-                      Text('$stationName • ${liters}L',
-                          style:
-                              TextStyle(color: _mutedColor, fontSize: 12)),
-                    ],
+                  CustomSlidableAction(
+                    onPressed: (context) async {
+                      final success = await ref.read(apiServiceProvider).deleteFuelLog(log.id);
+                      if (success) ref.invalidate(fuelLogsProvider);
+                    },
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                    borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [Icon(Icons.delete_outline, size: 20), SizedBox(height: 4), Text('Delete', style: TextStyle(fontSize: 12))],
+                    ),
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                ],
+              ),
+              child: GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => FuelLogDetailsPage(fuelLog: log)));
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: _getCardDecoration(),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text('₹${log.totalCost.toStringAsFixed(0)}',
-                        style: TextStyle(
-                            color: _textColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold)),
-                    Text(dateStr,
-                        style:
-                            TextStyle(color: _mutedColor, fontSize: 12)),
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _neonColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.local_gas_station_rounded, color: _neonColor, size: 28),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Fuel Added',
+                              style: TextStyle(
+                                  color: _textColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                               Icon(Icons.location_on_outlined, color: _mutedColor, size: 12),
+                               const SizedBox(width: 4),
+                               Flexible(
+                                 child: Text('$stationName • ',
+                                     style: TextStyle(color: _mutedColor, fontSize: 12),
+                                     maxLines: 1,
+                                     overflow: TextOverflow.ellipsis),
+                               ),
+                               Text('${liters}L',
+                                   style: TextStyle(color: _neonColor, fontSize: 12)),
+                            ]
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(width: 1, height: 40, color: Colors.white.withOpacity(0.05)),
+                    const SizedBox(width: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.speed, color: _neonColor, size: 20),
+                        const SizedBox(width: 8),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                             Text('ODO', style: TextStyle(color: _mutedColor, fontSize: 10)),
+                             Text(log.odometer.toStringAsFixed(0),
+                                style: TextStyle(
+                                    color: _textColor,
+                                    fontSize: 14)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    Container(width: 1, height: 40, color: Colors.white.withOpacity(0.05)),
+                    const SizedBox(width: 12),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                         Text('₹${log.totalCost.toStringAsFixed(0)}',
+                            style: TextStyle(
+                                color: _textColor,
+                                fontSize: 14)),
+                         const SizedBox(height: 2),
+                         Row(
+                           mainAxisAlignment: MainAxisAlignment.end,
+                           children: [
+                              Text(dateStr, style: TextStyle(color: _mutedColor, fontSize: 12)),
+                           ]
+                         ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
+              ),
             ),
-          ),
           );
         } else if (log is Expense) {
           final expense = log;
-          final dateStr = expense.date != null ? DateFormat('dd MMM yyyy').format(expense.date!) : '-';
+          final timeFormat = DateFormat('hh:mm a');
+          final dateStr = expense.date != null ? timeFormat.format(expense.date!) : '-';
           
           final isService = ['service', 'tires', 'engine', 'brakes', 'suspension', 'general', 'maintenance'].contains(expense.category.toLowerCase());
           final titleStr = isService ? 'Service Added' : 'Expense Added';
@@ -1762,59 +1968,105 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             }
           }
 
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ExpenseDetailsPage(expense: expense, isServiceMode: isService)));
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: _getCardDecoration(),
-              child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _surfaceColor,
-                    borderRadius: BorderRadius.circular(12),
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Slidable(
+              key: ValueKey('exp_${expense.id}'),
+              endActionPane: ActionPane(
+                motion: const ScrollMotion(),
+                extentRatio: 0.45,
+                children: [
+                  CustomSlidableAction(
+                    onPressed: (context) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: expense, isServiceMode: isService)));
+                    },
+                    backgroundColor: const Color(0xFF3B3B45),
+                    foregroundColor: Colors.white,
+                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [Icon(Icons.edit_outlined, size: 20), SizedBox(height: 4), Text('Edit', style: TextStyle(fontSize: 12))],
+                    ),
                   ),
-                  child: Icon(iconData, color: iconColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(titleStr,
-                          style: TextStyle(
-                              color: _textColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500)),
-                      Text(subTitleStr,
-                          style:
-                              TextStyle(color: _mutedColor, fontSize: 12)),
-                    ],
+                  CustomSlidableAction(
+                    onPressed: (context) async {
+                      bool success = false;
+                      if (isService) {
+                        success = await ref.read(apiServiceProvider).deleteService(expense.id);
+                      } else {
+                        success = await ref.read(apiServiceProvider).deleteExpense(expense.id);
+                      }
+                      if (success) {
+                        if (isService) ref.invalidate(servicesProvider);
+                        else ref.invalidate(expensesProvider);
+                      }
+                    },
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                    borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [Icon(Icons.delete_outline, size: 20), SizedBox(height: 4), Text('Delete', style: TextStyle(fontSize: 12))],
+                    ),
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                ],
+              ),
+              child: GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ExpenseDetailsPage(expense: expense, isServiceMode: isService)));
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: _getCardDecoration(),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text('₹${expense.amount.toStringAsFixed(0)}',
-                        style: TextStyle(
-                            color: _textColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold)),
-                    Text(dateStr,
-                        style:
-                            TextStyle(color: _mutedColor, fontSize: 12)),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: iconColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(iconData, color: iconColor, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(titleStr,
+                              style: TextStyle(
+                                  color: _textColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          Text(subTitleStr,
+                              style:
+                                  TextStyle(color: _mutedColor, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('₹${expense.amount.toStringAsFixed(0)}',
+                            style: TextStyle(
+                                color: _textColor,
+                                fontSize: 14)),
+                        Text(dateStr,
+                            style:
+                                TextStyle(color: _mutedColor, fontSize: 12)),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
+              ),
             ),
-          ),
           );
-        } else if (log is Map<String, dynamic>) {
+        } else if (log is Map<String, dynamic> && log.containsKey('due_date')) {
           final reminder = log;
           final titleStr = 'Reminder Added';
           final category = reminder['category'] as String? ?? '';
@@ -1826,57 +2078,94 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           
           IconData iconData = Icons.alarm;
           Color iconColor = Colors.orangeAccent;
-
-          return GestureDetector(
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Slidable(
+              key: ValueKey('rem_${reminder['id']}'),
+              endActionPane: ActionPane(
+                motion: const ScrollMotion(),
+                extentRatio: 0.45,
+                children: [
+                  CustomSlidableAction(
+                    onPressed: (context) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => AddReminderPage(editData: reminder)));
+                    },
+                  backgroundColor: const Color(0xFF3B3B45),
+                  foregroundColor: Colors.white,
+                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [Icon(Icons.edit_outlined, size: 20), SizedBox(height: 4), Text('Edit', style: TextStyle(fontSize: 12))],
+                  ),
+                ),
+                CustomSlidableAction(
+                  onPressed: (context) async {
+                    final success = await ref.read(apiServiceProvider).deleteReminder(reminder['id'] as int);
+                    if (success) ref.invalidate(remindersProvider);
+                  },
+                  backgroundColor: const Color(0xFFEF4444),
+                  foregroundColor: Colors.white,
+                  borderRadius: const BorderRadius.only(topRight: Radius.circular(16), bottomRight: Radius.circular(16)),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [Icon(Icons.delete_outline, size: 20), SizedBox(height: 4), Text('Delete', style: TextStyle(fontSize: 12))],
+                  ),
+                ),
+              ],
+            ),
+            child: GestureDetector(
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => ReminderDetailsPage(data: reminder)));
             },
             child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: _getCardDecoration(),
               child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _surfaceColor,
-                    borderRadius: BorderRadius.circular(12),
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(iconData, color: iconColor, size: 24),
                   ),
-                  child: Icon(iconData, color: iconColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(titleStr,
+                            style: TextStyle(
+                                color: _textColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text(subTitleStr,
+                            style:
+                                TextStyle(color: _mutedColor, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(titleStr,
+                      Text('-',
                           style: TextStyle(
-                              color: _textColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500)),
-                      Text(subTitleStr,
+                              color: _mutedColor,
+                              fontSize: 14)),
+                      Text(dateStr,
                           style:
                               TextStyle(color: _mutedColor, fontSize: 12)),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('-',
-                        style: TextStyle(
-                            color: _mutedColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold)),
-                    Text(dateStr,
-                        style:
-                            TextStyle(color: _mutedColor, fontSize: 12)),
-                  ],
-                ),
-              ],
-            ),
+                ],
+          ),
+          ),
+          ),
           ),
           );
         }
@@ -1925,5 +2214,49 @@ class _ConicGradientPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ConicGradientPainter oldDelegate) {
     return oldDelegate.percentage != percentage || oldDelegate.color != color;
+  }
+}
+
+class BlinkingDot extends StatefulWidget {
+  final Color color;
+  final double size;
+
+  const BlinkingDot({super.key, required this.color, this.size = 8.0});
+
+  @override
+  State<BlinkingDot> createState() => _BlinkingDotState();
+}
+
+class _BlinkingDotState extends State<BlinkingDot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          color: widget.color,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
   }
 }

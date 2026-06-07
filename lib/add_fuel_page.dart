@@ -31,6 +31,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   final _totalAmountController = TextEditingController();
   final _currentOdoController = TextEditingController();
   final _remainingRangeController = TextEditingController();
+  final _remainingRangeAfterController = TextEditingController();
   final _locationController = TextEditingController();
   final _notesController = TextEditingController();
   
@@ -151,6 +152,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       _fuelPriceController.text = log['pricePerL']?.toString() ?? '';
       _currentOdoController.text = log['odo']?.toString() ?? '';
       _remainingRangeController.text = log['remainingRange']?.toString() ?? '';
+      _remainingRangeAfterController.text = log['remainingRangeAfter']?.toString() ?? '';
       _isFullTank = log['fullTank'] == true;
       _locationController.text = log['location'] == 'Unknown location' ? '' : (log['location'] ?? '');
       _notesController.text = log['notes'] == 'No notes provided' ? '' : (log['notes'] ?? '');
@@ -225,6 +227,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     _totalAmountController.dispose();
     _currentOdoController.dispose();
     _remainingRangeController.dispose();
+    _remainingRangeAfterController.dispose();
     _locationController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -463,6 +466,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       "odometer": odo,
       "fuel_price": double.tryParse(_fuelPriceController.text),
       "remaining_range": double.tryParse(_remainingRangeController.text),
+      "remaining_range_after": double.tryParse(_remainingRangeAfterController.text),
       "is_full_tank": _isFullTank,
       "station_name": _selectedStation,
       "location": _locationController.text.isEmpty ? null : _locationController.text,
@@ -866,8 +870,18 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         ),
         _buildTextField(
           controller: _remainingRangeController,
-          label: 'Distance to Empty',
-          hint: 'Distance to Empty',
+          label: 'Distance to Empty Before Fuel',
+          hint: 'Distance to Empty Before Fuel',
+          icon: Icons.compare_arrows_rounded,
+          suffix: 'KM',
+          isNumber: true,
+          onChanged: (_) => _calculateTotal(),
+        ),
+        const SizedBox(height: 12),
+        _buildTextField(
+          controller: _remainingRangeAfterController,
+          label: 'Distance to Empty After Fuel',
+          hint: 'Distance to Empty After Fuel',
           icon: Icons.compare_arrows_rounded,
           suffix: 'KM',
           isNumber: true,

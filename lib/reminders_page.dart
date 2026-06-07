@@ -6,6 +6,8 @@ import 'package:fuel_cal/reminder_details_page.dart';
 import 'package:fuel_cal/services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
 
 class RemindersPage extends StatefulWidget {
   final Map<String, dynamic>? initialActionData;
@@ -689,7 +691,7 @@ class _RemindersPageState extends State<RemindersPage> {
     final iconColor = data['color'] as Color;
     final iconData = data['icon'] as IconData;
 
-    return GestureDetector(
+    Widget child = GestureDetector(
       onTap: () async {
         final result = await Navigator.push(
           context,
@@ -702,7 +704,6 @@ class _RemindersPageState extends State<RemindersPage> {
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: _cardColor,
           borderRadius: BorderRadius.circular(16),
@@ -805,7 +806,62 @@ class _RemindersPageState extends State<RemindersPage> {
       ),
     ),
   );
-}
+
+  return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    child: Slidable(
+      key: ValueKey('rem_${data['id']}'),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.45,
+        children: [
+          CustomSlidableAction(
+            onPressed: (context) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => AddReminderPage(editData: data)));
+            },
+            backgroundColor: const Color(0xFF3B3B45),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.edit_outlined, size: 20),
+                SizedBox(height: 4),
+                Text('Edit', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          CustomSlidableAction(
+            onPressed: (context) async {
+              final success = await ApiService().deleteReminder(data['id'] as int);
+              if (success) {
+                _fetchReminders();
+              }
+            },
+            backgroundColor: const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(16),
+              bottomRight: Radius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.delete_outline, size: 20),
+                  SizedBox(height: 4),
+                  Text('Delete', style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
   Widget _buildSmartReminders() {
     return Container(
       padding: const EdgeInsets.all(16),

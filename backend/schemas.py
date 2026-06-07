@@ -70,6 +70,7 @@ class FuelLogBase(BaseModel):
     total_cost: float
     fuel_price: Optional[float] = None
     remaining_range: Optional[float] = None
+    remaining_range_after: Optional[float] = None
     is_full_tank: Optional[bool] = False
     station_name: Optional[str] = None
     location: Optional[str] = None

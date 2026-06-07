@@ -5,7 +5,14 @@ import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/models/expense_model.dart';
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/expense_details_page.dart';
+import 'package:fuel_cal/reminder_details_page.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fuel_cal/add_fuel_page.dart';
+import 'package:fuel_cal/add_expense_page.dart';
+import 'package:fuel_cal/add_reminder_page.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -215,6 +222,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                             );
                           }
                           final uLog = filteredLogs[index];
+                          Widget card;
                           if (uLog.type == LogType.fuel) {
                               final log = uLog.originalData as FuelLog;
                               // Approximate mileage calculating using the previous fuel log in the unified list
@@ -229,14 +237,45 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                                       break;
                                   }
                               }
-                              return _buildFuelLogCard(context, log, mileage);
+                              card = _buildFuelLogCard(context, log, mileage);
                           } else if (uLog.type == LogType.expense || uLog.type == LogType.service) {
                               final exp = uLog.originalData as Expense;
-                              return _buildExpenseCard(context, exp, uLog.type);
+                              card = _buildExpenseCard(context, exp, uLog.type);
                           } else {
                               final rem = uLog.originalData as Map<String, dynamic>;
-                              return _buildReminderCard(context, rem);
+                              card = _buildReminderCard(context, rem);
                           }
+
+                          bool showHeader = false;
+                          if (index == 0) {
+                             showHeader = true;
+                          } else {
+                             final prevLog = filteredLogs[index - 1];
+                             if (uLog.date.day != prevLog.date.day || uLog.date.month != prevLog.date.month || uLog.date.year != prevLog.date.year) {
+                                 showHeader = true;
+                             }
+                          }
+                          
+                          if (showHeader) {
+                              final headerText = DateFormat('dd MMM yyyy').format(uLog.date);
+                              return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                      Padding(
+                                          padding: EdgeInsets.only(top: index == 0 ? 0 : 16, bottom: 12),
+                                          child: Row(
+                                              children: [
+                                                  Text(headerText, style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5)),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(child: Divider(color: Colors.white.withOpacity(0.05), thickness: 1)),
+                                              ]
+                                          ),
+                                      ),
+                                      card,
+                                  ]
+                              );
+                          }
+                          return card;
                         },
                       ),
               ),
@@ -255,16 +294,34 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(widget.onlyFuel ? 'Fuel logs' : 'All Logs',
-                      style: TextStyle(
-                          color: ThemeService.textColor,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold)),
-                  Text('$count entries',
-                      style: TextStyle(color: _mutedColor, fontSize: 12)),
+                  GestureDetector(
+                    onTap: () => Navigator.maybePop(context),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: _surfaceColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.chevron_left_rounded,
+                          color: Colors.white, size: 24),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.onlyFuel ? 'Fuel' : 'All Logs',
+                          style: TextStyle(
+                              color: ThemeService.textColor,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold)),
+                      Text('$count entries',
+                          style: TextStyle(color: _mutedColor, fontSize: 12)),
+                    ],
+                  ),
                 ],
               ),
               Container(
@@ -357,36 +414,85 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   }
 
   Widget _buildFuelLogCard(BuildContext context, FuelLog log, double mileage) {
-    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
-    final dateStr = log.date != null ? dateFormat.format(log.date!) : 'Unknown Date';
+    final timeFormat = DateFormat('hh:mm a');
+    final dateStr = log.date != null ? timeFormat.format(log.date!) : 'Unknown Time';
     final pricePerL = log.fuelQuantity > 0 ? (log.totalCost / log.fuelQuantity).toStringAsFixed(1) : '0.0';
 
-    return GestureDetector(
+    final mockLog = {
+      'id': log.id,
+      'station': log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station',
+      'date': DateFormat('dd MMM yyyy, hh:mm a').format(log.date ?? DateTime.now()),
+      'rawDate': log.date,
+      'amount': log.totalCost,
+      'liters': log.fuelQuantity,
+      'odo': log.odometer.toStringAsFixed(0),
+      'remainingRange': log.remainingRange,
+      'pricePerL': pricePerL,
+      'mileage': mileage > 0 ? mileage.toStringAsFixed(1) : '-',
+      'fullTank': log.isFullTank,
+      'payment': log.paymentMethod ?? 'Not specified',
+      'location': log.location ?? 'Unknown location',
+      'notes': log.notes ?? 'No notes provided',
+      'bill_image_path': log.billImagePath,
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Slidable(
+        key: ValueKey('fuel_${log.id}'),
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          extentRatio: 0.45,
+          children: [
+            CustomSlidableAction(
+              onPressed: (context) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => AddFuelPage(existingLog: mockLog)));
+              },
+            backgroundColor: const Color(0xFF3B3B45),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.edit_outlined, size: 20),
+                SizedBox(height: 4),
+                Text('Edit', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          CustomSlidableAction(
+            onPressed: (context) async {
+              final success = await ref.read(apiServiceProvider).deleteFuelLog(log.id);
+              if (success) ref.invalidate(fuelLogsProvider);
+            },
+            backgroundColor: const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(16),
+              bottomRight: Radius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.delete_outline, size: 20),
+                SizedBox(height: 4),
+                Text('Delete', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+      child: GestureDetector(
       onTap: () {
-        final mockLog = {
-          'id': log.id,
-          'station': log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station',
-          'date': dateStr,
-          'rawDate': log.date,
-          'amount': log.totalCost,
-          'liters': log.fuelQuantity,
-          'odo': log.odometer.toStringAsFixed(0),
-          'remainingRange': log.remainingRange,
-          'pricePerL': pricePerL,
-          'mileage': mileage > 0 ? mileage.toStringAsFixed(1) : '-',
-          'fullTank': log.isFullTank,
-          'payment': log.paymentMethod ?? 'Not specified',
-          'location': log.location ?? 'Unknown location',
-          'notes': log.notes ?? 'No notes provided',
-          'bill_image_path': log.billImagePath,
-        };
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => LogDetailPage(log: mockLog)),
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: _cardColor,
@@ -396,46 +502,86 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: _neonColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.local_gas_station_rounded, color: _neonColor, size: 24),
+              child: Icon(Icons.local_gas_station_rounded, color: _neonColor, size: 28),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Fuel Added',
+                  Text(log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station',
                       style: TextStyle(
                           color: ThemeService.textColor,
                           fontSize: 14,
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text('${log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station'} • ${log.fuelQuantity.toStringAsFixed(1)}L',
-                      style: TextStyle(color: _mutedColor, fontSize: 12)),
+                  Row(
+                    children: [
+                       Icon(Icons.local_gas_station_outlined, color: _mutedColor, size: 12),
+                       const SizedBox(width: 4),
+                       Flexible(
+                         child: Text('${log.location?.isNotEmpty == true ? log.location! : 'No location found'} • ',
+                             style: TextStyle(color: _mutedColor, fontSize: 12),
+                             maxLines: 1,
+                             overflow: TextOverflow.ellipsis),
+                       ),
+                       Text('${log.fuelQuantity.toStringAsFixed(1)}L',
+                           style: TextStyle(color: _neonColor, fontSize: 12)),
+                    ]
+                  ),
                 ],
               ),
             ),
+            Container(width: 1, height: 40, color: Colors.white.withOpacity(0.05)),
+            const SizedBox(width: 12),
+            Row(
+              children: [
+                Icon(Icons.speed, color: _neonColor, size: 20),
+                const SizedBox(width: 8),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                     Text('ODO', style: TextStyle(color: _mutedColor, fontSize: 10)),
+                     Text(log.odometer.toStringAsFixed(0),
+                        style: TextStyle(
+                            color: ThemeService.textColor,
+                            fontSize: 14)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Container(width: 1, height: 40, color: Colors.white.withOpacity(0.05)),
+            const SizedBox(width: 12),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('₹${log.totalCost.toStringAsFixed(0)}',
+                 Text('₹${log.totalCost.toStringAsFixed(0)}',
                     style: TextStyle(
                         color: ThemeService.textColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold)),
-                Text(dateStr,
-                    style: TextStyle(color: _mutedColor, fontSize: 12)),
+                        fontSize: 14)),
+                 const SizedBox(height: 2),
+                 Row(
+                   mainAxisAlignment: MainAxisAlignment.end,
+                   children: [
+                      Text(dateStr, style: TextStyle(color: _mutedColor, fontSize: 12)),
+                   ]
+                 ),
               ],
             ),
           ],
-        ),
       ),
+      ),
+    ),
+    ),
     );
   }
 
@@ -475,8 +621,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   }
 
   Widget _buildExpenseCard(BuildContext context, Expense exp, LogType type) {
-    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
-    final dateStr = exp.date != null ? dateFormat.format(exp.date!) : 'Unknown Date';
+    final timeFormat = DateFormat('hh:mm a');
+    final dateStr = exp.date != null ? timeFormat.format(exp.date!) : 'Unknown Time';
     
     Color iconColor;
     IconData iconData;
@@ -496,13 +642,80 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
+      child: Slidable(
+        key: ValueKey('exp_${exp.id}'),
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+        extentRatio: 0.45,
+        children: [
+          CustomSlidableAction(
+            onPressed: (context) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: exp, isServiceMode: type == LogType.service)));
+            },
+            backgroundColor: const Color(0xFF3B3B45),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.edit_outlined, size: 20),
+                SizedBox(height: 4),
+                Text('Edit', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          CustomSlidableAction(
+            onPressed: (context) async {
+              bool success = false;
+              if (type == LogType.service) {
+                success = await ref.read(apiServiceProvider).deleteService(exp.id);
+              } else {
+                success = await ref.read(apiServiceProvider).deleteExpense(exp.id);
+              }
+              if (success) {
+                if (type == LogType.service) ref.invalidate(servicesProvider);
+                else ref.invalidate(expensesProvider);
+              }
+            },
+            backgroundColor: const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(16),
+              bottomRight: Radius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.delete_outline, size: 20),
+                SizedBox(height: 4),
+                Text('Delete', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => ExpenseDetailsPage(
+                    expense: exp,
+                    isServiceMode: type == LogType.service,
+                  )),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 44,
@@ -536,22 +749,24 @@ class _LogsPageState extends ConsumerState<LogsPage> {
               Text('₹${exp.amount.toStringAsFixed(0)}',
                   style: TextStyle(
                       color: ThemeService.textColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold)),
+                      fontSize: 14)),
               Text(dateStr,
                   style: TextStyle(color: _mutedColor, fontSize: 12)),
             ],
           ),
         ],
       ),
+      ),
+    ),
+    ),
     );
   }
 
   Widget _buildReminderCard(BuildContext context, Map<String, dynamic> rem) {
-    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
+    final timeFormat = DateFormat('hh:mm a');
     final dateStr = rem['due_date'] != null 
-        ? dateFormat.format(DateTime.parse(rem['due_date'])) 
-        : 'Unknown Date';
+        ? timeFormat.format(DateTime.parse(rem['due_date'])) 
+        : 'Unknown Time';
     final status = rem['status'] as String? ?? 'pending';
     
     String? amountStr = rem['amount']?.toString();
@@ -561,13 +776,72 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
+      child: Slidable(
+        key: ValueKey('rem_${rem['id']}'),
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+        extentRatio: 0.45,
+        children: [
+          CustomSlidableAction(
+            onPressed: (context) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => AddReminderPage(editData: rem)));
+            },
+            backgroundColor: const Color(0xFF3B3B45),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.edit_outlined, size: 20),
+                SizedBox(height: 4),
+                Text('Edit', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          CustomSlidableAction(
+            onPressed: (context) async {
+              final success = await ref.read(apiServiceProvider).deleteReminder(rem['id'] as int);
+              if (success) ref.invalidate(remindersProvider);
+            },
+            backgroundColor: const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(16),
+              bottomRight: Radius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.delete_outline, size: 20),
+                SizedBox(height: 4),
+                Text('Delete', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReminderDetailsPage(
+              data: rem,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 44,
@@ -602,8 +876,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                 ? Text('₹$amountStr',
                     style: TextStyle(
                         color: ThemeService.textColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold))
+                        fontSize: 14))
                 : Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -625,6 +898,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           ),
         ],
       ),
+      ),
+    ),
+    ),
     );
   }
 }

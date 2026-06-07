@@ -461,19 +461,56 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                           ),
                         )
                       else
-                        ...filteredExpenses.map((e) => _ExpenseTile(
-                          expense: e,
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: e)));
-                          },
-                          onDelete: () async {
-                            final success = await ref.read(apiServiceProvider).deleteExpense(e.id);
-                            if (success) {
-                              ref.invalidate(expensesProvider);
-                            }
-                            return success;
-                          },
-                        )),
+                        ...filteredExpenses.asMap().entries.map((entry) {
+                           final index = entry.key;
+                           final e = entry.value;
+                           bool showHeader = false;
+                           if (index == 0) {
+                              showHeader = true;
+                           } else {
+                              final prev = filteredExpenses[index - 1];
+                              final d1 = e.date ?? DateTime.now();
+                              final d2 = prev.date ?? DateTime.now();
+                              if (d1.day != d2.day || d1.month != d2.month || d1.year != d2.year) {
+                                  showHeader = true;
+                              }
+                           }
+                           
+                           Widget card = _ExpenseTile(
+                             expense: e,
+                             onTap: () {
+                               Navigator.push(context, MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: e)));
+                             },
+                             onDelete: () async {
+                               final success = await ref.read(apiServiceProvider).deleteExpense(e.id);
+                               if (success) {
+                                 ref.invalidate(expensesProvider);
+                               }
+                               return success;
+                             },
+                           );
+                           
+                           if (showHeader) {
+                              final headerText = DateFormat('dd MMM yyyy').format(e.date ?? DateTime.now());
+                              return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                      Padding(
+                                          padding: EdgeInsets.only(top: index == 0 ? 0 : 16, bottom: 12),
+                                          child: Row(
+                                              children: [
+                                                  Text(headerText, style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5)),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(child: Divider(color: Colors.white.withOpacity(0.05), thickness: 1)),
+                                              ]
+                                          ),
+                                      ),
+                                      card,
+                                  ]
+                              );
+                           }
+                           return card;
+                        }),
                     ],
                   );
                 },
@@ -645,7 +682,53 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
                   child: Text('No service logs found.\n\nTo see logs here, please add them via the Add Service button.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.5))),
                 )
               else
-                ...filteredServices.map((s) => _ServiceTile(service: s)),
+                ...filteredServices.asMap().entries.map((entry) {
+                   final index = entry.key;
+                   final s = entry.value;
+                   bool showHeader = false;
+                   if (index == 0) {
+                      showHeader = true;
+                   } else {
+                      final prev = filteredServices[index - 1];
+                      final d1 = s.date ?? DateTime.now();
+                      final d2 = prev.date ?? DateTime.now();
+                      if (d1.day != d2.day || d1.month != d2.month || d1.year != d2.year) {
+                          showHeader = true;
+                      }
+                   }
+                   
+                   Widget card = _ServiceTile(
+                     service: s,
+                     onEdit: () {
+                       Navigator.push(context, MaterialPageRoute(builder: (_) => AddExpensePage(existingExpense: Expense(id: s.id, userId: s.userId, vehicleId: s.vehicleId, category: s.category, title: s.title, amount: s.amount, date: s.date, notes: s.notes), isServiceMode: true)));
+                     },
+                     onDelete: () async {
+                       final success = await ref.read(apiServiceProvider).deleteService(s.id);
+                       if (success) ref.invalidate(servicesProvider);
+                     },
+                   );
+                   
+                   if (showHeader) {
+                      final headerText = DateFormat('dd MMM yyyy').format(s.date ?? DateTime.now());
+                      return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                              Padding(
+                                  padding: EdgeInsets.only(top: index == 0 ? 0 : 16, bottom: 12),
+                                  child: Row(
+                                      children: [
+                                          Text(headerText, style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5)),
+                                          const SizedBox(width: 12),
+                                          Expanded(child: Divider(color: Colors.white.withOpacity(0.05), thickness: 1)),
+                                      ]
+                                  ),
+                              ),
+                              card,
+                          ]
+                      );
+                   }
+                   return card;
+                }),
             ],
           );
         },
@@ -743,8 +826,10 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
 
 class _ServiceTile extends StatelessWidget {
   final Service service;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
-  const _ServiceTile({required this.service});
+  const _ServiceTile({required this.service, this.onEdit, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -762,13 +847,10 @@ class _ServiceTile extends StatelessWidget {
       default: iconColor = Colors.deepOrangeAccent; iconData = Icons.build_outlined; break;
     }
 
-    return GestureDetector(
+    Widget child = GestureDetector(
       onTap: () {
         Navigator.push(
           context,
-          // Since ExpenseDetailsPage expects Expense, we should probably handle Service differently. For now, let's map it or create ServiceDetailsPage.
-          // Or just cast to Expense (since fields are same). But Freezed classes aren't assignable like that.
-          // I will just map the service to Expense for now so it opens properly.
           MaterialPageRoute(
             builder: (_) => ExpenseDetailsPage(
               expense: Expense(id: service.id, userId: service.userId, vehicleId: service.vehicleId, category: service.category, title: service.title, amount: service.amount, date: service.date, notes: service.notes),
@@ -778,7 +860,6 @@ class _ServiceTile extends StatelessWidget {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: ThemeService.cardColor,
           borderRadius: BorderRadius.circular(16),
@@ -850,6 +931,58 @@ class _ServiceTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Slidable(
+        key: ValueKey('srv_${service.id}'),
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          extentRatio: 0.45,
+          children: [
+            CustomSlidableAction(
+              onPressed: (context) {
+                if (onEdit != null) onEdit!();
+              },
+              backgroundColor: const Color(0xFF3B3B45),
+              foregroundColor: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.edit_outlined, size: 20),
+                  SizedBox(height: 4),
+                  Text('Edit', style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+            CustomSlidableAction(
+              onPressed: (context) {
+                if (onDelete != null) onDelete!();
+              },
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.delete_outline, size: 20),
+                  SizedBox(height: 4),
+                  Text('Delete', style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        child: child,
       ),
     );
   }
@@ -2031,7 +2164,6 @@ class _ExpenseTileState extends State<_ExpenseTile> {
         });
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: ThemeService.cardColor,
           borderRadius: BorderRadius.circular(16),

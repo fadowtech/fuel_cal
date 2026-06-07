@@ -16,6 +16,7 @@ class FuelLog with _$FuelLog {
     DateTime? date,
     @JsonKey(name: 'fuel_price') double? fuelPrice,
     @JsonKey(name: 'remaining_range') double? remainingRange,
+    @JsonKey(name: 'remaining_range_after') double? remainingRangeAfter,
     @JsonKey(name: 'is_full_tank') @Default(false) bool isFullTank,
     String? location,
     String? notes,
