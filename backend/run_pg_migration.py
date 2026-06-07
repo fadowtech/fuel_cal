@@ -20,6 +20,7 @@ def migrate():
     new_columns = [
         ("fuel_price", "DOUBLE PRECISION"),
         ("remaining_range", "DOUBLE PRECISION"),
+        ("remaining_range_after", "DOUBLE PRECISION"),
         ("is_full_tank", "BOOLEAN DEFAULT FALSE"),
         ("location", "VARCHAR"),
         ("notes", "VARCHAR"),
