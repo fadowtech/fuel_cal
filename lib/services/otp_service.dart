@@ -46,6 +46,7 @@ class OtpService {
       _otpCache[recipientEmail] = {
         'otp': otp,
         'expiry': DateTime.now().add(const Duration(minutes: 5)),
+        'attempts': 0,
       };
 
       final titleText = isPasswordReset ? "Account Password Recovery" : "Welcome to FuelVox!";
@@ -163,15 +164,24 @@ class OtpService {
       final cacheEntry = _otpCache[email]!;
       final storedOtp = cacheEntry['otp'] as String;
       final expiryTime = cacheEntry['expiry'] as DateTime;
+      int attempts = cacheEntry['attempts'] ?? 0;
 
-      if (DateTime.now().isBefore(expiryTime) && storedOtp == enteredOtp) {
-        _otpCache.remove(email); // One-time use
-        return true;
-      } else {
-        // Expired or wrong code
-        if (DateTime.now().isAfter(expiryTime)) {
-          _otpCache.remove(email); // Clean up expired OTP
+      if (DateTime.now().isBefore(expiryTime)) {
+        if (storedOtp == enteredOtp) {
+          _otpCache.remove(email); // One-time use
+          return true;
+        } else {
+          // Wrong code
+          attempts++;
+          if (attempts >= 10) {
+            _otpCache.remove(email); // Invalidate OTP after 10 failed attempts
+          } else {
+            _otpCache[email]!['attempts'] = attempts;
+          }
         }
+      } else {
+        // Expired
+        _otpCache.remove(email); // Clean up expired OTP
       }
     }
     return false;

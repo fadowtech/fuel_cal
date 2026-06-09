@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/currency_service.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/services/api_service.dart';
 
 class CurrencySelectionPage extends StatefulWidget {
   final VoidCallback onCurrencySelected;
@@ -45,6 +46,9 @@ class _CurrencySelectionPageState extends State<CurrencySelectionPage> {
       _selectedCurrency = code;
     });
     await CurrencyService.saveCurrency(code);
+    try {
+      await ApiService().updateProfile({'currency_code': code});
+    } catch (_) {}
     widget.onCurrencySelected();
   }
 

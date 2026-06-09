@@ -18,6 +18,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     gender: Optional[str] = None
+    currency_code: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str

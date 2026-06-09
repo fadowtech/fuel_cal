@@ -28,6 +28,8 @@ def update_current_user_profile(
         current_user.phone = user_update.phone
     if user_update.gender is not None:
         current_user.gender = user_update.gender
+    if user_update.currency_code is not None:
+        current_user.currency_code = user_update.currency_code
         
     db.commit()
     db.refresh(current_user)
