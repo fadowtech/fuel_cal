@@ -69,7 +69,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       _profileName = profile['name']!;
       _profileEmail = profile['email']!;
       _profilePhone = profile['phone']!;
-      _notificationsEnabled = prefs.getBool('notifications_enabled_$_profileEmail') ?? true;
+      _notificationsEnabled = prefs.getBool('notifications_enabled_$_profileEmail') ?? false;
       _fingerprintEnabled = prefs.getBool('fingerprint_enabled_$_profileEmail') ?? false;
     });
   }

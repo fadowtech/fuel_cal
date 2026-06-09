@@ -9,6 +9,8 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
     gender: Optional[str] = None
     currency_code: Optional[str] = "USD"
+    created_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
 
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None

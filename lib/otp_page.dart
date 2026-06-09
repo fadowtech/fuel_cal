@@ -9,6 +9,7 @@ class OtpPage extends ConsumerStatefulWidget {
   final String email;
   final String name;
   final String password;
+  final String gender;
   final bool isResetPassword;
   
   const OtpPage({
@@ -16,6 +17,7 @@ class OtpPage extends ConsumerStatefulWidget {
     required this.email, 
     this.name = '', 
     this.password = '',
+    this.gender = '',
     this.isResetPassword = false,
   }) : super(key: key);
 
@@ -86,7 +88,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
       if (widget.isResetPassword) {
         context.go('/reset_password', extra: {'email': widget.email});
       } else {
-        final signupSuccess = await ref.read(authProvider.notifier).signup(widget.name, widget.email, widget.password);
+        final signupSuccess = await ref.read(authProvider.notifier).signup(widget.name, widget.email, widget.password, gender: widget.gender);
         if (signupSuccess && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Verification successful! Please sign in.')),

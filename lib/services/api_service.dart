@@ -128,7 +128,7 @@ class ApiService {
     }
   }
 
-  Future<bool> signup(String name, String email, String password) async {
+  Future<bool> signup(String name, String email, String password, {String gender = ''}) async {
     try {
       final parts = name.split(' ');
       final firstName = parts.first;
@@ -139,6 +139,7 @@ class ApiService {
         'last_name': lastName,
         'email': email,
         'password': password,
+        if (gender.isNotEmpty) 'gender': gender,
         'currency_code': 'USD'
       });
       
@@ -148,6 +149,7 @@ class ApiService {
             lastName: lastName,
             email: email,
             phone: '',
+            gender: gender,
             fromLogin: true,
          );
          return true;

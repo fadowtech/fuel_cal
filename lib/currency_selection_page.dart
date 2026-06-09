@@ -4,8 +4,13 @@ import 'package:fuel_cal/services/theme_service.dart';
 
 class CurrencySelectionPage extends StatefulWidget {
   final VoidCallback onCurrencySelected;
+  final bool isOnboarding;
 
-  const CurrencySelectionPage({super.key, required this.onCurrencySelected});
+  const CurrencySelectionPage({
+    super.key, 
+    required this.onCurrencySelected,
+    this.isOnboarding = false,
+  });
 
   @override
   State<CurrencySelectionPage> createState() => _CurrencySelectionPageState();
@@ -86,15 +91,17 @@ class _CurrencySelectionPageState extends State<CurrencySelectionPage> {
       padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              }
-            },
-            child: Icon(Icons.arrow_back, color: ThemeService.textColor, size: 24),
-          ),
-          const SizedBox(width: 16),
+          if (!widget.isOnboarding) ...[
+            GestureDetector(
+              onTap: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              },
+              child: Icon(Icons.arrow_back, color: ThemeService.textColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+          ],
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

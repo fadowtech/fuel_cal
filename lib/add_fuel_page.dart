@@ -45,6 +45,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   String? _volumeErrorText;
   String? _priceErrorText;
   String? _amountErrorText;
+  String? _stationErrorText;
 
   List<String> _stations = [];
   final List<String> _paymentMethods = ['Cash', 'Credit Card', 'Debit Card', 'UPI', 'Other'];
@@ -446,6 +447,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       hasError = true;
     } else {
       _odoErrorText = null;
+    }
+
+    if (_selectedStation == null || _selectedStation!.isEmpty) {
+      _stationErrorText = 'Required';
+      hasError = true;
+    } else {
+      _stationErrorText = null;
     }
 
     setState(() {});
@@ -895,10 +903,28 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   Widget _buildStationDate() {
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: RichText(
+              text: const TextSpan(
+                text: 'Station ',
+                style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                children: [
+                  TextSpan(
+                    text: '*',
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _surfaceColor),
+            border: Border.all(color: _stationErrorText != null ? Colors.redAccent : _surfaceColor),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(11),
@@ -910,7 +936,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
             children: [
-              Icon(Icons.local_gas_station_outlined, color: _neonColor, size: 20),
+              Icon(Icons.local_gas_station_outlined, color: _stationErrorText != null ? Colors.redAccent : _neonColor, size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonHideUnderline(
@@ -925,7 +951,10 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                       if (v == 'Add New Station') {
                         _showAddStationDialog(context);
                       } else {
-                        setState(() => _selectedStation = v);
+                        setState(() {
+                          _selectedStation = v;
+                          if (_stationErrorText != null) _stationErrorText = null;
+                        });
                       }
                     },
                     items: [
@@ -943,6 +972,20 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             ),
           ),
         ),
+        if (_stationErrorText != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, top: 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _stationErrorText!,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
         const SizedBox(height: 12),
         GestureDetector(
           onTap: _pickDate,

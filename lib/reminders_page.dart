@@ -282,13 +282,16 @@ class _RemindersPageState extends State<RemindersPage> {
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: isSelected ? _neonColor : Colors.white.withOpacity(0.1), width: 2)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: isSelected ? Colors.white : _mutedColor, size: 18),
-            const SizedBox(width: 8),
-            Text(title, style: TextStyle(color: isSelected ? Colors.white : _mutedColor, fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
-          ],
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: isSelected ? Colors.white : _mutedColor, size: 18),
+              const SizedBox(width: 8),
+              Text(title, style: TextStyle(color: isSelected ? Colors.white : _mutedColor, fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+            ],
+          ),
         ),
       ),
     );
@@ -325,7 +328,7 @@ class _RemindersPageState extends State<RemindersPage> {
             onTap: () => setState(() => _selectedCategory = cat['name']!),
             child: Container(
               margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected ? Colors.white.withOpacity(0.05) : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
@@ -339,7 +342,7 @@ class _RemindersPageState extends State<RemindersPage> {
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Icon(cat['icon'], color: cat['color'], size: 28),
+                      Icon(cat['icon'], color: cat['color'], size: 22),
                       if (badgeCount > 0)
                         Positioned(
                           right: -8,
@@ -355,7 +358,7 @@ class _RemindersPageState extends State<RemindersPage> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     cat['name']!,
                     style: TextStyle(

@@ -87,10 +87,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> signup(String name, String email, String password) async {
+  Future<bool> signup(String name, String email, String password, {String gender = ''}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final success = await _ref.read(apiServiceProvider).signup(name, email, password);
+      final success = await _ref.read(apiServiceProvider).signup(name, email, password, gender: gender);
       state = state.copyWith(isLoading: false);
       return success;
     } catch (e) {

@@ -14,6 +14,8 @@ import '../main.dart';
 import '../otp_page.dart';
 import '../forgot_password_page.dart';
 import '../reset_password_page.dart';
+import '../currency_selection_page.dart';
+import '../onboarding_settings_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final isAuthenticated = ref.watch(authProvider.select((state) => state.isAuthenticated));
@@ -66,11 +68,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           final email = extra['email'] ?? '';
           final name = extra['name'] ?? '';
           final password = extra['password'] ?? '';
+          final gender = extra['gender'] ?? '';
           final isResetPassword = extra['isResetPassword'] ?? false;
           return OtpPage(
             email: email, 
             name: name, 
             password: password,
+            gender: gender,
             isResetPassword: isResetPassword,
           );
         },
@@ -78,6 +82,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const MainDashboardWrapper(),
+      ),
+      GoRoute(
+        path: '/currency_onboarding',
+        builder: (context, state) => CurrencySelectionPage(
+          isOnboarding: true,
+          onCurrencySelected: () {
+            context.go('/settings_onboarding');
+          },
+        ),
+      ),
+      GoRoute(
+        path: '/settings_onboarding',
+        builder: (context, state) => const OnboardingSettingsPage(),
       ),
     ],
   );
@@ -103,9 +120,30 @@ class _MainDashboardWrapperState extends State<MainDashboardWrapper> {
   }
 
   Future<void> _checkLockAndLoad() async {
+    final hasCurrency = await CurrencyService.hasSelectedCurrency();
+    if (!hasCurrency) {
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.go('/currency_onboarding');
+        });
+      }
+      return;
+    }
+
     final profile = await ProfileService.getProfile();
     final email = profile['email'] ?? '';
     final prefs = await SharedPreferences.getInstance();
+    
+    final hasCompletedSettings = prefs.getBool('onboarding_settings_completed_$email') ?? false;
+    if (!hasCompletedSettings) {
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.go('/settings_onboarding');
+        });
+      }
+      return;
+    }
+
     final fpEnabled = prefs.getBool('fingerprint_enabled_$email') ?? false;
     if (fpEnabled) {
       setState(() => _isLocked = true);

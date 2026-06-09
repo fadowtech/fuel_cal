@@ -108,8 +108,8 @@ class VehicleSelector extends StatelessWidget {
                   ),
                   if (selectedVehicle != null) ...[
                     const SizedBox(height: 4.0),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         if (selectedVehicle!.vehicleNumber != null && selectedVehicle!.vehicleNumber!.isNotEmpty) ...[
                           Container(
@@ -403,17 +403,36 @@ class VehicleSelector extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    vehicle.displayName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6.0),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          vehicle.displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 14),
+                        const SizedBox(width: 4),
+                        const Text('ODO', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 0.5)),
+                        const SizedBox(width: 4),
+                        Text(
+                          vehicleOdometers![vehicle.id]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 6.0),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       if (vehicle.vehicleNumber != null && vehicle.vehicleNumber!.isNotEmpty) ...[
                         Container(
@@ -455,19 +474,6 @@ class VehicleSelector extends StatelessWidget {
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold)),
                       ),
-                      if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
-                        const SizedBox(width: 8),
-                        const Text('•', style: TextStyle(color: Colors.grey, fontSize: 10)),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 10),
-                        const SizedBox(width: 4),
-                        const Text('ODO', style: TextStyle(color: Colors.grey, fontSize: 9, letterSpacing: 0.5)),
-                        const SizedBox(width: 4),
-                        Text(
-                          vehicleOdometers![vehicle.id]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                        ),
-                      ],
                     ],
                   ),
                 ],

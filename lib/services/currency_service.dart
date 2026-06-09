@@ -10,7 +10,7 @@ class CurrencyService {
 
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    _currentCurrency = prefs.getString(_currencyKey) ?? 'INR';
+    _currentCurrency = prefs.getString(_currencyKey);
   }
 
   static String get currencySymbol {
@@ -49,8 +49,13 @@ class CurrencyService {
 
   static Future<String?> getCurrency() async {
     final prefs = await SharedPreferences.getInstance();
-    _currentCurrency = prefs.getString(_currencyKey) ?? 'INR';
+    _currentCurrency = prefs.getString(_currencyKey);
     return _currentCurrency;
+  }
+
+  static Future<bool> hasSelectedCurrency() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(_currencyKey);
   }
 
   static Future<void> clearCurrency() async {

@@ -14,6 +14,8 @@ class User(Base):
     phone = Column(String, nullable=True)
     password_hash = Column(String)
     currency_code = Column(String, default="USD")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)
     
     vehicles = relationship("Vehicle", back_populates="owner")
     logs = relationship("FuelLog", back_populates="user")

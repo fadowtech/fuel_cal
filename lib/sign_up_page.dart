@@ -14,13 +14,15 @@ class SignUpPage extends ConsumerStatefulWidget {
 }
 
 class _SignUpPageState extends ConsumerState<SignUpPage> {
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreedToTerms = true;
+  String? _selectedGender;
 
   @override
   Widget build(BuildContext context) {
@@ -145,15 +147,44 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Full Name',
-                    style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  AuthTextField(
-                    controller: _nameController,
-                    hintText: 'Enter your full name',
-                    prefixIcon: Icons.person_outline,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'First Name',
+                              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 8),
+                            AuthTextField(
+                              controller: _firstNameController,
+                              hintText: 'First name',
+                              prefixIcon: Icons.person_outline,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Last Name',
+                              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 8),
+                            AuthTextField(
+                              controller: _lastNameController,
+                              hintText: 'Last name',
+                              prefixIcon: Icons.person_outline,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   
@@ -179,6 +210,76 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                     hintText: 'Enter your mobile number',
                     prefixIcon: Icons.phone_outlined,
                     keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  Text(
+                    'Gender',
+                    style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedGender = 'Male'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _selectedGender == 'Male' ? redAccent.withOpacity(0.1) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _selectedGender == 'Male' ? redAccent : ThemeService.mutedColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.male, color: _selectedGender == 'Male' ? redAccent : ThemeService.mutedColor, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Male',
+                                  style: TextStyle(
+                                    color: _selectedGender == 'Male' ? redAccent : textColor,
+                                    fontWeight: _selectedGender == 'Male' ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedGender = 'Female'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _selectedGender == 'Female' ? redAccent.withOpacity(0.1) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _selectedGender == 'Female' ? redAccent : ThemeService.mutedColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.female, color: _selectedGender == 'Female' ? redAccent : ThemeService.mutedColor, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Female',
+                                  style: TextStyle(
+                                    color: _selectedGender == 'Female' ? redAccent : textColor,
+                                    fontWeight: _selectedGender == 'Female' ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   
@@ -285,7 +386,8 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () async {
-                        final name = _nameController.text.trim();
+                        final firstName = _firstNameController.text.trim();
+                        final lastName = _lastNameController.text.trim();
                         final email = _emailController.text.trim();
                         final password = _passwordController.text;
                         final confirmPassword = _confirmPasswordController.text;
@@ -297,7 +399,13 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                           return;
                         }
                         
-                        if (name.isEmpty || email.isEmpty || password.isEmpty) return;
+                        if (firstName.isEmpty || email.isEmpty || password.isEmpty) return;
+                        if (_selectedGender == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please select your gender.')),
+                          );
+                          return;
+                        }
                         if (password != confirmPassword) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Passwords do not match.')),
@@ -316,9 +424,10 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                         
                         if (context.mounted) {
                           context.go('/otp', extra: {
-                            'name': name,
+                            'name': '$firstName $lastName'.trim(),
                             'email': email,
                             'password': password,
+                            'gender': _selectedGender,
                           });
                         }
                       },

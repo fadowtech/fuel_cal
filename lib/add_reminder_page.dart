@@ -249,7 +249,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
       final profile = await ProfileService.getProfile();
       final email = profile['email'] ?? '';
       final prefs = await SharedPreferences.getInstance();
-      final notificationsEnabled = prefs.getBool('notifications_enabled_$email') ?? true;
+      final notificationsEnabled = prefs.getBool('notifications_enabled_$email') ?? false;
       if (notificationsEnabled && _dueDate != null) {
         final id = widget.editData != null ? widget.editData!['raw_data']['id'] : DateTime.now().millisecondsSinceEpoch.remainder(100000);
         await NotificationService.scheduleNotification(

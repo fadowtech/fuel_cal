@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 import models, schemas, database, auth
 
 router = APIRouter(
@@ -42,6 +42,9 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(database.ge
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Credentials"
         )
+        
+    user.last_login = datetime.utcnow()
+    db.commit()
         
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}

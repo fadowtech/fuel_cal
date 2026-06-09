@@ -346,18 +346,23 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(greeting,
-                style: TextStyle(color: _mutedColor, fontSize: 12)),
-            Text('Hi, $displayName',
-                style: TextStyle(
-                    color: _textColor,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(greeting,
+                  style: TextStyle(color: _mutedColor, fontSize: 12)),
+              Text('Hi, $displayName',
+                  style: TextStyle(
+                      color: _textColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 16),
         Row(
           children: [
             GestureDetector(

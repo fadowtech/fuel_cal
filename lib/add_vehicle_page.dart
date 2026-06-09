@@ -544,26 +544,27 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
             children: [
               SizedBox(width: 90, child: _buildLabel('Vehicle Type', isRequired: true)),
               Expanded(
-                child: Row(
-                  children: _vehicleTypes.map((type) {
-                    IconData icon;
-                    if (type == 'Car') icon = Icons.directions_car_outlined;
-                    else if (type == 'Bike') icon = Icons.motorcycle_outlined;
-                    else if (type == 'Truck') icon = Icons.local_shipping_outlined;
-                    else icon = Icons.electric_scooter_outlined;
-                    
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(left: type == 'Car' ? 0 : 4),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _vehicleTypes.map((type) {
+                      IconData icon;
+                      if (type == 'Car') icon = Icons.directions_car_outlined;
+                      else if (type == 'Bike') icon = Icons.motorcycle_outlined;
+                      else if (type == 'Truck') icon = Icons.local_shipping_outlined;
+                      else icon = Icons.electric_scooter_outlined;
+                      
+                      return Padding(
+                        padding: EdgeInsets.only(left: type == 'Car' ? 0 : 8),
                         child: _buildSelectableButton(
                           title: type,
                           isSelected: _selectedVehicleType == type,
                           onTap: () => setState(() { _selectedVehicleType = type; _vehicleTypeError = null; }),
                           icon: icon,
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ],
@@ -631,7 +632,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
           color: isSelected ? _neonColor.withOpacity(0.1) : _surfaceColor.withOpacity(0.5),
           borderRadius: BorderRadius.circular(8),
@@ -676,10 +677,11 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
             children: [
               SizedBox(width: 90, child: _buildLabel('Fuel Type', isRequired: true)),
               Expanded(
-                child: Row(
-                  children: _fuelTypes.map((type) {
-                    return Expanded(
-                      child: Padding(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _fuelTypes.map((type) {
+                      return Padding(
                         padding: EdgeInsets.only(left: type == _fuelTypes.first ? 0 : 8),
                         child: _buildSelectableButton(
                           title: type,
@@ -687,24 +689,25 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                           onTap: () => setState(() { _selectedFuelType = type; _fuelTypeError = null; }),
                           icon: type == 'Petrol' ? Icons.water_drop_outlined : Icons.local_gas_station_outlined,
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ),
             ],
           ),
           if (_fuelTypeError != null) Padding(padding: const EdgeInsets.only(top: 4, left: 90), child: Text(_fuelTypeError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
           const SizedBox(height: 16),
-          Row(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildLabel('Tank Type', isRequired: true),
-                    Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLabel('Tank Type', isRequired: true),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                       children: _tankTypes.map((type) {
                         return Padding(
                           padding: const EdgeInsets.only(right: 12),
@@ -731,12 +734,12 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                         );
                       }).toList(),
                     ),
-                    if (_tankTypeError != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(_tankTypeError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
-                  ],
-                ),
+                  ),
+                  if (_tankTypeError != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(_tankTypeError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
+                ],
               ),
-              Expanded(
-                child: Column(
+              const SizedBox(height: 16),
+              Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildLabel('Tank Capacity (Liters)', isRequired: true),
@@ -778,7 +781,6 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                     ),
                   ],
                 ),
-              ),
             ],
           ),
         ],
