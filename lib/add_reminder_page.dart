@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:fuel_cal/services/currency_service.dart';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fuel_cal/services/api_service.dart';
@@ -722,7 +724,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
               color: const Color(0xFF10B981).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.currency_rupee, color: Color(0xFF10B981), size: 20),
+            child: Icon(CurrencyService.currentCurrencyIconNotRounded, color: const Color(0xFF10B981), size: 20),
           ),
           const SizedBox(width: 16),
           Expanded(

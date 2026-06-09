@@ -45,6 +45,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ThemeService.init();
   await NotificationService.init();
+  await CurrencyService.init();
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {

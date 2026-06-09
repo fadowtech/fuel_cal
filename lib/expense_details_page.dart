@@ -1,3 +1,4 @@
+import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -258,7 +259,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
                         ),
                         VerticalDivider(color: Colors.white.withOpacity(0.05), width: 32),
                         Expanded(
-                          child: _buildHeaderInfo(Icons.currency_rupee_rounded, const Color(0xFF3B82F6), 'Amount', '₹${expense.amount.toStringAsFixed(0)}'),
+                          child: _buildHeaderInfo(CurrencyService.currentCurrencyIcon, const Color(0xFF3B82F6), 'Amount', '${CurrencyService.currencySymbol}${expense.amount.toStringAsFixed(0)}'),
                         ),
                       ],
                     ),

@@ -1,3 +1,4 @@
+import 'package:fuel_cal/services/currency_service.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -295,7 +296,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           children: [
         SparklineKpiCard(
           title: 'Total spend',
-          value: '₹${NumberFormat('#,##0').format(totalSpend)}',
+          value: '${CurrencyService.currencySymbol}${NumberFormat('#,##0').format(totalSpend)}',
           trendValue: '${spendTrend.abs().toStringAsFixed(1)}%',
           isTrendUp: spendTrend >= 0,
           trendText: dynamicTrendText,
@@ -325,7 +326,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         ),
         SparklineKpiCard(
           title: 'Avg price',
-          value: avgPrice > 0 ? '₹${avgPrice.toStringAsFixed(1)}/L' : '-',
+          value: avgPrice > 0 ? '${CurrencyService.currencySymbol}${avgPrice.toStringAsFixed(1)}/L' : '-',
           trendValue: '${priceTrend.abs().toStringAsFixed(1)}%',
           isTrendUp: priceTrend >= 0, 
           trendText: dynamicTrendText,
@@ -441,12 +442,12 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       title: 'Fuel Cost Trend',
       icon: Icons.local_gas_station,
       themeColor: const Color(0xFF00E676),
-      yAxisPrefix: '₹',
+      yAxisPrefix: '${CurrencyService.currencySymbol}',
       data: data,
       selectedFilter: _fuelChartFilter,
       onFilterChanged: (val) => setState(() => _fuelChartFilter = val),
       statLabel: 'Average fuel cost',
-      statValue: '₹${NumberFormat('#,##0').format(average)}',
+      statValue: '${CurrencyService.currencySymbol}${NumberFormat('#,##0').format(average)}',
       statTrend: '${trend.abs().toStringAsFixed(1)}%',
       isTrendUp: isUp,
       statComparison: comparisonText,
@@ -655,7 +656,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 const SizedBox(width: 12),
                 SizedBox(
                   width: 85,
-                  child: Text('₹${NumberFormat('#,##0').format(entry.value)}', style: TextStyle(color: _mutedColor, fontSize: 14), textAlign: TextAlign.right),
+                  child: Text('${CurrencyService.currencySymbol}${NumberFormat('#,##0').format(entry.value)}', style: TextStyle(color: _mutedColor, fontSize: 14), textAlign: TextAlign.right),
                 ),
               ],
             ),
@@ -1254,7 +1255,7 @@ class MonthlyComparisonPainter extends CustomPainter {
       }
       
       final textSpan = TextSpan(
-        text: '₹$formattedValue',
+        text: '${CurrencyService.currencySymbol}$formattedValue',
         style: TextStyle(color: mutedColor, fontSize: 11),
       );
       final textPainter = TextPainter(
@@ -1577,7 +1578,7 @@ extension SmartInsightsExtension on _StatsPageState {
     if (currSpend > 0 || prevSpend > 0) {
       final diff = currSpend - prevSpend;
       final action = diff >= 0 ? 'increased' : 'decreased';
-      insight2 = 'Fuel spending $action by ₹${NumberFormat('#,##0').format(diff.abs())} vs last month.';
+      insight2 = 'Fuel spending $action by ${CurrencyService.currencySymbol}${NumberFormat('#,##0').format(diff.abs())} vs last month.';
     }
 
     // Station Insight
@@ -1609,10 +1610,10 @@ extension SmartInsightsExtension on _StatsPageState {
         });
         
         if (bestDiff > 0.01) {
-          insight3 = 'You save more when refueling at $bestStation (avg ₹${bestDiff.toStringAsFixed(1)}/L cheaper).';
+          insight3 = 'You save more when refueling at $bestStation (avg ${CurrencyService.currencySymbol}${bestDiff.toStringAsFixed(1)}/L cheaper).';
         } else {
            if (bestStation.isNotEmpty) {
-             insight3 = 'You save more when refueling at $bestStation (avg ₹0.0/L cheaper).';
+             insight3 = 'You save more when refueling at $bestStation (avg ${CurrencyService.currencySymbol}0.0/L cheaper).';
            }
         }
       }

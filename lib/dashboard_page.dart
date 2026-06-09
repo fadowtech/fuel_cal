@@ -1,3 +1,4 @@
+import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
@@ -439,17 +440,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     double lastFillCost = 0.0;
     double lastFillQuantity = 0.0;
     String lastFillDateStr = 'No Data';
-
+    double? rangeBefore;
+    double? rangeAfter;
     double rangeKM = 0.0;
     double reserveRange = 0.0;
-
+    
     if (logs.isNotEmpty) {
       final sortedLogs = List<FuelLog>.from(logs)
         ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
-        
       final lastLog = sortedLogs.first;
       lastFillCost = lastLog.totalCost;
       lastFillQuantity = lastLog.fuelQuantity;
+      rangeBefore = lastLog.remainingRange;
+      rangeAfter = lastLog.remainingRangeAfter;
       if (lastLog.date != null) {
         lastFillDateStr = DateFormat('dd MMM yyyy').format(lastLog.date!);
       }
@@ -493,9 +496,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       }
       rangeKM = currentRange;
     }
-
-    double rangeBefore = reserveRange;
-    double rangeAfter = rangeKM + reserveRange;
 
     double percentage = (lastFillQuantity / tankCapacity).clamp(0.0, 1.0) * 100;
     final Color accentColor = ThemeService.neonColor;
@@ -660,7 +660,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                             children: [
                               Text('Amount Paid', style: TextStyle(color: textColor, fontSize: 11)),
                               const SizedBox(height: 2),
-                              Text('₹${lastFillCost.toStringAsFixed(0)}', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text('${CurrencyService.currencySymbol}${lastFillCost.toStringAsFixed(0)}', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 2),
                               Text('Total paid for last refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
                             ],
@@ -731,7 +731,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                             children: [
                               Text('Range Before Refuel', style: TextStyle(color: textColor, fontSize: 11)),
                               const SizedBox(height: 2),
-                              Text('${rangeBefore.toStringAsFixed(0)} KM', style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text(rangeBefore != null ? '${rangeBefore.toStringAsFixed(0)} KM' : '--', style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 2),
                               Text('Distance to empty\nbefore refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
                             ],
@@ -765,7 +765,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                             children: [
                               Text('Range After Refuel', style: TextStyle(color: textColor, fontSize: 11)),
                               const SizedBox(height: 2),
-                              Text('${rangeAfter.toStringAsFixed(0)} KM', style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text(rangeAfter != null ? '${rangeAfter.toStringAsFixed(0)} KM' : '--', style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 2),
                               Text('Distance to empty\nafter refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
                             ],
@@ -1303,9 +1303,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 icon: Icons.account_balance_wallet,
                 color: const Color(0xFFFF5252), // Bright red
                 title: 'FUEL SPEND',
-                value: '₹${formatter.format(thisMonthSpend)}',
+                value: '${CurrencyService.currencySymbol}${formatter.format(thisMonthSpend)}',
                 unit: '',
-                subtitle: 'Last Month: ₹${formatter.format(lastMonthSpend)}',
+                subtitle: 'Last Month: ${CurrencyService.currencySymbol}${formatter.format(lastMonthSpend)}',
               ),
             ],
           ),
@@ -1923,7 +1923,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                         Text('₹${log.totalCost.toStringAsFixed(0)}',
+                         Text('${CurrencyService.currencySymbol}${log.totalCost.toStringAsFixed(0)}',
                             style: TextStyle(
                                 color: _textColor,
                                 fontSize: 14)),
@@ -2051,7 +2051,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('₹${expense.amount.toStringAsFixed(0)}',
+                        Text('${CurrencyService.currencySymbol}${expense.amount.toStringAsFixed(0)}',
                             style: TextStyle(
                                 color: _textColor,
                                 fontSize: 14)),

@@ -1,3 +1,4 @@
+import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -814,7 +815,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 controller: _fuelPriceController,
                 label: 'Price per liter',
                 hint: 'Enter price',
-                icon: Icons.currency_rupee,
+                icon: CurrencyService.currentCurrencyIconNotRounded,
                 suffix: '/L',
                 isNumber: true,
                 isRequired: true,
@@ -832,8 +833,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           controller: _totalAmountController,
           label: 'Total amount',
           hint: 'Enter total amount',
-          icon: Icons.currency_rupee,
-          suffix: '₹',
+          icon: CurrencyService.currentCurrencyIconNotRounded,
+          suffix: '${CurrencyService.currencySymbol}',
           isNumber: true,
           isRequired: true,
           errorText: _amountErrorText,

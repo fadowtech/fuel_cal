@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
 import 'dart:convert';
+import 'package:fuel_cal/services/report_service.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -1009,43 +1010,150 @@ class TripsPage extends StatelessWidget {
 }
 
 
-class ReportsPage extends StatelessWidget {
+class ReportsPage extends ConsumerStatefulWidget {
   const ReportsPage({super.key});
 
   @override
+  ConsumerState<ReportsPage> createState() => _ReportsPageState();
+}
+
+class _ReportsPageState extends ConsumerState<ReportsPage> {
+  bool _isGenerating = false;
+
+  void _showLoading() {
+    setState(() => _isGenerating = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Generating Report...'), duration: Duration(seconds: 1)),
+    );
+  }
+
+  void _hideLoading() {
+    if (mounted) setState(() => _isGenerating = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final fuelLogsAsync = ref.watch(fuelLogsProvider);
+    final expensesAsync = ref.watch(expensesProvider);
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final servicesAsync = ref.watch(servicesProvider);
+
+    final fuelLogs = fuelLogsAsync.valueOrNull ?? [];
+    final expenses = expensesAsync.valueOrNull ?? [];
+    final vehicles = vehiclesAsync.valueOrNull ?? [];
+    final services = servicesAsync.valueOrNull ?? [];
+
     final reports = [
       {
-        'icon': Icons.picture_as_pdf_outlined,
-        'title': 'Monthly PDF report',
-        'sub': 'May 2026 summary',
-        'tag': 'PDF'
+        'icon': Icons.insert_drive_file_outlined,
+        'title': 'Monthly PDF Report',
+        'desc': 'Fuel, expenses & statistics summary',
+        'infoIcon': Icons.calendar_today_outlined,
+        'infoText': 'This Month',
+        'btnType': 'PDF',
+        'action': () async {
+          _showLoading();
+          await ReportService.generateMonthlyPdfReport(fuelLogs, expenses);
+          _hideLoading();
+        }
       },
       {
-        'icon': Icons.table_chart_outlined,
-        'title': 'Excel export',
-        'sub': 'All fuel entries',
-        'tag': 'XLSX'
+        'icon': Icons.grid_on_outlined,
+        'title': 'Excel Export',
+        'desc': 'Export all fuel entries',
+        'infoIcon': Icons.storage_outlined,
+        'infoText': 'All entries',
+        'btnType': 'XLSX',
+        'action': () async {
+          _showLoading();
+          await ReportService.exportExcelFuelEntries(fuelLogs);
+          _hideLoading();
+        }
+      },
+      {
+        'icon': Icons.account_balance_wallet_outlined,
+        'title': 'Expense Summary',
+        'desc': 'All expenses overview',
+        'infoIcon': Icons.calendar_today_outlined,
+        'infoText': 'All time',
+        'btnType': 'PDF',
+        'action': () async {
+          _showLoading();
+          await ReportService.generateExpenseSummaryPdf(expenses);
+          _hideLoading();
+        }
+      },
+      {
+        'icon': Icons.local_gas_station_outlined,
+        'title': 'Fuel Data Export',
+        'desc': 'All fuel records',
+        'infoIcon': Icons.storage_outlined,
+        'infoText': 'All records',
+        'btnType': 'XLSX',
+        'action': () async {
+          _showLoading();
+          await ReportService.exportFuelDataExcel(fuelLogs);
+          _hideLoading();
+        }
       },
       {
         'icon': Icons.calendar_month_outlined,
-        'title': 'Yearly summary',
-        'sub': 'Jan - Dec 2025',
-        'tag': 'PDF'
+        'title': 'Yearly Summary',
+        'desc': 'Complete yearly overview',
+        'infoIcon': Icons.calendar_today_outlined,
+        'infoText': 'Current Year',
+        'btnType': 'PDF',
+        'action': () async {
+          _showLoading();
+          await ReportService.generateYearlySummaryPdf(fuelLogs, expenses);
+          _hideLoading();
+        }
       },
       {
         'icon': Icons.directions_car_outlined,
-        'title': 'Per-vehicle report',
-        'sub': 'Toyota Innova',
-        'tag': 'PDF'
+        'title': 'Vehicle Report',
+        'desc': 'Report for specific vehicle',
+        'infoIcon': Icons.directions_car_outlined,
+        'infoText': vehicles.isNotEmpty ? '${vehicles.first.make} ${vehicles.first.model}' : 'All Vehicles',
+        'btnType': 'PDF',
+        'action': () async {
+          _showLoading();
+          await ReportService.generateVehicleReportPdf(vehicles.isNotEmpty ? vehicles.first : null, fuelLogs, expenses);
+          _hideLoading();
+        }
+      },
+      {
+        'icon': Icons.build_outlined,
+        'title': 'Service History Report',
+        'desc': 'All services and maintenance',
+        'infoIcon': Icons.directions_car_outlined,
+        'infoText': vehicles.isNotEmpty ? '${vehicles.first.make} ${vehicles.first.model}' : 'All Vehicles',
+        'btnType': 'PDF',
+        'action': () async {
+          _showLoading();
+          await ReportService.generateServiceHistoryPdf(vehicles.isNotEmpty ? vehicles.first : null, services);
+          _hideLoading();
+        }
       },
     ];
+
     return _FeatureScaffold(
       title: 'Reports',
-      subtitle: 'Generate & export',
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        children: reports.map((report) => _ReportTile(report: report)).toList(),
+      subtitle: 'Generate & Download',
+      child: Stack(
+        children: [
+          ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            children: [
+              ...reports.map((report) => _ReportTile(report: report)),
+              _ReportFooter(),
+            ],
+          ),
+          if (_isGenerating)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
       ),
     );
   }
@@ -2472,11 +2580,140 @@ class _ReportTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ListTileShell(
-      icon: report['icon'] as IconData,
-      title: report['title'] as String,
-      subtitle: '${report['sub']}   ${report['tag']}',
-      trailingIcon: Icons.download_rounded,
+    final bool isPdf = report['btnType'] == 'PDF';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceColor.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _surfaceColor.withOpacity(0.5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(report['icon'] as IconData, color: _neonColor, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(report['title'], style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(report['desc'], style: TextStyle(color: _mutedColor, fontSize: 12)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(report['infoIcon'] as IconData, color: _mutedColor, size: 14),
+                    const SizedBox(width: 4),
+                    Text(report['infoText'], style: TextStyle(color: _mutedColor, fontSize: 12)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: report['action'] as VoidCallback?,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(isPdf ? Icons.insert_drive_file : Icons.grid_on, color: Colors.white, size: 14),
+                      const SizedBox(width: 6),
+                      Text(isPdf ? 'Generate PDF' : 'Export XLSX', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(report['btnType'], style: TextStyle(color: _mutedColor, fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportFooter extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 24),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Icon(Icons.lightbulb_outline, color: _neonColor, size: 28),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              'Reports are generated in real-time and downloaded directly to your device.',
+              style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 60,
+            height: 60,
+            child: Stack(
+              children: [
+                const Positioned(
+                  left: 0,
+                  bottom: 10,
+                  child: Icon(Icons.insert_drive_file, color: Colors.white, size: 40),
+                ),
+                Positioned(
+                  left: 6,
+                  bottom: 18,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                    child: const Text('PDF', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Icon(Icons.insert_drive_file, color: Colors.white, size: 40),
+                ),
+                Positioned(
+                  right: 4,
+                  top: 14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(4)),
+                    child: const Text('XLSX', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                Positioned(
+                  right: -4,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
+                    child: const Icon(Icons.arrow_downward, color: Colors.white, size: 12),
+                  ),
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
     );
   }
 }

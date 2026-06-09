@@ -201,12 +201,22 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                   const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: Text(
-                      'Forgot password?',
-                      style: TextStyle(
-                        color: redAccent,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                    child: TextButton(
+                      onPressed: () {
+                        context.push('/forgot_password');
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'Forgot password?',
+                        style: TextStyle(
+                          color: redAccent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),

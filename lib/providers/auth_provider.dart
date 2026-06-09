@@ -99,6 +99,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<bool> resetPassword(String email, String newPassword) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final success = await _ref.read(apiServiceProvider).resetPassword(email, newPassword);
+      state = state.copyWith(isLoading: false);
+      return success;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtp(String email, String otp) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final success = await _ref.read(apiServiceProvider).verifyOtp(email, otp);
+      state = state.copyWith(isLoading: false);
+      return success;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> resendOtp(String email) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final success = await _ref.read(apiServiceProvider).resendOtp(email);
+      state = state.copyWith(isLoading: false);
+      return success;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     await _ref.read(apiServiceProvider).logout();
     await ProfileService.clearProfile();

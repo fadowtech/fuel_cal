@@ -1,3 +1,4 @@
+import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/manage_fuel_service.dart';
@@ -155,7 +156,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
               ),
             ),
             Text(
-              fuel['price'] != null ? '₹ ${fuel['price']} /L' : '₹ -- /L',
+              fuel['price'] != null ? '${CurrencyService.currencySymbol} ${fuel['price']} /L' : '${CurrencyService.currencySymbol} -- /L',
               style: TextStyle(color: ThemeService.textColor, fontSize: 14),
             ),
             const SizedBox(width: 16),
@@ -464,7 +465,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                 const SizedBox(height: 24),
                 RichText(
                   text: TextSpan(
-                    text: 'Price per liter (₹) ',
+                    text: 'Price per liter (${CurrencyService.currencySymbol}) ',
                     style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                     children: [
                       TextSpan(text: '*', style: TextStyle(color: ThemeService.dangerColor)),
@@ -483,7 +484,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                       decoration: BoxDecoration(
                         border: Border(right: BorderSide(color: ThemeService.mutedColor.withOpacity(0.3))),
                       ),
-                      child: Text('₹', style: TextStyle(color: ThemeService.neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: Text('${CurrencyService.currencySymbol}', style: TextStyle(color: ThemeService.neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                     suffixIcon: Padding(
                       padding: const EdgeInsets.all(12.0),

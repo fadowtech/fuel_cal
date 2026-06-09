@@ -11,7 +11,7 @@ class UpgradePage extends StatefulWidget {
 
 class _UpgradePageState extends State<UpgradePage> {
   int _selectedPlanIndex = 0; // 0: Free, 1: Remove Ads, 2: Plus, 3: Pro
-  String _currencySymbol = '₹';
+  String _currencySymbol = '${CurrencyService.currencySymbol}';
   bool _isYearly = false;
 
   @override

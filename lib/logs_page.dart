@@ -1,3 +1,4 @@
+import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
@@ -564,7 +565,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                 Text('₹${log.totalCost.toStringAsFixed(0)}',
+                 Text('${CurrencyService.currencySymbol}${log.totalCost.toStringAsFixed(0)}',
                     style: TextStyle(
                         color: ThemeService.textColor,
                         fontSize: 14)),
@@ -746,7 +747,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('₹${exp.amount.toStringAsFixed(0)}',
+              Text('${CurrencyService.currencySymbol}${exp.amount.toStringAsFixed(0)}',
                   style: TextStyle(
                       color: ThemeService.textColor,
                       fontSize: 14)),
@@ -873,7 +874,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               amountStr != null 
-                ? Text('₹$amountStr',
+                ? Text('${CurrencyService.currencySymbol}$amountStr',
                     style: TextStyle(
                         color: ThemeService.textColor,
                         fontSize: 14))

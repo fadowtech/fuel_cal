@@ -45,3 +45,13 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(database.ge
         
     access_token = auth.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/reset-password")
+def reset_password(reset_data: schemas.UserResetPassword, db: Session = Depends(database.get_db)):
+    user = db.query(models.User).filter(models.User.email == reset_data.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        
+    user.password_hash = auth.get_password_hash(reset_data.new_password)
+    db.commit()
+    return {"message": "Password updated successfully"}

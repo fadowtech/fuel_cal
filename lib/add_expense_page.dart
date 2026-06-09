@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
@@ -293,11 +294,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     _buildTextField(
                       label: 'Amount',
                       isRequired: true,
-                      icon: Icons.currency_rupee_rounded,
+                      icon: CurrencyService.currentCurrencyIcon,
                       controller: _amount,
                       hint: '0.00',
                       isNumber: true,
-                      suffix: '₹',
+                      suffix: '${CurrencyService.currencySymbol}',
                       errorText: _amountErrorText,
                       onChanged: (_) {
                         if (_amountErrorText != null) setState(() => _amountErrorText = null);

@@ -92,7 +92,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 12),
                             Text(
                               'Create your account',
                               style: TextStyle(
@@ -305,16 +305,21 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                           return;
                         }
                         
-                        final success = await ref.read(authProvider.notifier).signup(name, email, password);
-                        if (!success && context.mounted) {
+                        // Trigger initial OTP email
+                        final otpSuccess = await ref.read(authProvider.notifier).resendOtp(email);
+                        if (!otpSuccess && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Sign up failed. Please try again.')),
+                            const SnackBar(content: Text('Failed to send OTP email. Please check your address.')),
                           );
-                        } else if (success && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Account created! Please sign in.')),
-                          );
-                          context.go('/signin');
+                          return;
+                        }
+                        
+                        if (context.mounted) {
+                          context.go('/otp', extra: {
+                            'name': name,
+                            'email': email,
+                            'password': password,
+                          });
                         }
                       },
                       style: ElevatedButton.styleFrom(

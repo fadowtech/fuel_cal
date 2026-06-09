@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fuel_cal/services/profile_service.dart';
+import 'package:fuel_cal/services/otp_service.dart';
 
 class ApiService {
   static const String baseUrl = 'http://184.174.37.4:8001';
@@ -152,6 +153,39 @@ class ApiService {
          return true;
       }
       return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> resetPassword(String email, String newPassword) async {
+    try {
+      final response = await _dio.post('/auth/reset-password', data: {
+        'email': email,
+        'new_password': newPassword,
+      });
+      return response.statusCode == 200;
+    } catch (e) {
+      if (e is DioException) {
+        print('resetPassword error response: ${e.response?.data}');
+      } else {
+        print('resetPassword error: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<bool> verifyOtp(String email, String otp) async {
+    try {
+      return OtpService.verifyOtp(email, otp);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> resendOtp(String email) async {
+    try {
+      return await OtpService.sendOtpEmail(email);
     } catch (e) {
       return false;
     }

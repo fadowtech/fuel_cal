@@ -11,6 +11,9 @@ import '../providers/auth_provider.dart';
 import '../services/currency_service.dart';
 import '../services/profile_service.dart';
 import '../main.dart';
+import '../otp_page.dart';
+import '../forgot_password_page.dart';
+import '../reset_password_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final isAuthenticated = ref.watch(authProvider.select((state) => state.isAuthenticated));
@@ -18,7 +21,12 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/dashboard',
     redirect: (context, state) {
-      final isLoggingIn = state.uri.toString() == '/signin' || state.uri.toString() == '/signup';
+      final uriStr = state.uri.toString();
+      final isLoggingIn = uriStr == '/signin' || 
+                          uriStr == '/signup' || 
+                          uriStr.startsWith('/otp') ||
+                          uriStr == '/forgot_password' ||
+                          uriStr == '/reset_password';
 
       if (!isAuthenticated && !isLoggingIn) {
         return '/signin';
@@ -38,6 +46,34 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignUpPage(),
+      ),
+      GoRoute(
+        path: '/forgot_password',
+        builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/reset_password',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final email = extra['email'] ?? '';
+          return ResetPasswordPage(email: email);
+        },
+      ),
+      GoRoute(
+        path: '/otp',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final email = extra['email'] ?? '';
+          final name = extra['name'] ?? '';
+          final password = extra['password'] ?? '';
+          final isResetPassword = extra['isResetPassword'] ?? false;
+          return OtpPage(
+            email: email, 
+            name: name, 
+            password: password,
+            isResetPassword: isResetPassword,
+          );
+        },
       ),
       GoRoute(
         path: '/dashboard',

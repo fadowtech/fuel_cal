@@ -1,21 +1,62 @@
+import 'package:flutter/material.dart';
+import 'package:fuel_cal/services/currency_service.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 
 class CurrencyService {
   static const _currencyKey = 'selected_currency';
+  static String? _currentCurrency;
+
+  static Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _currentCurrency = prefs.getString(_currencyKey) ?? 'INR';
+  }
+
+  static String get currencySymbol {
+    return getCurrencySymbol(_currentCurrency ?? 'INR');
+  }
+
+  static IconData get currentCurrencyIcon {
+    switch (_currentCurrency) {
+      case 'USD':
+        return Icons.attach_money_rounded;
+      case 'EUR':
+        return Icons.euro_rounded;
+      case 'INR':
+      default:
+        return Icons.currency_rupee_rounded;
+    }
+  }
+
+  static IconData get currentCurrencyIconNotRounded {
+    switch (_currentCurrency) {
+      case 'USD':
+        return Icons.attach_money;
+      case 'EUR':
+        return Icons.euro;
+      case 'INR':
+      default:
+        return Icons.currency_rupee;
+    }
+  }
 
   static Future<void> saveCurrency(String currencyCode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_currencyKey, currencyCode);
+    _currentCurrency = currencyCode;
   }
 
   static Future<String?> getCurrency() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_currencyKey);
+    _currentCurrency = prefs.getString(_currencyKey) ?? 'INR';
+    return _currentCurrency;
   }
 
   static Future<void> clearCurrency() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_currencyKey);
+    _currentCurrency = null;
   }
 
   static String getCurrencySymbol(String currencyCode) {
