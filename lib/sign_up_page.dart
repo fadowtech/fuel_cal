@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/widgets/auth_text_field.dart';
 
@@ -17,6 +18,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -162,6 +164,9 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                               controller: _firstNameController,
                               hintText: 'First name',
                               prefixIcon: Icons.person_outline,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                              ],
                             ),
                           ],
                         ),
@@ -180,6 +185,9 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                               controller: _lastNameController,
                               hintText: 'Last name',
                               prefixIcon: Icons.person_outline,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                              ],
                             ),
                           ],
                         ),
@@ -206,10 +214,14 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                     style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
-                  const AuthTextField(
+                  AuthTextField(
+                    controller: _phoneController,
                     hintText: 'Enter your mobile number',
                     prefixIcon: Icons.phone_outlined,
                     keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
                   ),
                   const SizedBox(height: 16),
                   
@@ -416,8 +428,9 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                         // Trigger initial OTP email
                         final otpSuccess = await ref.read(authProvider.notifier).resendOtp(email);
                         if (!otpSuccess && context.mounted) {
+                          final errorMsg = ref.read(authProvider).error ?? 'Failed to send OTP email. Please check your address.';
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Failed to send OTP email. Please check your address.')),
+                            SnackBar(content: Text(errorMsg)),
                           );
                           return;
                         }

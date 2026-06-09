@@ -185,11 +185,20 @@ class ApiService {
     }
   }
 
-  Future<bool> resendOtp(String email) async {
+  Future<bool> checkUserExists(String email) async {
     try {
-      return await OtpService.sendOtpEmail(email);
+      final response = await _dio.get('/auth/check-user', queryParameters: {'email': email});
+      return response.data['exists'] == true;
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<bool> resendOtp(String email, {bool isPasswordReset = false}) async {
+    try {
+      return await OtpService.sendOtpEmail(email, isPasswordReset: isPasswordReset);
+    } catch (e) {
+      rethrow;
     }
   }
 

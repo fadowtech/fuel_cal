@@ -123,14 +123,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> resendOtp(String email) async {
+  Future<bool> resendOtp(String email, {bool isPasswordReset = false}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final success = await _ref.read(apiServiceProvider).resendOtp(email);
+      final exists = await _ref.read(apiServiceProvider).checkUserExists(email);
+      
+      if (isPasswordReset && !exists) {
+        state = state.copyWith(isLoading: false, error: 'No account found with this email');
+        return false;
+      }
+      
+      if (!isPasswordReset && exists) {
+        state = state.copyWith(isLoading: false, error: 'Email already registered');
+        return false;
+      }
+
+      final success = await _ref.read(apiServiceProvider).resendOtp(email, isPasswordReset: isPasswordReset);
       state = state.copyWith(isLoading: false);
       return success;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      String errMsg = e.toString();
+      if (errMsg.contains('Too many')) {
+        errMsg = errMsg.replaceAll('Exception: ', '');
+      } else {
+        errMsg = 'Failed to send email. Please try again later.';
+      }
+      state = state.copyWith(isLoading: false, error: errMsg);
       return false;
     }
   }

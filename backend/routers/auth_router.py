@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 import models, schemas, database, auth
@@ -29,20 +29,50 @@ def signup(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     db.refresh(new_user)
     return new_user
 
+@router.get("/check-user")
+def check_user(email: str, db: Session = Depends(database.get_db)):
+    user = db.query(models.User).filter(models.User.email == email).first()
+    return {"exists": user is not None}
+
 @router.post("/login", response_model=schemas.Token)
-def login(user_credentials: schemas.UserLogin, db: Session = Depends(database.get_db)):
-    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
+def login(request: Request, user_credentials: schemas.UserLogin, db: Session = Depends(database.get_db)):
+    ip_address = request.client.host if request.client else "unknown"
+    email = user_credentials.email
     
-    if not user:
+    cutoff_time = datetime.utcnow() - timedelta(minutes=15)
+    
+    # Check IP limit
+    ip_attempts = db.query(models.LoginAttempt).filter(
+        models.LoginAttempt.ip_address == ip_address,
+        models.LoginAttempt.attempt_time >= cutoff_time,
+        models.LoginAttempt.success == False
+    ).count()
+    
+    if ip_attempts >= 20:
+        raise HTTPException(status_code=429, detail="Too many login attempts from this IP. Please try again in 15 minutes.")
+        
+    # Check Email limit
+    email_attempts = db.query(models.LoginAttempt).filter(
+        models.LoginAttempt.email == email,
+        models.LoginAttempt.attempt_time >= cutoff_time,
+        models.LoginAttempt.success == False
+    ).count()
+    
+    if email_attempts >= 10:
+        raise HTTPException(status_code=429, detail="Too many login attempts for this account. Please try again in 15 minutes.")
+
+    user = db.query(models.User).filter(models.User.email == email).first()
+    
+    if not user or not auth.verify_password(user_credentials.password, user.password_hash):
+        new_attempt = models.LoginAttempt(email=email, ip_address=ip_address, success=False)
+        db.add(new_attempt)
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Credentials"
         )
         
-    if not auth.verify_password(user_credentials.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Credentials"
-        )
-        
+    new_attempt = models.LoginAttempt(email=email, ip_address=ip_address, success=True)
+    db.add(new_attempt)
     user.last_login = datetime.utcnow()
     db.commit()
         

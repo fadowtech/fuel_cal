@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 
 class AuthTextField extends StatelessWidget {
@@ -8,6 +9,7 @@ class AuthTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final TextEditingController? controller;
   final TextInputType keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AuthTextField({
     Key? key,
@@ -17,6 +19,7 @@ class AuthTextField extends StatelessWidget {
     this.suffixIcon,
     this.controller,
     this.keyboardType = TextInputType.text,
+    this.inputFormatters,
   }) : super(key: key);
 
   @override
@@ -34,6 +37,7 @@ class AuthTextField extends StatelessWidget {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         style: TextStyle(
           color: ThemeService.textColor,
           fontSize: 14,

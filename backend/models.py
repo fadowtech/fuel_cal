@@ -127,3 +127,12 @@ class Manage(Base):
     
     user = relationship("User")
 
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, index=True, nullable=True)
+    ip_address = Column(String, index=True)
+    attempt_time = Column(DateTime, default=datetime.datetime.utcnow)
+    success = Column(Boolean, default=False)
+

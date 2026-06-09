@@ -106,7 +106,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
   void _resendOtp() async {
     if (!_canResend) return;
     
-    final success = await ref.read(authProvider.notifier).resendOtp(widget.email);
+    final success = await ref.read(authProvider.notifier).resendOtp(widget.email, isPasswordReset: widget.isResetPassword);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('OTP resent successfully!')),
@@ -170,54 +170,117 @@ class _OtpPageState extends ConsumerState<OtpPage> {
               ),
               const SizedBox(height: 40),
               
-              // OTP Input Fields
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(6, (index) {
-                  return SizedBox(
-                    width: 48,
-                    height: 60,
-                    child: TextField(
-                      controller: _controllers[index],
-                      focusNode: _focusNodes[index],
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      maxLength: 1,
+              // OTP Container
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: redAccent.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: redAccent.withOpacity(0.15)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Code sent to your email id',
                       style: TextStyle(
-                        fontSize: 24,
+                        color: redAccent,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: textColor,
                       ),
-                      decoration: InputDecoration(
-                        contentPadding: EdgeInsets.zero,
-                        counterText: '',
-                        filled: true,
-                        fillColor: isDark ? ThemeService.surfaceColor : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: redAccent, width: 2),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value.isNotEmpty) {
-                          if (index < 5) {
-                            _focusNodes[index + 1].requestFocus();
-                          } else {
-                            _focusNodes[index].unfocus();
-                          }
-                        } else {
-                          if (index > 0) {
-                            _focusNodes[index - 1].requestFocus();
-                          }
-                        }
-                      },
                     ),
-                  );
-                }),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(6, (index) {
+                        return SizedBox(
+                          width: 44,
+                          height: 56,
+                          child: TextField(
+                            controller: _controllers[index],
+                            focusNode: _focusNodes[index],
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            maxLength: 1,
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: redAccent,
+                            ),
+                            decoration: InputDecoration(
+                              contentPadding: EdgeInsets.zero,
+                              counterText: '',
+                              filled: true,
+                              fillColor: isDark ? ThemeService.surfaceColor : Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: redAccent.withOpacity(0.3), width: 1.5),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: redAccent.withOpacity(0.3), width: 1.5),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: redAccent, width: 2),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              if (value.isNotEmpty) {
+                                if (index < 5) {
+                                  _focusNodes[index + 1].requestFocus();
+                                } else {
+                                  _focusNodes[index].unfocus();
+                                }
+                              } else {
+                                if (index > 0) {
+                                  _focusNodes[index - 1].requestFocus();
+                                }
+                              }
+                            },
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Expiration Notice
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: redAccent.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.access_time, color: redAccent, size: 20),
+                    const SizedBox(width: 8),
+                    RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          color: ThemeService.mutedColor,
+                          fontSize: 14,
+                        ),
+                        children: [
+                          const TextSpan(text: 'Your code will expire in '),
+                          TextSpan(
+                            text: '5 minutes.',
+                            style: TextStyle(
+                              color: redAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               
               const SizedBox(height: 40),

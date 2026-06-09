@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/services/api_service.dart';
 import 'package:fuel_cal/services/theme_service.dart';
@@ -247,6 +248,9 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                             controller: _firstNameController,
                             icon: Icons.person_outline_rounded,
                             hint: 'Enter your first name',
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                            ],
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
                                   return 'Please enter your first name';
@@ -260,6 +264,9 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                             controller: _lastNameController,
                             icon: Icons.person_outline_rounded,
                             hint: 'Enter your last name',
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                            ],
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
                                   return 'Please enter your last name';
@@ -293,6 +300,9 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                             icon: Icons.phone_outlined,
                             hint: 'Enter your phone number',
                             keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
                                 return 'Please enter your phone number';
@@ -382,6 +392,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
     bool readOnly = false,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,6 +412,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
           keyboardType: keyboardType,
           validator: validator,
           readOnly: readOnly,
+          inputFormatters: inputFormatters,
           style: TextStyle(
             color: ThemeService.textColor,
             fontSize: 15,

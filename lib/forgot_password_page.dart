@@ -91,10 +91,11 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     final email = _emailController.text.trim();
                     if (email.isEmpty) return;
 
-                    final otpSuccess = await ref.read(authProvider.notifier).resendOtp(email);
+                    final otpSuccess = await ref.read(authProvider.notifier).resendOtp(email, isPasswordReset: true);
                     if (!otpSuccess && context.mounted) {
+                      final errorMsg = ref.read(authProvider).error ?? 'Failed to send OTP email. Please check your address.';
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Failed to send OTP email. Please check your address.')),
+                        SnackBar(content: Text(errorMsg)),
                       );
                       return;
                     }
