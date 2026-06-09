@@ -13,7 +13,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     phone = Column(String, nullable=True)
     password_hash = Column(String)
-    currency_code = Column(String, default="USD")
+    currency_code = Column(String, nullable=True, default=None)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
     

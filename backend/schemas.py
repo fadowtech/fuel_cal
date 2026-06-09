@@ -8,7 +8,7 @@ class UserBase(BaseModel):
     last_name: str
     phone: Optional[str] = None
     gender: Optional[str] = None
-    currency_code: Optional[str] = "USD"
+    currency_code: Optional[str] = None
     created_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
 

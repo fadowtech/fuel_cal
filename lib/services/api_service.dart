@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/services/otp_service.dart';
+import 'package:fuel_cal/services/currency_service.dart';
 
 class ApiService {
   static const String baseUrl = 'http://184.174.37.4:8001';
@@ -109,6 +110,9 @@ class ApiService {
             gender: meRes.data['gender'],
             fromLogin: true,
           );
+          if (meRes.data['currency_code'] != null) {
+            await CurrencyService.saveCurrency(meRes.data['currency_code']);
+          }
         } catch (_) {
           final nameStr = email.split('@').first;
           await ProfileService.saveProfile(
@@ -140,7 +144,6 @@ class ApiService {
         'email': email,
         'password': password,
         if (gender.isNotEmpty) 'gender': gender,
-        'currency_code': 'USD'
       });
       
       if (response.statusCode == 200 || response.statusCode == 201) {
