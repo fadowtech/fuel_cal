@@ -5,9 +5,20 @@ import '../models/expense_model.dart';
 import '../models/service_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/profile_service.dart';
+import '../services/subscription_service.dart';
 
 final profileProvider = FutureProvider<Map<String, String>>((ref) async {
   return await ProfileService.getProfile();
+});
+
+final maxVehiclesProvider = FutureProvider<int>((ref) async {
+  final plan = await SubscriptionService.getCurrentPlan();
+  return SubscriptionService.getMaxVehicles(plan);
+});
+
+final maxRemindersProvider = FutureProvider<int>((ref) async {
+  final plan = await SubscriptionService.getCurrentPlan();
+  return SubscriptionService.getMaxReminders(plan);
 });
 
 final selectedVehicleProvider = StateProvider<Vehicle?>((ref) => null);

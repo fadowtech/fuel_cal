@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/currency_service.dart';
+import 'package:fuel_cal/services/subscription_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 class UpgradePage extends StatefulWidget {
   const UpgradePage({super.key});
@@ -11,8 +13,10 @@ class UpgradePage extends StatefulWidget {
 
 class _UpgradePageState extends State<UpgradePage> {
   int _selectedPlanIndex = 0; // 0: Free, 1: Remove Ads, 2: Plus, 3: Pro
-  String _currencySymbol = '${CurrencyService.currencySymbol}';
+  int _currentPlanIndex = 0;
   bool _isYearly = false;
+  Offerings? _offerings;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -21,11 +25,50 @@ class _UpgradePageState extends State<UpgradePage> {
   }
 
   Future<void> _loadCurrency() async {
-    final code = await CurrencyService.getCurrency();
-    if (code != null) {
-      setState(() {
-        _currencySymbol = CurrencyService.getCurrencySymbol(code);
-      });
+    final plan = await SubscriptionService.getCurrentPlan();
+    final offerings = await SubscriptionService.getOfferings();
+    setState(() {
+      _currentPlanIndex = plan;
+      _selectedPlanIndex = plan;
+      _offerings = offerings;
+      _isLoading = false;
+    });
+  }
+
+  String _getPriceString(String identifier) {
+    if (_offerings?.current == null) return '--';
+    try {
+      final package = _offerings!.current!.availablePackages.firstWhere((p) => p.storeProduct.identifier == identifier);
+      return package.storeProduct.priceString;
+    } catch (e) {
+      return '--';
+    }
+  }
+
+  Future<void> _purchasePackage(int index, String identifier) async {
+    if (_offerings?.current == null) return;
+    try {
+      final package = _offerings!.current!.availablePackages.firstWhere((p) => p.storeProduct.identifier == identifier);
+      setState(() => _isLoading = true);
+      final success = await SubscriptionService.purchasePackage(package);
+      if (success) {
+        final plan = await SubscriptionService.getCurrentPlan();
+        setState(() {
+          _currentPlanIndex = plan;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Plan updated successfully!'),
+              backgroundColor: ThemeService.neonColor,
+            )
+          );
+        }
+      }
+    } catch (e) {
+      print(e);
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -43,14 +86,14 @@ class _UpgradePageState extends State<UpgradePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: ThemeService.textColor, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           children: [
-            const Text(
+            Text(
               'Upgrade to Pro',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(color: ThemeService.textColor, fontSize: 20, fontWeight: FontWeight.bold),
             ),
             Text(
               'Choose the plan that\'s right for you.',
@@ -64,6 +107,11 @@ class _UpgradePageState extends State<UpgradePage> {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
         child: Column(
           children: [
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 24.0),
+                child: CircularProgressIndicator(),
+              ),
             _buildBillingToggle(),
             _buildFreePlanCard(),
             const SizedBox(height: 16),
@@ -73,9 +121,20 @@ class _UpgradePageState extends State<UpgradePage> {
             const SizedBox(height: 16),
             _buildProCard(),
             const SizedBox(height: 24),
-            _buildFooterLink(Icons.restore, 'Restore Purchase'),
-            const SizedBox(height: 8),
-            _buildFooterLink(Icons.verified_user_outlined, 'Terms & Privacy'),
+            _buildFooterLink(Icons.restore, 'Restore Purchase', onTap: () async {
+              setState(() => _isLoading = true);
+              final success = await SubscriptionService.restorePurchases();
+              await _loadCurrency();
+              if (mounted) {
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success ? 'Purchases restored successfully!' : 'No previous purchases found.'),
+                    backgroundColor: success ? Colors.green : Colors.orange,
+                  ),
+                );
+              }
+            }),
             const SizedBox(height: 40),
           ],
         ),
@@ -87,9 +146,9 @@ class _UpgradePageState extends State<UpgradePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF13171C),
+        color: ThemeService.cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -117,7 +176,7 @@ class _UpgradePageState extends State<UpgradePage> {
         child: Text(
           title,
           style: TextStyle(
-            color: isSelected ? Colors.black : Colors.white,
+            color: isSelected ? Colors.black : ThemeService.textColor,
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -151,6 +210,20 @@ class _UpgradePageState extends State<UpgradePage> {
     );
   }
 
+  Widget _buildFooterLink(IconData icon, String text, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: ThemeService.mutedColor, size: 14),
+          const SizedBox(width: 4),
+          Text(text, style: TextStyle(color: ThemeService.mutedColor, fontSize: 12, decoration: TextDecoration.underline)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCheckItem(String text, {List<TextSpan>? highlightSpans}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,13 +234,13 @@ class _UpgradePageState extends State<UpgradePage> {
           child: highlightSpans != null
               ? Text.rich(
                   TextSpan(
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 12),
                     children: highlightSpans,
                   ),
                 )
               : Text(
                   text,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: ThemeService.textColor, fontSize: 12),
                 ),
         ),
       ],
@@ -190,7 +263,7 @@ class _UpgradePageState extends State<UpgradePage> {
       onTap: () => _selectPlan(0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF13171C),
+          color: ThemeService.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? ThemeService.neonColor.withOpacity(0.5) : Colors.transparent,
@@ -212,7 +285,7 @@ class _UpgradePageState extends State<UpgradePage> {
                     color: Colors.blueAccent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.card_giftcard, color: Colors.blueAccent, size: 28),
+                  child: Icon(Icons.card_giftcard, color: Colors.blueAccent, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -222,29 +295,30 @@ class _UpgradePageState extends State<UpgradePage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Free Plan',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: ThemeService.neonColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
+                          if (_currentPlanIndex == 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: ThemeService.neonColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(color: ThemeService.neonColor, shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text('Current Plan', style: TextStyle(color: ThemeService.neonColor, fontSize: 10)),
+                                ],
+                              ),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(color: ThemeService.neonColor, shape: BoxShape.circle),
-                                ),
-                                const SizedBox(width: 4),
-                                Text('Current Plan', style: TextStyle(color: ThemeService.neonColor, fontSize: 10)),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -259,44 +333,26 @@ class _UpgradePageState extends State<UpgradePage> {
             ),
             const SizedBox(height: 16),
             _buildFeatureGrid([
-              _buildCheckItem('Up to 3 Vehicles'),
-              _buildCheckItem('Full Access to Log History'),
-              _buildCheckItem('Unlimited Fuel Logs'),
-              _buildCheckItem('Fuel Cost Calculator'),
-              _buildCheckItem('Unlimited Service Logs'),
-              _buildCheckItem('Dark Mode'),
-              _buildCheckItem('Unlimited Expense Logs'),
-              _buildCheckItem('Popup Notifications'),
+              _buildCheckItem('Up to 3 Vehicles', highlightSpans: [
+                TextSpan(text: 'Up to '),
+                TextSpan(text: '3', style: TextStyle(color: ThemeService.neonColor)),
+                TextSpan(text: ' Vehicles'),
+              ]),
+              _buildCheckItem('Unlimited Access to Log History'),
+              _buildCheckItem('Unlimited Add Refuel Logs'),
+              _buildCheckItem('Unlimited Add Expense Logs'),
+              _buildCheckItem('Unlimited Add Service Logs'),
+              _buildCheckItem('Unlimited Fuel Calculators'),
               _buildCheckItem('Unlimited Analytics & Statistics'),
+              _buildCheckItem('Dark Mode & Light Mode'),
               _buildCheckItem('Fuel Management Settings'),
+              _buildCheckItem('Popup Smart Reminders'),
+              _buildCheckItem('Add Service Reminders (Up to 5)', highlightSpans: [
+                TextSpan(text: 'Add Service Reminders (Up to '),
+                TextSpan(text: '5', style: TextStyle(color: ThemeService.neonColor)),
+                TextSpan(text: ')'),
+              ]),
             ]),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: ThemeService.neonColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.directions_car, color: ThemeService.neonColor, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Currently on Free Plan', style: TextStyle(color: ThemeService.neonColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 2),
-                        Text('Upgrade anytime to unlock additional vehicles, advanced reminders, cloud backup, and premium features.', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.celebration, color: Colors.orange, size: 24),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -309,7 +365,7 @@ class _UpgradePageState extends State<UpgradePage> {
       onTap: () => _selectPlan(1),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF13171C),
+          color: ThemeService.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? ThemeService.neonColor.withOpacity(0.5) : Colors.transparent,
@@ -331,23 +387,48 @@ class _UpgradePageState extends State<UpgradePage> {
                     color: Color(0xFF00BFA5),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.block, color: Colors.black, size: 24),
+                  child: Icon(Icons.block, color: Colors.black, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Remove Ads',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Remove Ads',
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          if (_currentPlanIndex == 1)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: ThemeService.neonColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(color: ThemeService.neonColor, shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text('Current Plan', style: TextStyle(color: ThemeService.neonColor, fontSize: 10)),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text(_isYearly ? '$_currencySymbol 399' : '$_currencySymbol 49', style: TextStyle(color: ThemeService.neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(_getPriceString(_isYearly ? 'fuelvox_remove_ads:yearly' : 'fuelvox_remove_ads:monthly'), style: TextStyle(color: ThemeService.neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
                           Text(_isYearly ? ' /year' : ' /month', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12)),
                         ],
                       ),
@@ -358,26 +439,35 @@ class _UpgradePageState extends State<UpgradePage> {
             ),
             const SizedBox(height: 16),
             _buildFeatureGrid([
+              _buildCheckItem('Everything in Free', highlightSpans: [
+                TextSpan(text: 'Everything in '),
+                TextSpan(text: 'Free', style: TextStyle(color: Colors.yellow)),
+              ]),
               _buildCheckItem('Remove all advertisements'),
               _buildCheckItem('No impact on app functionality'),
               _buildCheckItem('Faster, cleaner experience'),
               _buildCheckItem('Up to 5 Vehicles', highlightSpans: [
-                const TextSpan(text: 'Up to '),
-                const TextSpan(text: '5 Vehicles', style: TextStyle(color: Colors.yellow)),
+                TextSpan(text: 'Up to '),
+                TextSpan(text: '5 Vehicles', style: TextStyle(color: Colors.yellow)),
+              ]),
+              _buildCheckItem('Add Service Reminders (Up to 15)', highlightSpans: [
+                TextSpan(text: 'Add Service Reminders (Up to '),
+                TextSpan(text: '15', style: TextStyle(color: Colors.yellow)),
+                TextSpan(text: ')'),
               ]),
             ]),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: _currentPlanIndex == 1 || _isLoading ? null : () => _purchasePackage(1, _isYearly ? 'fuelvox_remove_ads:yearly' : 'fuelvox_remove_ads:monthly'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00E676),
+                  backgroundColor: _currentPlanIndex == 1 ? Colors.grey.withOpacity(0.3) : const Color(0xFF00E676),
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Select Plan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Text(_currentPlanIndex == 1 ? 'Current Plan' : 'Select Plan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _currentPlanIndex == 1 ? ThemeService.textColor.withOpacity(0.54) : Colors.black)),
               ),
             ),
           ],
@@ -392,7 +482,7 @@ class _UpgradePageState extends State<UpgradePage> {
       onTap: () => _selectPlan(2),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF13171C),
+          color: ThemeService.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? ThemeService.neonColor : Colors.transparent,
@@ -425,25 +515,46 @@ class _UpgradePageState extends State<UpgradePage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Fuel Log Plus',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: ThemeService.neonColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: ThemeService.neonColor.withOpacity(0.5)),
+                          if (_currentPlanIndex == 2)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: ThemeService.neonColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(color: ThemeService.neonColor, shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text('Current Plan', style: TextStyle(color: ThemeService.neonColor, fontSize: 10)),
+                                ],
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: ThemeService.neonColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: ThemeService.neonColor.withOpacity(0.5)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.star, color: ThemeService.neonColor, size: 12),
+                                  const SizedBox(width: 4),
+                                  Text('Best Value', style: TextStyle(color: ThemeService.neonColor, fontSize: 10)),
+                                ],
+                              ),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.star, color: ThemeService.neonColor, size: 12),
-                                const SizedBox(width: 4),
-                                Text('Best Value', style: TextStyle(color: ThemeService.neonColor, fontSize: 10)),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -451,7 +562,7 @@ class _UpgradePageState extends State<UpgradePage> {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text(_isYearly ? '$_currencySymbol 499' : '$_currencySymbol 59', style: TextStyle(color: ThemeService.neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(_getPriceString(_isYearly ? 'fuelvox_plus:yearly2026' : 'fuelvox_plus:monthly'), style: TextStyle(color: ThemeService.neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
                           Text(_isYearly ? ' /year' : ' /month', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12)),
                         ],
                       ),
@@ -463,32 +574,31 @@ class _UpgradePageState extends State<UpgradePage> {
             const SizedBox(height: 16),
             _buildFeatureGrid([
               _buildCheckItem('Everything in Ad-Free', highlightSpans: [
-                const TextSpan(text: 'Everything in '),
+                TextSpan(text: 'Everything in '),
                 TextSpan(text: 'Ad-Free', style: TextStyle(color: ThemeService.neonColor)),
               ]),
               _buildCheckItem('Up to 15 Vehicles', highlightSpans: [
-                const TextSpan(text: 'Up to '),
+                TextSpan(text: 'Up to '),
                 TextSpan(text: '15 Vehicles', style: TextStyle(color: ThemeService.neonColor)),
               ]),
-              _buildCheckItem('Export Reports (PDF/Excel)'),
-              _buildCheckItem('Service Reminders (Up to 10)', highlightSpans: [
-                const TextSpan(text: 'Service Reminders (Up to '),
-                TextSpan(text: '10', style: TextStyle(color: ThemeService.neonColor)),
-                const TextSpan(text: ')'),
+              _buildCheckItem('Add Service Reminders (Up to 35)', highlightSpans: [
+                TextSpan(text: 'Add Service Reminders (Up to '),
+                TextSpan(text: '35', style: TextStyle(color: ThemeService.neonColor)),
+                TextSpan(text: ')'),
               ]),
             ]),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: _currentPlanIndex == 2 || _isLoading ? null : () => _purchasePackage(2, _isYearly ? 'fuelvox_plus:yearly2026' : 'fuelvox_plus:monthly'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00E676),
+                  backgroundColor: _currentPlanIndex == 2 ? Colors.grey.withOpacity(0.3) : const Color(0xFF00E676),
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Select Plan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Text(_currentPlanIndex == 2 ? 'Current Plan' : 'Select Plan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _currentPlanIndex == 2 ? ThemeService.textColor.withOpacity(0.54) : Colors.black)),
               ),
             ),
           ],
@@ -503,7 +613,7 @@ class _UpgradePageState extends State<UpgradePage> {
       onTap: () => _selectPlan(3),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF13171C),
+          color: ThemeService.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? ThemeService.neonColor.withOpacity(0.5) : Colors.transparent,
@@ -525,7 +635,7 @@ class _UpgradePageState extends State<UpgradePage> {
                     color: Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.workspace_premium, color: Colors.orange, size: 28),
+                  child: Icon(Icons.workspace_premium, color: Colors.orange, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -535,25 +645,46 @@ class _UpgradePageState extends State<UpgradePage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Fuel Log Pro',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.white.withOpacity(0.2)),
+                          if (_currentPlanIndex == 3)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: ThemeService.neonColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(color: ThemeService.neonColor, shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text('Current Plan', style: TextStyle(color: ThemeService.neonColor, fontSize: 10)),
+                                ],
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: ThemeService.textColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: ThemeService.textColor.withOpacity(0.2)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.star, color: ThemeService.textColor, size: 12),
+                                  SizedBox(width: 4),
+                                  Text('Most Popular', style: TextStyle(color: ThemeService.textColor, fontSize: 10)),
+                                ],
+                              ),
                             ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.star, color: Colors.white, size: 12),
-                                SizedBox(width: 4),
-                                Text('Most Popular', style: TextStyle(color: Colors.white, fontSize: 10)),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -561,7 +692,7 @@ class _UpgradePageState extends State<UpgradePage> {
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text(_isYearly ? '$_currencySymbol 999' : '$_currencySymbol 149', style: TextStyle(color: ThemeService.neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(_getPriceString(_isYearly ? 'fuelvox_pro:yearly' : 'fuelvox_pro:monthly'), style: TextStyle(color: ThemeService.neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
                           Text(_isYearly ? ' /year' : ' /month', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12)),
                         ],
                       ),
@@ -573,64 +704,34 @@ class _UpgradePageState extends State<UpgradePage> {
             const SizedBox(height: 16),
             _buildFeatureGrid([
               _buildCheckItem('Everything in Plus', highlightSpans: [
-                const TextSpan(text: 'Everything in '),
+                TextSpan(text: 'Everything in '),
                 TextSpan(text: 'Plus', style: TextStyle(color: ThemeService.neonColor)),
               ]),
               _buildCheckItem('Up to 35 Vehicles', highlightSpans: [
-                const TextSpan(text: 'Up to '),
+                TextSpan(text: 'Up to '),
                 TextSpan(text: '35 Vehicles', style: TextStyle(color: ThemeService.neonColor)),
               ]),
-              _buildCheckItem('PDF & Excel Exports'),
-              _buildCheckItem('Service Reminders (Up to 50)', highlightSpans: [
-                const TextSpan(text: 'Service Reminders (Up to '),
+              _buildCheckItem('Export Reports (PDF/Excel)'),
+              _buildCheckItem('Add Service Reminders (Up to 50)', highlightSpans: [
+                TextSpan(text: 'Add Service Reminders (Up to '),
                 TextSpan(text: '50', style: TextStyle(color: ThemeService.neonColor)),
-                const TextSpan(text: ')'),
+                TextSpan(text: ')'),
               ]),
             ]),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: _currentPlanIndex == 3 || _isLoading ? null : () => _purchasePackage(3, _isYearly ? 'fuelvox_pro:yearly' : 'fuelvox_pro:monthly'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00E676),
+                  backgroundColor: _currentPlanIndex == 3 ? Colors.grey.withOpacity(0.3) : const Color(0xFF00E676),
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: const Text('Select Plan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Text(_currentPlanIndex == 3 ? 'Current Plan' : 'Select Plan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _currentPlanIndex == 3 ? ThemeService.textColor.withOpacity(0.54) : Colors.black)),
               ),
             ),
-            const SizedBox(height: 12),
-            Center(
-              child: Text(
-                '7-day free trial  •  Cancel anytime',
-                style: TextStyle(color: ThemeService.mutedColor, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFooterLink(IconData icon, String text) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        color: Colors.transparent,
-        child: Row(
-          children: [
-            Icon(icon, color: ThemeService.neonColor, size: 20),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-              ),
-            ),
-            Icon(Icons.chevron_right, color: ThemeService.mutedColor, size: 20),
           ],
         ),
       ),

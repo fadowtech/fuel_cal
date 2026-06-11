@@ -7,6 +7,7 @@ import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/widgets/odometer_gauge_painter.dart';
 import 'package:fuel_cal/models/expense_model.dart';
 import 'package:fuel_cal/mock_data.dart' hide Vehicle, FuelLog;
+import 'package:fuel_cal/services/ad_service.dart';
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/reminders_page.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
@@ -94,7 +95,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final _selectedVehicle = ref.watch(selectedVehicleProvider);
 
     final vehiclesList = vehiclesAsync.value ?? [];
-    final displayVehicle = _selectedVehicle ?? (vehiclesList.isNotEmpty ? vehiclesList.first : null);
+    final maxVehiclesAsync = ref.watch(maxVehiclesProvider);
+    final maxVehicles = maxVehiclesAsync.value ?? 3;
+    
+    Vehicle? displayVehicle = _selectedVehicle ?? (vehiclesList.isNotEmpty ? vehiclesList.first : null);
+    if (displayVehicle != null && vehiclesList.indexOf(displayVehicle) >= maxVehicles) {
+      displayVehicle = vehiclesList.isNotEmpty ? vehiclesList.first : null;
+    }
 
     bool hasUnreadAlerts = false;
     List<dynamic> currentPendingReminders = [];
@@ -153,17 +160,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         if (vLogs.isNotEmpty) {
                           vLogs.sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
                           odos[v.id] = vLogs.last.odometer;
-                          if (displayVehicle != null && v.id == displayVehicle.id) {
+                          if (displayVehicle != null && v.id == displayVehicle!.id) {
                             currentOdo = vLogs.last.odometer;
                           }
                         }
                       }
                     }
+                    final maxVehiclesAsync = ref.watch(maxVehiclesProvider);
+                    final maxVehicles = maxVehiclesAsync.value ?? 3;
                     return VehicleSelector(
                       selectedVehicle: displayVehicle,
                       vehicles: vehicles,
                       currentOdometer: currentOdo,
                       vehicleOdometers: odos,
+                      maxVehicles: maxVehicles,
                       onVehicleSelected: (v) {
                         ref.read(selectedVehicleProvider.notifier).state = v;
                       },
@@ -183,9 +193,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   data: (allLogs) {
                     final logs = displayVehicle != null 
                         ? allLogs.where((log) {
-                            if (log.vehicleId == displayVehicle.id) return true;
+                            if (log.vehicleId == displayVehicle!.id) return true;
                             // Fallback for old logs without vehicle_id -> attach to first vehicle
-                            if (log.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+                            if (log.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle!.id) return true;
                             return false;
                           }).toList() 
                         : <FuelLog>[];
@@ -250,32 +260,32 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     
                     final fuelLogs = displayVehicle != null 
                         ? allLogs.where((log) {
-                            if (log.vehicleId == displayVehicle.id) return true;
-                            if (log.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+                            if (log.vehicleId == displayVehicle!.id) return true;
+                            if (log.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle!.id) return true;
                             return false;
                           }).toList() 
                         : <FuelLog>[];
 
                     final filteredExpenses = displayVehicle != null 
                         ? allExpenses.where((exp) {
-                            if (exp.vehicleId == displayVehicle.id) return true;
-                            if (exp.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+                            if (exp.vehicleId == displayVehicle!.id) return true;
+                            if (exp.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle!.id) return true;
                             return false;
                           }).toList() 
                         : <Expense>[];
 
                     final filteredServices = displayVehicle != null 
                         ? allServices.where((srv) {
-                            if (srv.vehicleId == displayVehicle.id) return true;
-                            if (srv.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+                            if (srv.vehicleId == displayVehicle!.id) return true;
+                            if (srv.vehicleId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle!.id) return true;
                             return false;
                           }).map((srv) => Expense(id: srv.id, userId: srv.userId, vehicleId: srv.vehicleId, category: srv.category, title: srv.title, amount: srv.amount, date: srv.date, notes: srv.notes)).toList() 
                         : <Expense>[];
 
                     final filteredReminders = displayVehicle != null 
                         ? allReminders.where((rem) {
-                            if (rem['vehicle_id'] == displayVehicle.id) return true;
-                            if (rem['vehicle_id'] == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+                            if (rem['vehicle_id'] == displayVehicle!.id) return true;
+                            if (rem['vehicle_id'] == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle!.id) return true;
                             return false;
                           }).toList() 
                         : <dynamic>[];
@@ -310,6 +320,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     return _buildRecentActivityList(recentLogs);
                   },
                 ),
+                const SizedBox(height: 24),
+                const BannerAdWidget(),
                 const SizedBox(height: 100), // padding for bottom nav
               ],
             ),
@@ -327,10 +339,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   }
 
   Widget _buildHeader(bool hasUnreadAlerts, List<dynamic> currentPendingReminders, String profileName) {
-    final name = profileName.isNotEmpty ? profileName : 'Tom Hardy';
+    final name = profileName.isNotEmpty ? profileName : '';
     final firstLetter = name.isNotEmpty
         ? name.trim()[0].toUpperCase()
-        : 'T';
+        : 'U';
     final displayName = name.split(' ')[0];
 
     final hour = DateTime.now().hour;
@@ -1129,9 +1141,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1522), // Deep dark blue
+            color: _cardColor,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            border: Border.all(color: ThemeService.mutedColor.withValues(alpha: 0.1)),
           ),
           child: Column(
             children: [
@@ -1146,11 +1158,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     child: const Icon(Icons.directions_car, color: Colors.blueAccent, size: 20),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Vehicle Overview', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Vehicle Overview', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 16),
-              Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
+              Divider(color: ThemeService.mutedColor.withValues(alpha: 0.1), height: 1),
               const SizedBox(height: 20),
               _buildGaugeSection(lifetimeDistance, formatter),
               const SizedBox(height: 16),
@@ -1161,7 +1173,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   children: [
                     PopupMenuButton<int>(
                       offset: const Offset(0, 30),
-                      color: const Color(0xFF1B283E),
+                      color: _surfaceColor,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       onSelected: (month) {
                         setState(() {
@@ -1178,7 +1190,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                             child: Text(
                               monthName,
                               style: TextStyle(
-                                color: isSelected ? Colors.blueAccent : Colors.white,
+                                color: isSelected ? Colors.blueAccent : _textColor,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
@@ -1197,7 +1209,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                           children: [
                             const Icon(Icons.calendar_today, color: Colors.grey, size: 14),
                             const SizedBox(width: 6),
-                            Text(DateFormat('MMM').format(_overviewMonth), style: const TextStyle(color: Colors.white, fontSize: 13)),
+                            Text(DateFormat('MMM').format(_overviewMonth), style: TextStyle(color: ThemeService.textColor, fontSize: 13)),
                             const SizedBox(width: 4),
                             const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 16),
                           ],
@@ -1224,7 +1236,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                             child: Text(
                               y.toString(),
                               style: TextStyle(
-                                color: isSelected ? Colors.blueAccent : Colors.white,
+                                color: isSelected ? Colors.blueAccent : ThemeService.textColor,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
@@ -1241,7 +1253,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(_overviewMonth.year.toString(), style: const TextStyle(color: Colors.white, fontSize: 13)),
+                            Text(_overviewMonth.year.toString(), style: TextStyle(color: ThemeService.textColor, fontSize: 13)),
                             const SizedBox(width: 4),
                             const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 16),
                           ],
@@ -1271,9 +1283,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1522), // Dark container background
+            color: _cardColor,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            border: Border.all(color: ThemeService.mutedColor.withValues(alpha: 0.1)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1289,11 +1301,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     child: const Icon(Icons.local_gas_station, color: Colors.greenAccent, size: 16),
                   ),
                   const SizedBox(width: 10),
-                  const Text('Fuel Summary', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('Fuel Summary', style: TextStyle(color: _textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 12),
-              Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
+              Divider(color: ThemeService.mutedColor.withValues(alpha: 0.1), height: 1),
               const SizedBox(height: 16),
               _buildCompactPerformanceCard(
                 icon: Icons.speed,
@@ -1341,7 +1353,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         SizedBox(
-          height: 120, // Increased to prevent overflow
+          height: 145, // Increased to prevent overflow
           width: 180,
           child: Stack(
             alignment: Alignment.bottomCenter, // Align bottom to sit on the flat edge
@@ -1363,18 +1375,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.directions_car, color: Colors.grey, size: 20),
-                    const SizedBox(height: 2),
-                    const Text('ODO • LIFETIME\nDISTANCE', 
+                    Icon(Icons.directions_car, color: ThemeService.isDarkMode ? Colors.grey : _textColor, size: 20),
+                    const SizedBox(height: 6),
+                    Text('ODO • LIFETIME\nDISTANCE', 
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 9, height: 1.2, letterSpacing: 0.5)),
-                    const SizedBox(height: 2),
+                      style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 10, height: 1.4, letterSpacing: 0.5)),
+                    const SizedBox(height: 8),
                     Text(
                       formatter.format(lifetimeDistance),
-                      style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, height: 1.0),
+                      style: TextStyle(color: ThemeService.textColor, fontSize: 34, fontWeight: FontWeight.bold, height: 1.0),
                     ),
-                    const SizedBox(height: 2),
-                    const Text('KM', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 1.0)),
+                    const SizedBox(height: 6),
+                    Text('KM', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12, letterSpacing: 1.0)),
                   ],
                 ),
               ),
@@ -1385,9 +1397,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('0', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('0', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12)),
             const SizedBox(width: 140),
-            Text('${(maxOdo / 1000).toStringAsFixed(0)}K', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('${(maxOdo / 1000).toStringAsFixed(0)}K', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12)),
           ],
         ),
         const SizedBox(height: 24),
@@ -1396,7 +1408,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           children: [
             const Icon(Icons.show_chart, color: Colors.blueAccent, size: 16),
             const SizedBox(width: 8),
-            Text('Total distance driven', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('Total distance driven', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12)),
           ],
         ),
       ],
@@ -1414,9 +1426,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A2130), // slightly lighter than wrapper
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: ThemeService.mutedColor.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -1453,16 +1465,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 Text.rich(
                   TextSpan(
                     text: value,
-                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, height: 1.0),
+                    style: TextStyle(color: _textColor, fontSize: 28, fontWeight: FontWeight.bold, height: 1.0),
                     children: [
                       if (unit.isNotEmpty)
-                        TextSpan(text: unit, style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.normal)),
+                        TextSpan(text: unit, style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12, fontWeight: FontWeight.normal)),
                     ],
                   ),
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text(subtitle, style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12)),
                 ]
               ],
             ),
@@ -1483,9 +1495,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161E2E), // slightly lighter than background
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: ThemeService.mutedColor.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -1503,14 +1515,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 1.0)),
+                Text(title, style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 11, letterSpacing: 1.0)),
                 const SizedBox(height: 4),
                 Text.rich(
                   TextSpan(
                     text: mainValue,
-                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, height: 1.0),
-                    children: const [
-                      TextSpan(text: ' KM', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.normal)),
+                    style: TextStyle(color: _textColor, fontSize: 28, fontWeight: FontWeight.bold, height: 1.0),
+                    children: [
+                      TextSpan(text: ' KM', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12, fontWeight: FontWeight.normal)),
                     ],
                   ),
                 ),
@@ -1520,8 +1532,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     text: 'Last month: ',
                     style: TextStyle(color: iconColor, fontSize: 12),
                     children: [
-                      TextSpan(text: lastMonthValue, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const TextSpan(text: ' KM', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.normal)),
+                      TextSpan(text: lastMonthValue, style: TextStyle(color: _textColor, fontWeight: FontWeight.bold)),
+                      TextSpan(text: ' KM', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontWeight: FontWeight.normal)),
                     ],
                   ),
                 ),
@@ -1576,8 +1588,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: _getCardDecoration(),
-          child: const Center(
-            child: Text("No upcoming alerts right now.", style: TextStyle(color: Colors.white54)),
+          child: Center(
+            child: Text("No upcoming alerts right now.", style: TextStyle(color: ThemeService.textColor.withOpacity(0.54))),
           ),
         );
     }
@@ -1717,8 +1729,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       children: [
         _buildQuickAction(Icons.receipt_long, 'Expense',
             iconColor: const Color(0xFF3B82F6), page: const ExpensesPage()),
-        _buildQuickAction(Icons.location_on_outlined, 'Trip',
-            iconColor: const Color(0xFF8B5CF6), page: const TripsPage()),
+
         _buildQuickAction(Icons.build, 'Service',
             iconColor: const Color(0xFFF59E0B), page: const ServicesPage()),
         _buildQuickAction(Icons.alarm_add_rounded, 'Reminder',
@@ -1731,7 +1742,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
 
   Widget _buildQuickAction(IconData icon, String label,
       {bool highlight = false, Color? iconColor, Widget? page, VoidCallback? onTap}) {
-    final effectiveIconColor = iconColor ?? Colors.white70;
+    final effectiveIconColor = iconColor ?? ThemeService.textColor.withOpacity(0.7);
 
     return GestureDetector(
         onTap: () {
@@ -1784,7 +1795,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               const SizedBox(height: 8),
               Text(
                 label,
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                style: TextStyle(color: ThemeService.textColor, fontSize: 12, fontWeight: FontWeight.w500),
                 overflow: TextOverflow.ellipsis,
               ),
             ],

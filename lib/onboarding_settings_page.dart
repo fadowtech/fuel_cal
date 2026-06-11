@@ -122,7 +122,7 @@ class _OnboardingSettingsPageState extends State<OnboardingSettingsPage> {
                     _buildSettingOption(
                       icon: Icons.fingerprint,
                       title: 'Enable Fingerprint',
-                      subtitle: 'Quick and secure login to FuelMate',
+                      subtitle: 'Quick and secure login to Fuelvox',
                       value: _fingerprintEnabled,
                       onChanged: _handleFingerprintToggle,
                     ),

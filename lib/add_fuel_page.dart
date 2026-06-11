@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 import 'dart:convert';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
@@ -143,32 +144,53 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     }
   }
 
+  String _formatNumber(dynamic val) {
+    if (val == null) return '';
+    if (val is num) return val == val.toInt() ? val.toInt().toString() : val.toString();
+    if (val is String) {
+      final d = double.tryParse(val);
+      if (d != null) return d == d.toInt() ? d.toInt().toString() : val;
+    }
+    return val.toString();
+  }
+
   @override
   void initState() {
     super.initState();
     _loadManageFuels();
     if (widget.existingLog != null) {
       final log = widget.existingLog!;
-      _fuelLitersController.text = log['liters']?.toString() ?? '';
-      _totalAmountController.text = log['amount']?.toString() ?? '';
-      _fuelPriceController.text = log['pricePerL']?.toString() ?? '';
-      _currentOdoController.text = log['odo']?.toString() ?? '';
-      _remainingRangeController.text = log['remainingRange']?.toString() ?? '';
-      _remainingRangeAfterController.text = log['remainingRangeAfter']?.toString() ?? '';
-      _isFullTank = log['fullTank'] == true;
+      _fuelLitersController.text = _formatNumber(log['liters'] ?? log['fuel_quantity']);
+      _totalAmountController.text = _formatNumber(log['amount'] ?? log['total_cost']);
+      _fuelPriceController.text = _formatNumber(log['pricePerL'] ?? log['fuel_price']);
+      _currentOdoController.text = _formatNumber(log['odo'] ?? log['odometer']);
+      _remainingRangeController.text = _formatNumber(log['remainingRange'] ?? log['remaining_range']);
+      _remainingRangeAfterController.text = _formatNumber(log['remainingRangeAfter'] ?? log['remaining_range_after']);
+      _isFullTank = log['fullTank'] == true || log['is_full_tank'] == true;
       _locationController.text = log['location'] == 'Unknown location' ? '' : (log['location'] ?? '');
       _notesController.text = log['notes'] == 'No notes provided' ? '' : (log['notes'] ?? '');
-      _selectedStation = (log['station'] == 'Gas Station' || log['station'] == null) ? null : log['station'];
+      
+      final station = log['station'] ?? log['station_name'];
+      _selectedStation = (station == 'Gas Station' || station == null) ? null : station;
       if (_selectedStation != null && !_stations.contains(_selectedStation)) {
           _stations.add(_selectedStation!);
       }
-      _isFullTank = log['fullTank'] == true;
-      _selectedPaymentMethod = (log['payment'] == 'Not specified' || log['payment'] == null) ? null : log['payment'];
-      if (log['rawDate'] != null) {
-        _selectedDate = log['rawDate'] as DateTime;
+      
+      final payment = log['payment'] ?? log['payment_method'];
+      _selectedPaymentMethod = (payment == 'Not specified' || payment == null) ? null : payment;
+      
+      final rawDate = log['rawDate'] ?? log['date'];
+      if (rawDate != null) {
+        if (rawDate is DateTime) {
+          _selectedDate = rawDate;
+        } else if (rawDate is String) {
+          _selectedDate = DateTime.tryParse(rawDate) ?? DateTime.now();
+        }
       }
-      if (log['bill_image_path'] != null && log['bill_image_path'].toString().isNotEmpty) {
-        _existingImageUrl = log['bill_image_path'];
+      
+      final imagePath = log['bill_image_path'];
+      if (imagePath != null && imagePath.toString().isNotEmpty) {
+        _existingImageUrl = imagePath;
       }
     }
   }
@@ -360,7 +382,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               primary: _neonColor,
               onPrimary: Colors.black,
               surface: _surfaceColor,
-              onSurface: Colors.white,
+              onSurface: ThemeService.textColor,
             ),
           ),
           child: child!,
@@ -379,7 +401,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 primary: _neonColor,
                 onPrimary: Colors.black,
                 surface: _surfaceColor,
-                onSurface: Colors.white,
+                onSurface: ThemeService.textColor,
               ),
             ),
             child: child!,
@@ -503,6 +525,12 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
     if (success && mounted) {
       ref.refresh(fuelLogsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(widget.existingLog != null ? 'Fuel log updated successfully!' : 'Fuel log added successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
       if (widget.existingLog != null) {
         int count = 0;
         Navigator.popUntil(context, (route) => count++ == 2);
@@ -539,23 +567,23 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildCurrentStatusCard(),
-                    const SizedBox(height: 24),
+                    _buildInputSummaryCard(),
+                    SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildSectionTitle('FUEL DETAILS'),
                     _buildFuelDetails(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildSectionTitle('ODOMETER'),
                     _buildOdometer(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildSectionTitle('STATION & DATE'),
                     _buildStationDate(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: 24),
                     _buildSectionTitle('ADDITIONAL (OPTIONAL)'),
                     _buildAdditional(),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('ADD YOUR RECEIPT'),
-                    _buildUploadBill(),
-                    const SizedBox(height: 32),
+
+                    SizedBox(height: 32),
+                    const BannerAdWidget(),
                   ],
                 ),
               ),
@@ -581,14 +609,14 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 color: _surfaceColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.chevron_left_rounded, color: Colors.white),
+              child: Icon(Icons.chevron_left_rounded, color: ThemeService.textColor),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.existingLog != null ? 'Edit fuel' : 'Add fuel', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(widget.existingLog != null ? 'Edit fuel' : 'Add fuel', style: TextStyle(color: ThemeService.textColor, fontSize: 20, fontWeight: FontWeight.bold)),
               Text('Log your entry', style: TextStyle(color: _mutedColor, fontSize: 13)),
             ],
           ),
@@ -597,119 +625,101 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, {bool isPremium = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: TextStyle(color: _mutedColor, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: TextStyle(color: _mutedColor, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
+          ),
+          if (isPremium) ...[
+            SizedBox(width: 6),
+            Text('👑', style: TextStyle(fontSize: 14)),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildCurrentStatusCard() {
+  Widget _buildInputSummaryCard() {
+    final odo = double.tryParse(_currentOdoController.text) ?? 0.0;
+    final qty = double.tryParse(_fuelLitersController.text) ?? 0.0;
+    final price = double.tryParse(_fuelPriceController.text) ?? 0.0;
+    final total = double.tryParse(_totalAmountController.text) ?? 0.0;
+    
     return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _neonColor.withOpacity(0.3)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Container(
-              decoration: BoxDecoration(
-                color: _cardColor,
-                border: Border(left: BorderSide(color: _neonColor, width: 4)),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Row(
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF00E676)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _neonColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text('Current status', style: TextStyle(color: _neonColor, fontSize: 10)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00E676).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF00E676).withOpacity(0.3)),
               ),
-              const SizedBox(height: 16),
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _neonColor, width: 2),
-                ),
-                child: Center(
-                  child: Icon(Icons.local_gas_station, color: _neonColor, size: 32),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Estimated range', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text('${_estimatedRange.toStringAsFixed(0)}', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 4),
-                    Text('KM', style: TextStyle(color: _neonColor, fontSize: 14)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text('Fuel left: ', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                    Text('${_currentFuelLeft.toStringAsFixed(2)} L', style: TextStyle(color: _neonColor, fontSize: 12)),
-                  ],
-                ),
-              ],
+              child: Text('Current summary', style: TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.w600)),
             ),
           ),
-          Container(width: 1, height: 80, color: _surfaceColor),
-          const SizedBox(width: 16),
+          Row(
+            children: [
+              Expanded(child: _buildNewSummaryCard('ODO', odo == 0 ? '-' : '${odo.toStringAsFixed(0)} KM', Icons.speed, const Color(0xFF00E676))),
+              Container(width: 1, height: 70, color: ThemeService.textColor.withOpacity(0.12)),
+              Expanded(child: _buildNewSummaryCard('FUEL QTY', qty == 0 ? '-' : '${qty.toStringAsFixed(2)} L', Icons.water_drop_outlined, const Color(0xFF3B82F6))),
+            ],
+          ),
+          Container(height: 1, color: ThemeService.textColor.withOpacity(0.12)),
+          Row(
+            children: [
+              Expanded(child: _buildNewSummaryCard('PRICE', price == 0 ? '-' : '${CurrencyService.currencySymbol}${price.toStringAsFixed(2)}/L', Icons.attach_money, const Color(0xFFA855F7))),
+              Container(width: 1, height: 70, color: ThemeService.textColor.withOpacity(0.12)),
+              Expanded(child: _buildNewSummaryCard('TOTAL COST', total == 0 ? '-' : '${CurrencyService.currencySymbol}${total.toStringAsFixed(2)}', Icons.account_balance_wallet_outlined, const Color(0xFFEAB308))),
+            ],
+          ),
+          SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewSummaryCard(String label, String value, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withOpacity(0.3)),
+            ),
+            child: Icon(icon, color: ThemeService.textColor, size: 20),
+          ),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mileage (avg.)', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                const SizedBox(height: 4),
-                Text('${_avgMileage.toStringAsFixed(1)} KM/L', style: TextStyle(color: _neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                Text('Tank level', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: _tankLevelPercent,
-                          backgroundColor: _surfaceColor,
-                          valueColor: AlwaysStoppedAnimation<Color>(_neonColor),
-                          minHeight: 6,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('${(_tankLevelPercent * 100).toStringAsFixed(0)}%', style: const TextStyle(color: Colors.white, fontSize: 12)),
-                  ],
-                ),
+                Text(label, style: TextStyle(color: _mutedColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                SizedBox(height: 4),
+                Text(value, style: TextStyle(color: value == '-' ? _mutedColor : color, fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
         ],
       ),
-            ),
-          ),
-        );
+    );
   }
 
   Widget _buildTextField({
@@ -731,10 +741,10 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           child: RichText(
             text: TextSpan(
               text: label,
-              style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(color: ThemeService.textColor.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500),
               children: [
                 if (isRequired)
-                  const TextSpan(
+                  TextSpan(
                     text: ' *',
                     style: TextStyle(color: Colors.redAccent),
                   ),
@@ -758,12 +768,12 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               child: Row(
             children: [
               Icon(icon, color: errorText != null ? Colors.redAccent : _neonColor, size: 20),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: controller,
                   keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                   onChanged: onChanged,
                   decoration: InputDecoration(
                     hintText: hint,
@@ -774,7 +784,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                   ),
                 ),
               ),
-              if (suffix != null) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 14)),
+              if (suffix != null) Text(suffix, style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
             ],
           ),
             ),
@@ -785,7 +795,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             padding: const EdgeInsets.only(left: 4, top: 6),
             child: Text(
               errorText,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.redAccent,
                 fontSize: 12,
               ),
@@ -817,7 +827,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 },
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: _buildTextField(
                 controller: _fuelPriceController,
@@ -836,7 +846,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildTextField(
           controller: _totalAmountController,
           label: 'Total amount',
@@ -847,7 +857,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           isRequired: true,
           errorText: _amountErrorText,
           onChanged: (_) {
-            if (_amountErrorText != null) setState(() => _amountErrorText = null);
+            setState(() {
+              _amountErrorText = null;
+            });
           },
         ),
       ],
@@ -868,9 +880,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           isRequired: true,
           errorText: _odoErrorText,
           onChanged: (_) {
-            if (_odoErrorText != null) {
-              setState(() => _odoErrorText = null);
-            }
+            setState(() {
+              _odoErrorText = null;
+            });
           },
         ),
         Padding(
@@ -886,7 +898,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           isNumber: true,
           onChanged: (_) => _calculateTotal(),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildTextField(
           controller: _remainingRangeAfterController,
           label: 'Distance to Empty After Fuel',
@@ -908,9 +920,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: RichText(
-              text: const TextSpan(
+              text: TextSpan(
                 text: 'Station ',
-                style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                style: TextStyle(color: ThemeService.textColor.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500),
                 children: [
                   TextSpan(
                     text: '*',
@@ -937,7 +949,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               child: Row(
             children: [
               Icon(Icons.local_gas_station_outlined, color: _stationErrorText != null ? Colors.redAccent : _neonColor, size: 20),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -946,7 +958,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     dropdownColor: _cardColor,
                     icon: Icon(Icons.keyboard_arrow_down, color: _mutedColor),
                     isExpanded: true,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                     onChanged: (v) {
                       if (v == 'Add New Station') {
                         _showAddStationDialog(context);
@@ -979,14 +991,14 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               alignment: Alignment.centerLeft,
               child: Text(
                 _stationErrorText!,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.redAccent,
                   fontSize: 12,
                 ),
               ),
             ),
           ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         GestureDetector(
           onTap: _pickDate,
           child: Container(
@@ -1005,14 +1017,14 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               child: Row(
               children: [
                 Icon(Icons.calendar_today_outlined, color: _neonColor, size: 20),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Date & time', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                      const SizedBox(height: 2),
-                      Text(DateFormat('MMM dd, yyyy • hh:mm a').format(_selectedDate), style: const TextStyle(color: Colors.white, fontSize: 14)),
+                      SizedBox(height: 2),
+                      Text(DateFormat('MMM dd, yyyy • hh:mm a').format(_selectedDate), style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -1023,7 +1035,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           ),
         ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -1042,8 +1054,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             children: [
               Row(
                 children: [
-                  const Text('Full tank fill', style: TextStyle(color: Colors.white, fontSize: 14)),
-                  const SizedBox(width: 8),
+                  Text('Full tank fill', style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+                  SizedBox(width: 8),
                   Icon(Icons.info_outline, color: _neonColor, size: 16),
                 ],
               ),
@@ -1082,12 +1094,12 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               Row(
                 children: [
                   Icon(Icons.location_on_outlined, color: _neonColor, size: 20),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Location', style: TextStyle(color: Colors.white, fontSize: 14)),
+                        Text('Location', style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
                         Text('Current location will be fetched automatically', style: TextStyle(color: _neonColor, fontSize: 10)),
                       ],
                     ),
@@ -1103,17 +1115,17 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                       child: Row(
                         children: [
                           if (_isFetchingLocation)
-                            const SizedBox(
+                            SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: ThemeService.textColor),
                             )
                           else
-                            const Icon(Icons.my_location, color: Colors.white, size: 14),
-                          const SizedBox(width: 4),
+                            Icon(Icons.my_location, color: ThemeService.textColor, size: 14),
+                          SizedBox(width: 4),
                           Text(
                             _isFetchingLocation ? 'Fetching...' : 'Use current location', 
-                            style: const TextStyle(color: Colors.white, fontSize: 12)
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 12)
                           ),
                         ],
                       ),
@@ -1140,16 +1152,16 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                   Row(
                     children: [
                       Icon(Icons.edit_note, color: _neonColor, size: 20),
-                      const SizedBox(width: 12),
-                      const Text('Enter location manually', style: TextStyle(color: Colors.white, fontSize: 14)),
+                      SizedBox(width: 12),
+                      Text('Enter location manually', style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.only(left: 32),
                     child: TextField(
                       controller: _locationController,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'Enter location',
                         hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
@@ -1171,7 +1183,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -1188,13 +1200,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               child: Row(
             children: [
               Icon(Icons.notes, color: _neonColor, size: 20),
-              const SizedBox(width: 12),
-              const Text('Notes', style: TextStyle(color: Colors.white, fontSize: 14)),
-              const SizedBox(width: 16),
+              SizedBox(width: 12),
+              Text('Notes', style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+              SizedBox(width: 16),
               Expanded(
                 child: TextField(
                   controller: _notesController,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Add any notes',
                     hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
@@ -1209,7 +1221,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -1226,9 +1238,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
               child: Row(
             children: [
               Icon(Icons.credit_card, color: _neonColor, size: 20),
-              const SizedBox(width: 12),
-              const Text('Payment method', style: TextStyle(color: Colors.white, fontSize: 14)),
-              const SizedBox(width: 16),
+              SizedBox(width: 12),
+              Text('Payment method', style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+              SizedBox(width: 16),
               Expanded(
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -1237,7 +1249,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     dropdownColor: _cardColor,
                     icon: Icon(Icons.keyboard_arrow_down, color: _mutedColor),
                     isExpanded: true,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                     onChanged: (v) => setState(() => _selectedPaymentMethod = v),
                     items: _paymentMethods.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                   ),
@@ -1273,10 +1285,10 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 child: Column(
                   children: [
                     Icon(_billImage != null ? Icons.check_circle : Icons.image_outlined, color: _neonColor, size: 24),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       _billImage != null ? _billImage!.name : 'Image already uploaded',
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                     Text('Tap to change', style: TextStyle(color: _mutedColor, fontSize: 12)),
                   ],
@@ -1310,13 +1322,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     ),
                     child: Icon(Icons.upload_file, color: _neonColor, size: 24),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Upload', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
+                        Text('Upload', style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w600)),
+                        SizedBox(height: 2),
                         Text('Select files to upload', style: TextStyle(color: _mutedColor, fontSize: 10)),
                       ],
                     ),
@@ -1326,7 +1338,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: GestureDetector(
             onTap: () => _pickImage(ImageSource.camera),
@@ -1347,13 +1359,13 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     ),
                     child: Icon(Icons.camera_alt_outlined, color: _neonColor, size: 24),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Camera', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
+                        Text('Camera', style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w600)),
+                        SizedBox(height: 2),
                         Text('Take a photo', style: TextStyle(color: _mutedColor, fontSize: 10)),
                       ],
                     ),
@@ -1384,17 +1396,17 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Add New Station', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('Add New Station', style: TextStyle(color: ThemeService.textColor, fontSize: 18, fontWeight: FontWeight.bold)),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.close, color: Colors.white),
+                      child: Icon(Icons.close, color: ThemeService.textColor),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 TextField(
                   controller: stationController,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: ThemeService.textColor),
                   decoration: InputDecoration(
                     hintText: 'Enter station name',
                     hintStyle: TextStyle(color: _mutedColor),
@@ -1415,7 +1427,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -1436,7 +1448,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Save Station', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: Text('Save Station', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -1462,8 +1474,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           elevation: 0,
         ),
         child: _isLoading 
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-            : Text(widget.existingLog != null ? 'Update fuel' : 'Save fuel', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+            : Text(widget.existingLog != null ? 'Update fuel' : 'Save fuel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }

@@ -7,7 +7,10 @@ import 'package:fuel_cal/services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
+import 'package:fuel_cal/services/subscription_service.dart';
+import 'package:fuel_cal/upgrade_page.dart';
 
 class RemindersPage extends StatefulWidget {
   final Map<String, dynamic>? initialActionData;
@@ -45,6 +48,7 @@ class _RemindersPageState extends State<RemindersPage> {
   bool _isLoading = true;
   String _sortOption = 'Due Date';
   String _completedFilter = 'All';
+  int _maxReminders = 5;
 
   @override
   void initState() {
@@ -82,9 +86,14 @@ class _RemindersPageState extends State<RemindersPage> {
   Future<void> _fetchReminders() async {
     setState(() => _isLoading = true);
     try {
+      final plan = await SubscriptionService.getCurrentPlan();
+      _maxReminders = SubscriptionService.getMaxReminders(plan);
+
       final apiReminders = await ApiService().getReminders();
       
-      final formattedReminders = apiReminders.map((r) {
+      final formattedReminders = apiReminders.asMap().entries.map((entry) {
+        final i = entry.key;
+        final r = entry.value as Map<String, dynamic>;
         final categoryData = _categories.firstWhere(
           (c) => c['name'] == r['category'],
           orElse: () => _categories.first,
@@ -142,6 +151,7 @@ class _RemindersPageState extends State<RemindersPage> {
           'category': r['category'] ?? 'All',
           'raw_data': r,
           'is_completed': apiStatus != 'pending',
+          'is_locked': i >= _maxReminders,
         };
       }).toList();
 
@@ -204,11 +214,46 @@ class _RemindersPageState extends State<RemindersPage> {
                   ],
                   
                   const SizedBox(height: 32),
+                  const BannerAdWidget(),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showUpgradeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardColor,
+        title: Row(
+          children: [
+            Icon(Icons.lock, color: _neonColor),
+            const SizedBox(width: 8),
+            Text('Plan Limit Reached', style: TextStyle(color: _textColor)),
+          ],
+        ),
+        content: Text(
+          'Your current plan allows up to $_maxReminders reminders. Please upgrade to add more.',
+          style: TextStyle(color: _mutedColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: _mutedColor)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage()));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: _neonColor, foregroundColor: Colors.black),
+            child: const Text('Upgrade'),
+          ),
+        ],
       ),
     );
   }
@@ -220,16 +265,30 @@ class _RemindersPageState extends State<RemindersPage> {
         children: [
           GestureDetector(
             onTap: () => Navigator.maybePop(context),
-            child: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4.0),
+                child: Icon(Icons.arrow_back_ios, color: _textColor, size: 18),
+              ),
+            ),
           ),
           const SizedBox(width: 16),
-          const Text(
+          Text(
             'Reminders',
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(color: _textColor, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const Spacer(),
           GestureDetector(
             onTap: () {
+              if (_upcomingReminders.length + _completedReminders.length >= _maxReminders) {
+                _showUpgradeDialog();
+                return;
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AddReminderPage()),
@@ -280,16 +339,16 @@ class _RemindersPageState extends State<RemindersPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: isSelected ? _neonColor : Colors.white.withOpacity(0.1), width: 2)),
+          border: Border(bottom: BorderSide(color: isSelected ? _neonColor : _textColor.withOpacity(0.1), width: 2)),
         ),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: isSelected ? Colors.white : _mutedColor, size: 18),
+              Icon(icon, color: isSelected ? _textColor : _mutedColor, size: 18),
               const SizedBox(width: 8),
-              Text(title, style: TextStyle(color: isSelected ? Colors.white : _mutedColor, fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+              Text(title, style: TextStyle(color: isSelected ? _textColor : _mutedColor, fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
             ],
           ),
         ),
@@ -330,10 +389,10 @@ class _RemindersPageState extends State<RemindersPage> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withOpacity(0.05) : Colors.transparent,
+                color: isSelected ? _textColor.withOpacity(0.05) : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isSelected ? _neonColor : Colors.white.withOpacity(0.1),
+                  color: isSelected ? _neonColor : _textColor.withOpacity(0.1),
                   width: isSelected ? 1.5 : 1,
                 ),
               ),
@@ -362,7 +421,7 @@ class _RemindersPageState extends State<RemindersPage> {
                   Text(
                     cat['name']!,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : _mutedColor,
+                      color: isSelected ? _textColor : _mutedColor,
                       fontSize: 10,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -443,10 +502,10 @@ class _RemindersPageState extends State<RemindersPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: _textColor.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.calendar_today_outlined, color: Colors.white54, size: 24),
+                  child: Icon(Icons.calendar_today_outlined, color: _textColor.withOpacity(0.54), size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -463,11 +522,11 @@ class _RemindersPageState extends State<RemindersPage> {
                             ),
                             child: Text(
                               '${futureReminders.length}+',
-                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: _textColor, fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text('Reminders', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                          Text('Reminders', style: TextStyle(color: _textColor, fontSize: 15, fontWeight: FontWeight.w600)),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -543,9 +602,9 @@ class _RemindersPageState extends State<RemindersPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('Filter by Status', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text('Filter by Status', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               _buildCompletedFilterOption('All'),
               _buildCompletedFilterOption('Completed'),
@@ -560,7 +619,7 @@ class _RemindersPageState extends State<RemindersPage> {
 
   Widget _buildCompletedFilterOption(String filter) {
     return ListTile(
-      title: Text(filter, style: TextStyle(color: _completedFilter == filter ? _neonColor : Colors.white)),
+      title: Text(filter, style: TextStyle(color: _completedFilter == filter ? _neonColor : _textColor)),
       trailing: _completedFilter == filter ? Icon(Icons.check, color: _neonColor) : null,
       onTap: () {
         setState(() {
@@ -599,7 +658,7 @@ class _RemindersPageState extends State<RemindersPage> {
           children: [
             Text(
               title,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(color: _textColor, fontSize: 16, fontWeight: FontWeight.w600),
             ),
             if (subtitle != null) ...[
               const SizedBox(width: 6),
@@ -640,9 +699,9 @@ class _RemindersPageState extends State<RemindersPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('Sort by', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text('Sort by', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               _buildSortOption('Due Date'),
               _buildSortOption('Category'),
@@ -656,7 +715,7 @@ class _RemindersPageState extends State<RemindersPage> {
 
   Widget _buildSortOption(String option) {
     return ListTile(
-      title: Text(option, style: TextStyle(color: _sortOption == option ? _neonColor : Colors.white)),
+      title: Text(option, style: TextStyle(color: _sortOption == option ? _neonColor : _textColor)),
       trailing: _sortOption == option ? Icon(Icons.check, color: _neonColor) : null,
       onTap: () {
         setState(() {
@@ -693,9 +752,14 @@ class _RemindersPageState extends State<RemindersPage> {
     final statusColor = data['statusColor'] as Color;
     final iconColor = data['color'] as Color;
     final iconData = data['icon'] as IconData;
+    final isLocked = data['is_locked'] == true;
 
     Widget child = GestureDetector(
       onTap: () async {
+        if (isLocked) {
+          _showUpgradeDialog();
+          return;
+        }
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -731,7 +795,9 @@ class _RemindersPageState extends State<RemindersPage> {
             ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Opacity(
+              opacity: isLocked ? 0.5 : 1.0,
+              child: Row(
               children: [
                 Container(
                   width: 48,
@@ -790,7 +856,7 @@ class _RemindersPageState extends State<RemindersPage> {
                       if (data['timeleft'] != null && data['timeleft'].toString().isNotEmpty)
                         Text(
                           data['timeleft'],
-                          style: const TextStyle(color: Colors.white, fontSize: 11),
+                          style: TextStyle(color: _textColor, fontSize: 11),
                         ),
                       if (data['date'] != null)
                         Text(
@@ -804,7 +870,27 @@ class _RemindersPageState extends State<RemindersPage> {
                 ],
               ],
             ),
+            ),
           ),
+          if (isLocked)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline, color: _neonColor, size: 32),
+                      const SizedBox(height: 8),
+                      Text('Upgrade to Unlock', style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     ),
@@ -820,10 +906,14 @@ class _RemindersPageState extends State<RemindersPage> {
         children: [
           CustomSlidableAction(
             onPressed: (context) {
+              if (isLocked) {
+                _showUpgradeDialog();
+                return;
+              }
               Navigator.push(context, MaterialPageRoute(builder: (_) => AddReminderPage(editData: data)));
             },
             backgroundColor: const Color(0xFF3B3B45),
-            foregroundColor: Colors.white,
+            foregroundColor: _textColor,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               bottomLeft: Radius.circular(16),
@@ -845,7 +935,7 @@ class _RemindersPageState extends State<RemindersPage> {
               }
             },
             backgroundColor: const Color(0xFFEF4444),
-            foregroundColor: Colors.white,
+            foregroundColor: _textColor,
             borderRadius: const BorderRadius.only(
               topRight: Radius.circular(16),
               bottomRight: Radius.circular(16),
@@ -887,7 +977,7 @@ class _RemindersPageState extends State<RemindersPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Smart Reminders', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                Text('Smart Reminders', style: TextStyle(color: _textColor, fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text('Get notified before your reminders are due', style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
@@ -899,9 +989,9 @@ class _RemindersPageState extends State<RemindersPage> {
               setState(() => _smartRemindersEnabled = val);
               _saveSmartRemindersState(val);
             },
-            activeColor: Colors.white,
+            activeColor: _textColor,
             activeTrackColor: _neonColor,
-            inactiveTrackColor: Colors.white.withOpacity(0.1),
+            inactiveTrackColor: _textColor.withOpacity(0.1),
             inactiveThumbColor: _mutedColor,
           ),
         ],
@@ -933,3 +1023,4 @@ class _RemindersPageState extends State<RemindersPage> {
     );
   }
 }
+

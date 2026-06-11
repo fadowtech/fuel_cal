@@ -158,7 +158,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Select Month', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Select Month', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               GridView.builder(
                 shrinkWrap: true,
@@ -225,7 +225,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
           height: MediaQuery.of(context).size.height * 0.6,
           child: Column(
             children: [
-              const Text('Select Year', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Select Year', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               Expanded(
                 child: GridView.builder(
@@ -280,120 +280,118 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.maybePop(context),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        color: _surfaceColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.chevron_left_rounded,
-                          color: Colors.white, size: 24),
-                    ),
-                  ),
-                  if (_isSearching)
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        autofocus: true,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
-                        decoration: InputDecoration(
-                          hintText: 'Search expenses...',
-                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-                          border: InputBorder.none,
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.maybePop(context),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: _surfaceColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.chevron_left_rounded, color: _textColor, size: 24),
                         ),
-                        onChanged: (val) => setState(() {}),
                       ),
-                    )
-                  else
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            const Text('Expenses', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 8),
-                            Row(
+                      if (_isSearching)
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            autofocus: true,
+                            style: TextStyle(color: _textColor, fontSize: 16),
+                            decoration: InputDecoration(
+                              hintText: 'Search expenses...',
+                              hintStyle: TextStyle(color: _textColor.withValues(alpha: 0.3)),
+                              border: InputBorder.none,
+                            ),
+                            onChanged: (val) => setState(() {}),
+                          ),
+                        )
+                      else
+                        Expanded(child: Text('Expenses', style: TextStyle(color: _textColor, fontSize: 24, fontWeight: FontWeight.bold)),
+                        ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_isSearching) {
+                              _isSearching = false;
+                              _searchController.clear();
+                            } else {
+                              _isSearching = true;
+                            }
+                          });
+                        },
+                        child: Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(color: _surfaceColor, shape: BoxShape.circle),
+                          child: Icon(_isSearching ? Icons.close : Icons.search, color: _textColor, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _neonColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _neonColor.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.add, color: _neonColor, size: 16),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Add Expense',
+                                style: TextStyle(color: _neonColor, fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (!_isSearching) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _pickMonthOnly,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                            child: Row(
                               children: [
-                                GestureDetector(
-                                  onTap: _pickMonthOnly,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                                    child: Row(
-                                      children: [
-                                        Text(DateFormat('MMM').format(_selectedMonth), style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                        const SizedBox(width: 4),
-                                        const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                GestureDetector(
-                                  onTap: _pickYearOnly,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                                    child: Row(
-                                      children: [
-                                        Text(DateFormat('yyyy').format(_selectedMonth), style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                        const SizedBox(width: 4),
-                                        const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 14),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                                Text(DateFormat('MMM').format(_selectedMonth), style: TextStyle(color: _textColor, fontSize: 12)),
+                                const SizedBox(width: 4),
+                                Icon(Icons.keyboard_arrow_down, color: _textColor, size: 14),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        if (_isSearching) {
-                          _isSearching = false;
-                          _searchController.clear();
-                        } else {
-                          _isSearching = true;
-                        }
-                      });
-                    },
-                    child: Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(color: _surfaceColor, shape: BoxShape.circle),
-                      child: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white, size: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _neonColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: _neonColor.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.add, color: _neonColor, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Add Expense',
-                            style: TextStyle(color: _neonColor, fontSize: 12, fontWeight: FontWeight.w600),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _pickYearOnly,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                            child: Row(
+                              children: [
+                                Text(DateFormat('yyyy').format(_selectedMonth), style: TextStyle(color: _textColor, fontSize: 12)),
+                                const SizedBox(width: 4),
+                                Icon(Icons.keyboard_arrow_down, color: _textColor, size: 14),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -516,7 +514,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                   );
                 },
                 loading: () => Center(child: CircularProgressIndicator(color: _neonColor)),
-                error: (e, st) => const Center(child: Text('Failed to load expenses', style: TextStyle(color: Colors.white))),
+                error: (e, st) => Center(child: Text('Failed to load expenses', style: TextStyle(color: _textColor))),
               ),
             ),
           ],
@@ -555,10 +553,10 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withOpacity(0.05) : Colors.transparent,
+                color: isSelected ? ThemeService.textColor.withOpacity(0.05) : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isSelected ? ThemeService.neonColor : Colors.white.withOpacity(0.1),
+                  color: isSelected ? ThemeService.neonColor : ThemeService.textColor.withOpacity(0.1),
                   width: isSelected ? 1.5 : 1,
                 ),
               ),
@@ -587,7 +585,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                   Text(
                     cat['name']!,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : ThemeService.mutedColor,
+                      color: isSelected ? ThemeService.textColor : ThemeService.mutedColor,
                       fontSize: 10,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -680,7 +678,7 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   alignment: Alignment.center,
-                  child: Text('No service logs found.\n\nTo see logs here, please add them via the Add Service button.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.5))),
+                  child: Text('No service logs found.\n\nTo see logs here, please add them via the Add Service button.', textAlign: TextAlign.center, style: TextStyle(color: _textColor.withOpacity(0.5))),
                 )
               else
                 ...filteredServices.asMap().entries.map((entry) {
@@ -768,10 +766,10 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withOpacity(0.05) : Colors.transparent,
+                color: isSelected ? ThemeService.textColor.withOpacity(0.05) : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isSelected ? ThemeService.neonColor : Colors.white.withOpacity(0.1),
+                  color: isSelected ? ThemeService.neonColor : ThemeService.textColor.withOpacity(0.1),
                   width: isSelected ? 1.5 : 1,
                 ),
               ),
@@ -800,7 +798,7 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
                   Text(
                     cat['name']!,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : ThemeService.mutedColor,
+                      color: isSelected ? ThemeService.textColor : ThemeService.mutedColor,
                       fontSize: 10,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -1247,7 +1245,7 @@ class LogDetailPage extends ConsumerWidget {
                           context: context,
                           builder: (dialogContext) => AlertDialog(
                             backgroundColor: _cardColor,
-                            title: const Text('Delete Log?', style: TextStyle(color: Colors.white)),
+                            title: Text('Delete Log?', style: TextStyle(color: _textColor)),
                             content: const Text('Are you sure you want to delete this log? This cannot be undone.', style: TextStyle(color: Colors.white70)),
                             actions: [
                               TextButton(
@@ -1329,8 +1327,7 @@ class _FeatureScaffold extends StatelessWidget {
                         color: _surfaceColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.chevron_left_rounded,
-                          color: Colors.white, size: 24),
+                      child: Icon(Icons.chevron_left_rounded, color: _textColor, size: 24),
                     ),
                   ),
                   Expanded(
@@ -1338,8 +1335,7 @@ class _FeatureScaffold extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(title,
-                            style: const TextStyle(
-                                color: Colors.white,
+                            style: TextStyle(color: _textColor,
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold)),
                         const SizedBox(height: 2),
@@ -1413,8 +1409,7 @@ class _HeroTotalCard extends StatelessWidget {
                 children: [
                   Text(
                     'TOTAL AMOUNT',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                    style: TextStyle(color: _textColor.withValues(alpha: 0.6),
                       fontSize: 11,
                       letterSpacing: 1.2,
                       fontWeight: FontWeight.bold,
@@ -1423,8 +1418,7 @@ class _HeroTotalCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '₹${total.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(color: _textColor,
                       fontSize: 42,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1546,7 +1540,7 @@ class _TotalSpendDonutCard extends StatelessWidget {
               children: [
                 Text('TOTAL SPENT', style: TextStyle(color: _mutedColor, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('₹$total', style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+                Text('₹$total', style: TextStyle(color: _textColor, fontSize: 26, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 if (previousTotal > 0)
                   Row(
@@ -1583,7 +1577,7 @@ class _TotalSpendDonutCard extends StatelessWidget {
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('₹$total', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text('₹$total', style: TextStyle(color: _textColor, fontSize: 10, fontWeight: FontWeight.bold)),
                         Text('Total', style: TextStyle(color: _mutedColor, fontSize: 9)),
                       ],
                     )
@@ -1605,10 +1599,10 @@ class _TotalSpendDonutCard extends StatelessWidget {
                     children: [
                       Container(width: 6, height: 6, decoration: BoxDecoration(color: item['color'] as Color, shape: BoxShape.circle)),
                       const SizedBox(width: 6),
-                      Expanded(child: Text(item['name'] as String, style: const TextStyle(color: Colors.white, fontSize: 10), overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text(item['name'] as String, style: TextStyle(color: _textColor, fontSize: 10), overflow: TextOverflow.ellipsis)),
                       SizedBox(
                         width: 30,
-                        child: Text('${(item['percent'] as double).toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.right),
+                        child: Text('${(item['percent'] as double).toInt()}%', style: TextStyle(color: _textColor, fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.right),
                       ),
                       const SizedBox(width: 8),
                       SizedBox(
@@ -1685,8 +1679,7 @@ class _TotalSpendCard extends StatelessWidget {
                   letterSpacing: 1.2,
                   fontWeight: FontWeight.bold)),
           Text('₹$total',
-              style: const TextStyle(
-                  color: Colors.white,
+              style: TextStyle(color: _textColor,
                   fontSize: 38,
                   fontWeight: FontWeight.bold)),
           Text('across $count entries',
@@ -1784,8 +1777,7 @@ class _InputTile extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(color: _textColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1814,8 +1806,7 @@ class _InputTile extends StatelessWidget {
                     controller: controller,
                     keyboardType: keyboardType,
                     onChanged: onChanged,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(color: _textColor,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1912,8 +1903,7 @@ class _InfoTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(color: _textColor,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1963,8 +1953,7 @@ class _ToggleTile extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(color: _textColor,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
@@ -2456,13 +2445,11 @@ class _TripTile extends StatelessWidget {
                   color: _neonColor, size: 18),
               const SizedBox(width: 8),
               Text('${trip['from']} ',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600)),
+                  style: TextStyle(color: _textColor, fontWeight: FontWeight.w600)),
               Icon(Icons.navigation_outlined,
                   color: _mutedColor, size: 14),
               Text(' ${trip['to']}',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600)),
+                  style: TextStyle(color: _textColor, fontWeight: FontWeight.w600)),
             ],
           ),
           const SizedBox(height: 4),
@@ -2605,7 +2592,7 @@ class _ReportTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(report['title'], style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(report['title'], style: TextStyle(color: _textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(report['desc'], style: TextStyle(color: _mutedColor, fontSize: 12)),
                 const SizedBox(height: 8),
@@ -2633,9 +2620,9 @@ class _ReportTile extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(isPdf ? Icons.insert_drive_file : Icons.grid_on, color: Colors.white, size: 14),
+                      Icon(isPdf ? Icons.insert_drive_file : Icons.grid_on, color: _textColor, size: 14),
                       const SizedBox(width: 6),
-                      Text(isPdf ? 'Generate PDF' : 'Export XLSX', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text(isPdf ? 'Generate PDF' : 'Export XLSX', style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -2663,7 +2650,7 @@ class _ReportFooter extends StatelessWidget {
           Expanded(
             child: Text(
               'Reports are generated in real-time and downloaded directly to your device.',
-              style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13),
+              style: TextStyle(color: _textColor.withOpacity(0.9), fontSize: 13),
             ),
           ),
           const SizedBox(width: 16),
@@ -2672,10 +2659,10 @@ class _ReportFooter extends StatelessWidget {
             height: 60,
             child: Stack(
               children: [
-                const Positioned(
+                Positioned(
                   left: 0,
                   bottom: 10,
-                  child: Icon(Icons.insert_drive_file, color: Colors.white, size: 40),
+                  child: Icon(Icons.insert_drive_file, color: _textColor, size: 40),
                 ),
                 Positioned(
                   left: 6,
@@ -2683,13 +2670,13 @@ class _ReportFooter extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
-                    child: const Text('PDF', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                    child: Text('PDF', style: TextStyle(color: _textColor, fontSize: 8, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                const Positioned(
+                Positioned(
                   right: 0,
                   top: 0,
-                  child: Icon(Icons.insert_drive_file, color: Colors.white, size: 40),
+                  child: Icon(Icons.insert_drive_file, color: _textColor, size: 40),
                 ),
                 Positioned(
                   right: 4,
@@ -2697,7 +2684,7 @@ class _ReportFooter extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(4)),
-                    child: const Text('XLSX', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                    child: Text('XLSX', style: TextStyle(color: _textColor, fontSize: 8, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 Positioned(
@@ -2706,7 +2693,7 @@ class _ReportFooter extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
-                    child: const Icon(Icons.arrow_downward, color: Colors.white, size: 12),
+                    child: Icon(Icons.arrow_downward, color: _textColor, size: 12),
                   ),
                 ),
               ],
@@ -2739,8 +2726,7 @@ class _LogSummaryCard extends StatelessWidget {
                   letterSpacing: 1.2,
                   fontWeight: FontWeight.bold)),
           Text('₹${log['amount']}',
-              style: const TextStyle(
-                  color: Colors.white,
+              style: TextStyle(color: _textColor,
                   fontSize: 38,
                   fontWeight: FontWeight.bold)),
           Text('${log['liters']}L x ₹${log['pricePerL']}/L',
@@ -2807,8 +2793,7 @@ class _ListTileShell extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(
-                        color: Colors.white,
+                    style: TextStyle(color: _textColor,
                         fontSize: 14,
                         fontWeight: FontWeight.w600)),
                 Text(subtitle,
@@ -2818,8 +2803,7 @@ class _ListTileShell extends StatelessWidget {
           ),
           if (trailing != null)
             Text(trailing!,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold))
+                style: TextStyle(color: _textColor, fontWeight: FontWeight.bold))
           else if (trailingIcon != null)
             Icon(trailingIcon, color: _mutedColor, size: 20),
         ],
@@ -2885,8 +2869,7 @@ class _DarkStat extends StatelessWidget {
                     fontWeight: FontWeight.w500)),
             const SizedBox(height: 2),
             Text(value,
-                style: const TextStyle(
-                    color: Colors.white,
+                style: TextStyle(color: _textColor,
                     fontSize: 14,
                     fontWeight: FontWeight.bold)),
           ],
@@ -2948,3 +2931,5 @@ IconData _categoryIcon(String category) {
       return Icons.shopping_bag_outlined;
   }
 }
+
+

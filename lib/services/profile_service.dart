@@ -7,12 +7,12 @@ class ProfileService {
   static const _phoneKey = 'profile_phone';
   static const _genderKey = 'profile_gender';
 
-  static const defaultFirstName = 'Tom';
-  static const defaultLastName = 'Hardy';
-  static const defaultName = 'Tom Hardy';
-  static const defaultEmail = 'tom@fuelmate.app';
-  static const defaultPhone = '+91 98765 43210';
-  static const defaultGender = 'Male';
+  static const defaultFirstName = '';
+  static const defaultLastName = '';
+  static const defaultName = '';
+  static const defaultEmail = '';
+  static const defaultPhone = '';
+  static const defaultGender = '';
 
   static Future<void> saveProfile({
     required String firstName,

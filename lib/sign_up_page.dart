@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/widgets/auth_text_field.dart';
 
@@ -25,6 +26,112 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   bool _obscureConfirmPassword = true;
   bool _agreedToTerms = true;
   String? _selectedGender;
+
+  late TapGestureRecognizer _termsRecognizer;
+  late TapGestureRecognizer _privacyRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsRecognizer = TapGestureRecognizer()..onTap = _showTerms;
+    _privacyRecognizer = TapGestureRecognizer()..onTap = _showPrivacy;
+  }
+
+  @override
+  void dispose() {
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _showTerms() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: ThemeService.cardColor,
+        title: Text('Terms & Conditions', style: TextStyle(color: ThemeService.textColor, fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Text(
+              '''Welcome to Fuelvox!
+
+1. Acceptance of Terms
+By creating an account and using Fuelvox, you agree to comply with and be bound by these Terms & Conditions. If you do not agree to these terms, please do not use the app.
+
+2. Description of Service
+Fuelvox provides tools for tracking vehicle mileage, logging fuel expenses, and setting maintenance reminders. All calculations and statistics are estimates based on user-provided data. We do not guarantee the absolute accuracy of these estimates.
+
+3. In-App Purchases & Subscriptions
+Certain features, such as an ad-free experience, are available via auto-renewing subscriptions or one-time in-app purchases. Payments are processed securely through the Google Play Store. Subscriptions automatically renew unless canceled in your Google Play account settings.
+
+4. Advertisements
+The free version of Fuelvox displays banner advertisements provided by Google AdMob. By using the free version, you agree to the display of these ads.
+
+5. User Accounts
+You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account. 
+
+6. Limitation of Liability
+Fuelvox and its developers shall not be liable for any indirect, incidental, or consequential damages resulting from the use or inability to use the app, including any loss of data.''',
+              style: TextStyle(color: ThemeService.textColor, fontSize: 13, height: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close', style: TextStyle(color: Color(0xFFDE2425)))),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacy() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: ThemeService.cardColor,
+        title: Text('Privacy Policy', style: TextStyle(color: ThemeService.textColor, fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Text(
+              '''At Fuelvox, your privacy is our priority. This policy outlines how we handle your data.
+
+1. Information We Collect
+• Personal Data: When you sign up, we collect your name, email address, and optionally your phone number and gender.
+• Vehicle & Usage Data: We collect the vehicle details, fuel logs, and expense records you manually enter into the app to provide you with insights.
+
+2. How We Use Your Data
+We use your data strictly to operate and improve the Fuelvox service, sync your data across devices, and authenticate your account. We do not sell your personal data to third parties.
+
+3. Third-Party Services
+We use trusted third-party services that may collect information used to identify you:
+• Google AdMob: Used to serve advertisements in the free version. AdMob may use advertising IDs and cookies to serve personalized ads based on your interests, in accordance with Google's Privacy & Terms.
+• RevenueCat: Used to manage in-app subscriptions securely.
+
+4. Data Security & Retention
+Your data is stored securely. We retain your information as long as your account is active.
+
+5. Your Rights
+You have the right to access, modify, or permanently delete your account and all associated data at any time from within the app settings.
+
+6. Changes to This Policy
+We may update our Privacy Policy periodically. We will notify you of any changes by updating this page.''',
+              style: TextStyle(color: ThemeService.textColor, fontSize: 13, height: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close', style: TextStyle(color: Color(0xFFDE2425)))),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +194,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Fuel',
+                                  'Fuelvox',
                                   style: TextStyle(
                                     color: textColor,
                                     fontSize: 28,
@@ -162,10 +269,12 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                             const SizedBox(height: 8),
                             AuthTextField(
                               controller: _firstNameController,
-                              hintText: 'First name',
+                              hintText: 'First Name',
+                              textCapitalization: TextCapitalization.words,
                               prefixIcon: Icons.person_outline,
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                                _TitleCaseTextInputFormatter(),
                               ],
                             ),
                           ],
@@ -183,10 +292,12 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                             const SizedBox(height: 8),
                             AuthTextField(
                               controller: _lastNameController,
-                              hintText: 'Last name',
+                              hintText: 'Last Name',
+                              textCapitalization: TextCapitalization.words,
                               prefixIcon: Icons.person_outline,
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                                _TitleCaseTextInputFormatter(),
                               ],
                             ),
                           ],
@@ -347,48 +458,57 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                   const SizedBox(height: 20),
                   
                   // Terms and conditions
-                  Row(
-                    children: [
-                      SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: Checkbox(
-                          value: _agreedToTerms,
-                          onChanged: (val) {
-                            setState(() {
-                              _agreedToTerms = val ?? false;
-                            });
-                          },
-                          activeColor: redAccent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          side: BorderSide(
-                            color: ThemeService.mutedColor,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: RichText(
-                          text: TextSpan(
-                            style: TextStyle(color: textColor, fontSize: 12),
-                            children: [
-                              const TextSpan(text: 'I agree to the '),
-                              TextSpan(
-                                text: 'Terms & Conditions',
-                                style: TextStyle(color: redAccent, fontWeight: FontWeight.bold),
-                              ),
-                              const TextSpan(text: ' and '),
-                              TextSpan(
-                                text: 'Privacy Policy',
-                                style: TextStyle(color: redAccent, fontWeight: FontWeight.bold),
-                              ),
-                            ],
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _agreedToTerms = !_agreedToTerms;
+                      });
+                    },
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: Checkbox(
+                            value: _agreedToTerms,
+                            onChanged: (val) {
+                              setState(() {
+                                _agreedToTerms = val ?? false;
+                              });
+                            },
+                            activeColor: redAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            side: BorderSide(
+                              color: ThemeService.mutedColor,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(color: textColor, fontSize: 12),
+                              children: [
+                                const TextSpan(text: 'I agree to the '),
+                                TextSpan(
+                                  text: 'Terms & Conditions',
+                                  style: TextStyle(color: redAccent, fontWeight: FontWeight.bold),
+                                  recognizer: _termsRecognizer,
+                                ),
+                                const TextSpan(text: ' and '),
+                                TextSpan(
+                                  text: 'Privacy Policy',
+                                  style: TextStyle(color: redAccent, fontWeight: FontWeight.bold),
+                                  recognizer: _privacyRecognizer,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   
                   const SizedBox(height: 24),
@@ -464,64 +584,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: 24),
-                  
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Divider(color: ThemeService.mutedColor.withOpacity(0.2)),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'or continue with',
-                          style: TextStyle(
-                            color: ThemeService.mutedColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(color: ThemeService.mutedColor.withOpacity(0.2)),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Google Button
-                  Container(
-                    width: double.infinity,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: isDark ? ThemeService.surfaceColor : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? ThemeService.surfaceColor : Colors.grey.shade300,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.network(
-                          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
-                          height: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Google',
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
+ 
                   const SizedBox(height: 32),
                   
                   // Sign In Link
@@ -625,4 +688,27 @@ class BottomRedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class _TitleCaseTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+    
+    String newText = '';
+    for (int i = 0; i < newValue.text.length; i++) {
+      if (i == 0 || newValue.text[i - 1] == ' ') {
+        newText += newValue.text[i].toUpperCase();
+      } else {
+        newText += newValue.text[i];
+      }
+    }
+    
+    return TextEditingValue(
+      text: newText,
+      selection: newValue.selection,
+    );
+  }
 }

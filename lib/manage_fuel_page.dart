@@ -2,7 +2,7 @@ import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/manage_fuel_service.dart';
-
+import 'package:fuel_cal/services/ad_service.dart';
 class ManageFuelPage extends StatefulWidget {
   const ManageFuelPage({super.key});
 
@@ -87,11 +87,18 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: ThemeService.neonColor))
-          : TabBarView(
-              controller: _tabController,
+          : Column(
               children: [
-                _buildFuelPricesTab(),
-                _buildStationsTab(),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildFuelPricesTab(),
+                      _buildStationsTab(),
+                    ],
+                  ),
+                ),
+                const BannerAdWidget(),
               ],
             ),
     );
@@ -222,7 +229,6 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
-        leading: Icon(Icons.menu, color: ThemeService.mutedColor),
         title: Text(station['name'] ?? '', style: TextStyle(color: ThemeService.textColor)),
         trailing: PopupMenuButton<String>(
           icon: Icon(Icons.more_vert, color: ThemeService.mutedColor),
@@ -329,6 +335,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                 const SizedBox(height: 8),
                 TextField(
                   controller: stationController,
+                  textCapitalization: TextCapitalization.words,
                   style: TextStyle(color: ThemeService.textColor),
                   decoration: InputDecoration(
                     hintText: 'Enter station name',

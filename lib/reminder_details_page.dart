@@ -30,9 +30,9 @@ class ReminderDetailsPage extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: bgColor ?? Colors.white.withOpacity(0.05),
+              color: bgColor ?? ThemeService.mutedColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: borderColor ?? Colors.white.withOpacity(0.15)),
+              border: Border.all(color: borderColor ?? ThemeService.mutedColor.withOpacity(0.2)),
             ),
             child: Icon(icon, color: color, size: 20),
           ),
@@ -72,7 +72,7 @@ class ReminderDetailsPage extends StatelessWidget {
                 Text(title, style: TextStyle(color: _mutedColor, fontSize: 12, fontWeight: FontWeight.w500)),
                 if (subtitle != null) ...[
                   const SizedBox(height: 4),
-                  Text(subtitle, style: TextStyle(color: subtitleColor ?? Colors.white, fontSize: 14)),
+                  Text(subtitle, style: TextStyle(color: subtitleColor ?? ThemeService.textColor, fontSize: 14)),
                 ]
               ],
             ),
@@ -102,7 +102,7 @@ class ReminderDetailsPage extends StatelessWidget {
             children: [
               Text(label, style: TextStyle(color: _mutedColor, fontSize: 12)),
               const SizedBox(height: 4),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+              Text(value, style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -121,14 +121,14 @@ class ReminderDetailsPage extends StatelessWidget {
         backgroundColor: _backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: ThemeService.textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Reminder Details', style: TextStyle(color: Colors.white)),
+        title: Text('Reminder Details', style: TextStyle(color: ThemeService.textColor)),
         actions: [
           _buildActionButton(
             icon: Icons.edit,
-            color: Colors.white70,
+            color: ThemeService.textColor.withOpacity(0.7),
             onTap: () async {
               final navigator = Navigator.of(context);
               final result = await navigator.push(
@@ -150,12 +150,12 @@ class ReminderDetailsPage extends StatelessWidget {
                 context: context,
                 builder: (context) => AlertDialog(
                   backgroundColor: _cardColor,
-                  title: const Text('Delete Reminder', style: TextStyle(color: Colors.white)),
-                  content: const Text('Are you sure you want to delete this reminder?', style: TextStyle(color: Colors.white70)),
+                  title: Text('Delete Reminder', style: TextStyle(color: ThemeService.textColor)),
+                  content: Text('Are you sure you want to delete this reminder?', style: TextStyle(color: ThemeService.textColor.withOpacity(0.7))),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                      child: Text('Cancel', style: TextStyle(color: ThemeService.textColor.withOpacity(0.54))),
                     ),
                     TextButton(
                       onPressed: () async {
@@ -207,7 +207,7 @@ class ReminderDetailsPage extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     data['title'] ?? 'No Title',
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 24, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -223,7 +223,7 @@ class ReminderDetailsPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                   const SizedBox(height: 24),
                   IntrinsicHeight(
                     child: Row(
@@ -234,10 +234,10 @@ class ReminderDetailsPage extends StatelessWidget {
                           Expanded(child: _buildHeaderInfo(Icons.speed, const Color(0xFF8B5CF6), 'Due KM', '${data['raw_data']['due_km']} KM')),
                         
                         if (data['raw_data'] != null && data['raw_data']['repeat'] == true) ...[
-                          VerticalDivider(color: Colors.white.withOpacity(0.05), width: 32),
+                          VerticalDivider(color: ThemeService.mutedColor.withOpacity(0.1), width: 32),
                           Expanded(child: _buildHeaderInfo(Icons.sync, const Color(0xFF10B981), 'Repeat Reminder', data['raw_data']['repeat_interval'] != null ? 'Every ${data['raw_data']['repeat_interval']}' : 'Enabled')),
                         ] else if (data['date'] != null && data['raw_data'] != null && data['raw_data']['due_km'] != null) ...[
-                          VerticalDivider(color: Colors.white.withOpacity(0.05), width: 32),
+                          VerticalDivider(color: ThemeService.mutedColor.withOpacity(0.1), width: 32),
                           Expanded(child: _buildHeaderInfo(Icons.speed, const Color(0xFF8B5CF6), 'Due KM', '${data['raw_data']['due_km']} KM')),
                         ]
                       ],
@@ -287,7 +287,7 @@ class ReminderDetailsPage extends StatelessWidget {
                     ),
                   ),
                   if (data['raw_data'] != null && data['raw_data']['notify_before_days'] != null && data['raw_data']['notify_before_days'].toString().isNotEmpty) ...[
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                     _buildListTile(
                       icon: Icons.notifications_active,
                       iconColor: const Color(0xFFF59E0B),
@@ -295,7 +295,7 @@ class ReminderDetailsPage extends StatelessWidget {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('${data['raw_data']['notify_before_days']} Days', style: const TextStyle(color: Colors.white, fontSize: 13)),
+                          Text('${data['raw_data']['notify_before_days']} Days', style: TextStyle(color: ThemeService.textColor, fontSize: 13)),
                           const SizedBox(width: 4),
                           Icon(Icons.chevron_right, color: _mutedColor, size: 16),
                         ],
@@ -303,7 +303,7 @@ class ReminderDetailsPage extends StatelessWidget {
                     ),
                   ],
                   if (data['raw_data'] != null && data['raw_data']['priority'] != null && data['raw_data']['priority'].toString().isNotEmpty) ...[
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                     _buildListTile(
                       icon: Icons.flag,
                       iconColor: const Color(0xFF3B82F6),
@@ -311,7 +311,7 @@ class ReminderDetailsPage extends StatelessWidget {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(data['raw_data']['priority'], style: const TextStyle(color: Colors.white, fontSize: 13)),
+                          Text(data['raw_data']['priority'], style: TextStyle(color: ThemeService.textColor, fontSize: 13)),
                           const SizedBox(width: 4),
                           Icon(Icons.chevron_right, color: _mutedColor, size: 16),
                         ],
@@ -348,9 +348,9 @@ class ReminderDetailsPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Change Status', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('Change Status', style: TextStyle(color: ThemeService.textColor, fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              const Text('Update the status of this item.', style: TextStyle(color: Colors.white54, fontSize: 13)),
+              Text('Update the status of this item.', style: TextStyle(color: ThemeService.textColor.withOpacity(0.54), fontSize: 13)),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -429,7 +429,7 @@ class ReminderDetailsPage extends StatelessWidget {
                   color: const Color(0xFF10B981).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.check, color: Colors.white, size: 24),
+                child: Icon(Icons.check, color: ThemeService.textColor, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -437,9 +437,9 @@ class ReminderDetailsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Skip', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                    Text('Skip', style: TextStyle(color: ThemeService.textColor, fontSize: 15, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    const Text('Skip this item for now.', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                    Text('Skip this item for now.', style: TextStyle(color: ThemeService.textColor.withOpacity(0.54), fontSize: 11)),
                   ],
                 ),
               ),
@@ -501,7 +501,7 @@ class ReminderDetailsPage extends StatelessWidget {
                   color: const Color(0xFF10B981).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.check, color: Colors.white, size: 24),
+                child: Icon(Icons.check, color: ThemeService.textColor, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -509,9 +509,9 @@ class ReminderDetailsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Done', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                    Text('Done', style: TextStyle(color: ThemeService.textColor, fontSize: 15, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    const Text('Mark item as completed.', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                    Text('Mark item as completed.', style: TextStyle(color: ThemeService.textColor.withOpacity(0.54), fontSize: 11)),
                   ],
                 ),
               ),

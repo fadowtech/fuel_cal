@@ -6,7 +6,7 @@ import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/add_vehicle_page.dart';
-
+import 'package:fuel_cal/services/ad_service.dart';
 class VehicleDetailsPage extends ConsumerWidget {
   final Vehicle vehicle;
 
@@ -75,7 +75,15 @@ class VehicleDetailsPage extends ConsumerWidget {
     );
     final vehicleColor = _getColorFromName(vehicle.color);
     bool isDarkColor = vehicleColor.computeLuminance() < 0.05;
+    bool isVeryLight = vehicleColor.computeLuminance() > 0.8;
+    
+    Color displayIconColor = vehicleColor;
     Color iconBgColor = isDarkColor ? Colors.white.withOpacity(0.8) : vehicleColor.withOpacity(0.1);
+
+    if (!ThemeService.isDarkMode && isVeryLight) {
+      displayIconColor = vehicleColor;
+      iconBgColor = Colors.black.withOpacity(0.6);
+    }
     
     final logsAsync = ref.watch(fuelLogsProvider);
     final allLogs = logsAsync.value ?? [];
@@ -141,8 +149,7 @@ class VehicleDetailsPage extends ConsumerWidget {
                       color: iconBgColor,
                       borderRadius: BorderRadius.circular(24),
                     ),
-                    alignment: Alignment.center,
-                    child: Icon(_getIconForType(vehicle.vehicleType), size: 80, color: vehicleColor),
+                    child: Icon(_getIconForType(vehicle.vehicleType), size: 80, color: displayIconColor),
                   ),
                   const SizedBox(width: 20),
                   // Top Stats
@@ -210,6 +217,7 @@ class VehicleDetailsPage extends ConsumerWidget {
               ]),
 
               const SizedBox(height: 24),
+              const BannerAdWidget(),
             ],
           ),
         ),

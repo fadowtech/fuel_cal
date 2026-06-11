@@ -12,9 +12,9 @@ class ThemeService {
   // Curated, beautiful theme colors for Dark & Light modes
   static Color get neonColor => isDarkMode ? const Color(0xFF00FF88) : const Color(0xFF00BFA5);
   static Color get backgroundColor => isDarkMode ? const Color(0xFF121217) : const Color(0xFFF4F6F8);
-  static Color get surfaceColor => isDarkMode ? const Color(0xFF1E1E24) : const Color(0xFFFFFFFF);
-  static Color get cardColor => isDarkMode ? const Color(0xFF25252D) : const Color(0xFFFFFFFF);
-  static Color get mutedColor => isDarkMode ? const Color(0xFFA1A1AA) : const Color(0xFF64748B);
+  static Color get surfaceColor => isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFFFFFFF);
+  static Color get cardColor => isDarkMode ? const Color(0xFF1C1C1C) : const Color(0xFFFFFFFF);
+  static Color get mutedColor => isDarkMode ? const Color(0xFFA1A1AA) : const Color(0xFF475569);
   static Color get textColor => isDarkMode ? Colors.white : const Color(0xFF0F172A);
   static Color get dangerColor => const Color(0xFFFF4444);
 

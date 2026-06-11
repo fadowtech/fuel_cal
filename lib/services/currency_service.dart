@@ -82,4 +82,17 @@ class CurrencyService {
         'USD': 'US Dollar (\$)',
         'EUR': 'Euro (€)',
       };
+
+  static String getFormattedPrice(int baseInrPrice, bool isYearly) {
+    if (_currentCurrency == 'INR' || _currentCurrency == null) {
+      return '₹ $baseInrPrice';
+    } else if (_currentCurrency == 'USD') {
+      double usdPrice = baseInrPrice / 83.0;
+      return '\$ ${usdPrice.toStringAsFixed(2)}';
+    } else if (_currentCurrency == 'EUR') {
+      double eurPrice = baseInrPrice / 90.0;
+      return '€ ${eurPrice.toStringAsFixed(2)}';
+    }
+    return '${getCurrencySymbol(_currentCurrency!)} $baseInrPrice';
+  }
 }

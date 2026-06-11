@@ -6,7 +6,7 @@ import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
-
+import 'package:fuel_cal/services/ad_service.dart';
 class UpperCaseTextFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
@@ -112,6 +112,16 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     'Titanium Grey',
   ];
 
+  String _formatNumber(dynamic val) {
+    if (val == null) return '';
+    if (val is num) return val == val.toInt() ? val.toInt().toString() : val.toString();
+    if (val is String) {
+      final d = double.tryParse(val);
+      if (d != null) return d == d.toInt() ? d.toInt().toString() : val;
+    }
+    return val.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -122,10 +132,10 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
       _modelController.text = v.model;
       _yearController.text = v.year.toString();
       _variantController.text = v.variant ?? '';
-      _tankCapacityController.text = v.tankCapacity.toString();
-      _highestAvgMileageController.text = v.highestAvgMileage?.toString() ?? '';
-      _avgMileageController.text = v.avgMileage?.toString() ?? '';
-      _poorMileageController.text = v.poorMileage?.toString() ?? '';
+      _tankCapacityController.text = _formatNumber(v.tankCapacity);
+      _highestAvgMileageController.text = _formatNumber(v.highestAvgMileage);
+      _avgMileageController.text = _formatNumber(v.avgMileage);
+      _poorMileageController.text = _formatNumber(v.poorMileage);
       _notesController.text = v.notes ?? '';
       _selectedVehicleType = v.vehicleType ?? '';
       _selectedFuelType = v.fuelType;
@@ -272,14 +282,14 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: _surfaceColor),
             ),
-            child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+            child: Icon(Icons.arrow_back, color: _textColor, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.vehicleToEdit != null ? 'Edit Vehicle' : 'Add New Vehicle', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(widget.vehicleToEdit != null ? 'Edit Vehicle' : 'Add New Vehicle', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
             Text(widget.vehicleToEdit != null ? 'Update your vehicle details' : 'Enter your vehicle details', style: TextStyle(color: _mutedColor, fontSize: 12)),
           ],
         ),
@@ -310,6 +320,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                     _buildSectionHeader(Icons.more_horiz, 'ADDITIONAL (OPTIONAL)'),
                     _buildAdditionalSection(),
                     const SizedBox(height: 32),
+                    const BannerAdWidget(),
                   ],
                 ),
               ),
@@ -381,7 +392,15 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
 
     Color displayColor = _getColorFromName(_selectedColorName);
     bool isDarkColor = displayColor.computeLuminance() < 0.05;
+    bool isVeryLight = displayColor.computeLuminance() > 0.8;
+    
+    Color displayIconColor = displayColor;
     Color iconBgColor = isDarkColor ? Colors.white.withOpacity(0.8) : displayColor.withOpacity(0.2);
+
+    if (!ThemeService.isDarkMode && isVeryLight) {
+      displayIconColor = displayColor;
+      iconBgColor = Colors.black.withOpacity(0.6);
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -401,13 +420,13 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                   color: iconBgColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: previewIcon != null ? Icon(previewIcon, color: displayColor, size: 32) : null,
+                child: previewIcon != null ? Icon(previewIcon, color: displayIconColor, size: 32) : null,
               ),
               const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(displayName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(displayName, style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
                   if (displayNumber.trim().isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Container(
@@ -421,7 +440,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                         children: [
                           Icon(Icons.badge_outlined, color: _mutedColor, size: 14),
                           const SizedBox(width: 6),
-                          Text(displayNumber, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                          Text(displayNumber, style: TextStyle(color: _textColor, fontSize: 12, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
@@ -438,7 +457,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                   children: [
                     Icon(Icons.local_gas_station, color: _mutedColor, size: 16),
                     const SizedBox(width: 6),
-                    Text(_selectedFuelType.isNotEmpty ? _selectedFuelType : '- -', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    Text(_selectedFuelType.isNotEmpty ? _selectedFuelType : '- -', style: TextStyle(color: _textColor, fontSize: 12)),
                   ],
                 ),
               ),
@@ -449,7 +468,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                   children: [
                     Icon(Icons.ev_station, color: _mutedColor, size: 16),
                     const SizedBox(width: 6),
-                    Text(displayCapacity, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    Text(displayCapacity, style: TextStyle(color: _textColor, fontSize: 12)),
                   ],
                 ),
               ),
@@ -460,7 +479,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                   children: [
                     Icon(Icons.speed, color: _mutedColor, size: 16),
                     const SizedBox(width: 6),
-                    Text(displayMileage, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    Text(displayMileage, style: TextStyle(color: _textColor, fontSize: 12)),
                   ],
                 ),
               ),
@@ -477,7 +496,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
       child: RichText(
         text: TextSpan(
           text: label,
-          style: const TextStyle(color: Colors.white, fontSize: 12),
+          style: TextStyle(color: _textColor, fontSize: 12),
           children: [
             if (isRequired)
               const TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
@@ -496,7 +515,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         if (capsType == 'words') TitleCaseTextFormatter(),
       ],
       keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: _textColor, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
@@ -645,13 +664,13 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(icon, color: isSelected ? _neonColor : Colors.white, size: 16),
+              Icon(icon, color: isSelected ? _neonColor : _textColor, size: 16),
               const SizedBox(width: 6),
             ],
             Text(
               title,
               style: TextStyle(
-                color: isSelected ? _neonColor : Colors.white,
+                color: isSelected ? _neonColor : _textColor,
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -727,7 +746,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                                       : null,
                                 ),
                                 const SizedBox(width: 6),
-                                Text(type, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                                Text(type, style: TextStyle(color: _textColor, fontSize: 13)),
                               ],
                             ),
                           ),
@@ -746,12 +765,12 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                     TextField(
                       controller: _tankCapacityController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      style: TextStyle(color: _textColor, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: 'Enter Tank Capacity (e.g. 65)',
                         hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
                         suffixText: 'L',
-                        suffixStyle: const TextStyle(color: Colors.white, fontSize: 13),
+                        suffixStyle: TextStyle(color: _textColor, fontSize: 13),
                         errorText: _tankCapacityError,
                         errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
                         filled: true,
@@ -796,12 +815,12 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
         TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          style: TextStyle(color: _textColor, fontSize: 14),
           decoration: InputDecoration(
             hintText: '0.0',
             hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
             suffixText: 'KM/L',
-            suffixStyle: const TextStyle(color: Colors.white, fontSize: 12),
+            suffixStyle: TextStyle(color: _textColor, fontSize: 12),
             errorText: errorText,
             errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
             filled: true,
@@ -873,7 +892,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
             value: _selectedColorName,
             icon: Icon(Icons.arrow_drop_down, color: _mutedColor),
             dropdownColor: _cardColor,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
+            style: TextStyle(color: _textColor, fontSize: 13),
             decoration: InputDecoration(
               filled: true,
               fillColor: _surfaceColor.withOpacity(0.5),

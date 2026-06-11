@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:dotted_border/dotted_border.dart';
 import '../models/vehicle_model.dart';
 import '../add_vehicle_page.dart';
+import '../upgrade_page.dart';
+import '../services/theme_service.dart';
 
 extension VehicleUI on Vehicle {
   String get displayName => '$make $model';
@@ -36,6 +38,7 @@ class VehicleSelector extends StatelessWidget {
   final ValueChanged<Vehicle?> onVehicleSelected;
   final double? currentOdometer;
   final Map<int, double>? vehicleOdometers;
+  final int maxVehicles;
 
   const VehicleSelector({
     super.key,
@@ -44,6 +47,7 @@ class VehicleSelector extends StatelessWidget {
     this.selectedVehicle,
     this.currentOdometer,
     this.vehicleOdometers,
+    this.maxVehicles = 3,
   });
 
   @override
@@ -53,8 +57,9 @@ class VehicleSelector extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E24), // slightly darker for the card
+          color: ThemeService.surfaceColor, // Adaptable to light/dark
           borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(color: ThemeService.mutedColor.withOpacity(0.1)),
         ),
         child: Row(
           children: [
@@ -64,10 +69,10 @@ class VehicleSelector extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Selected vehicle',
                     style: TextStyle(
-                      color: Colors.grey,
+                      color: ThemeService.mutedColor,
                       fontSize: 12.0,
                     ),
                   ),
@@ -78,8 +83,8 @@ class VehicleSelector extends StatelessWidget {
                       Flexible(
                         child: Text(
                           selectedVehicle?.displayName ?? 'Select a vehicle',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: ThemeService.textColor,
                             fontSize: 18.0,
                             fontWeight: FontWeight.bold,
                           ),
@@ -88,18 +93,18 @@ class VehicleSelector extends StatelessWidget {
                       ),
                       if (currentOdometer != null) ...[
                         const SizedBox(width: 8),
-                        const Text('•', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                        Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 14)),
                         const SizedBox(width: 8),
                         const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 14),
                         const SizedBox(width: 4),
-                        const Text('ODO', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 0.5)),
+                        Text('ODO', style: TextStyle(color: ThemeService.mutedColor, fontSize: 11, letterSpacing: 0.5)),
                         const SizedBox(width: 4),
                         Text.rich(
                           TextSpan(
                             text: currentOdometer!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                            children: const [
-                              TextSpan(text: ' km', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.normal)),
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                            children: [
+                              TextSpan(text: ' km', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12, fontWeight: FontWeight.normal)),
                             ],
                           ),
                         ),
@@ -122,25 +127,25 @@ class VehicleSelector extends StatelessWidget {
                                 ),
                             ),
                             child: Text(selectedVehicle!.vehicleNumber!,
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                style: TextStyle(
+                                    color: ThemeService.textColor, fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 8),
-                          const Text('•', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                          Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
                           const SizedBox(width: 8),
                         ],
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.08),
+                              color: ThemeService.mutedColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text('${selectedVehicle!.year}',
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: TextStyle(
+                                  color: ThemeService.mutedColor, fontSize: 11, fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 8),
-                        const Text('•', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                        Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -160,11 +165,10 @@ class VehicleSelector extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.keyboard_arrow_down,
-              color: Colors.grey,
-            ),
-          ],
+                        Icon(
+                      Icons.keyboard_arrow_down,
+                      color: ThemeService.textColor,
+                    ),     ],
         ),
       ),
     );
@@ -187,9 +191,9 @@ class VehicleSelector extends StatelessWidget {
 
             return Container(
               height: MediaQuery.of(context).size.height * 0.90,
-              decoration: const BoxDecoration(
-                color: Color(0xFF14141A), // Very dark background
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              decoration: BoxDecoration(
+                color: ThemeService.backgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
                 children: [
@@ -213,13 +217,13 @@ class VehicleSelector extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF22222A),
+                              color: ThemeService.surfaceColor,
                               borderRadius: BorderRadius.circular(12.0),
-                              border: Border.all(color: Colors.white10),
+                              border: Border.all(color: ThemeService.mutedColor.withOpacity(0.1)),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.search, color: Colors.grey[400]),
+                                Icon(Icons.search, color: ThemeService.mutedColor),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: TextField(
@@ -228,12 +232,12 @@ class VehicleSelector extends StatelessWidget {
                                         searchQuery = value;
                                       });
                                     },
-                                    style: const TextStyle(
-                                        color: Colors.white, fontSize: 16),
+                                    style: TextStyle(
+                                        color: ThemeService.textColor, fontSize: 16),
                                     decoration: InputDecoration(
                                       hintText: 'Search vehicle',
                                       hintStyle: TextStyle(
-                                          color: Colors.grey[400], fontSize: 16),
+                                          color: ThemeService.mutedColor, fontSize: 16),
                                       border: InputBorder.none,
                                       contentPadding: const EdgeInsets.symmetric(
                                           vertical: 14.0),
@@ -245,18 +249,7 @@ class VehicleSelector extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2A2A33),
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: const Icon(
-                            Icons.tune,
-                            color: Colors.white,
-                          ),
-                        ),
+                        // Removed filter icon
                       ],
                     ),
                   ),
@@ -283,7 +276,11 @@ class VehicleSelector extends StatelessWidget {
                             ),
                           )
                         else
-                          ...filteredVehicles.map((v) => _buildVehicleItem(context, v)),
+                          ...filteredVehicles.map((v) {
+                            final originalIndex = vehicles.indexOf(v);
+                            final isLocked = originalIndex >= maxVehicles;
+                            return _buildVehicleItem(context, v, isLocked);
+                          }),
 
                         const SizedBox(height: 16),
                     // Add New Vehicle Button
@@ -371,17 +368,42 @@ class VehicleSelector extends StatelessWidget {
     return Text(
       title,
       style: TextStyle(
-        color: Colors.grey[300],
+        color: ThemeService.mutedColor,
         fontSize: 15.0,
         fontWeight: FontWeight.w600,
       ),
     );
   }
 
-  Widget _buildVehicleItem(BuildContext context, Vehicle vehicle) {
+  Widget _buildVehicleItem(BuildContext context, Vehicle vehicle, bool isLocked) {
     bool isSelected = selectedVehicle?.id == vehicle.id;
     return GestureDetector(
       onTap: () {
+        if (isLocked) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: ThemeService.surfaceColor,
+              title: Text('Upgrade Required', style: TextStyle(color: ThemeService.textColor)),
+              content: Text('Your current plan has expired or reached its limit. Please upgrade your plan to access this vehicle.', style: TextStyle(color: ThemeService.mutedColor)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel', style: TextStyle(color: ThemeService.mutedColor)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pop(context); // close modal
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage()));
+                  },
+                  child: const Text('Upgrade', style: TextStyle(color: Color(0xFF00FF9D))),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
         onVehicleSelected(vehicle);
         Navigator.pop(context);
       },
@@ -389,99 +411,104 @@ class VehicleSelector extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8.0),
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2B2844) : const Color(0xFF22222A),
+          color: isSelected ? const Color(0xFF5A67D8).withOpacity(0.1) : ThemeService.surfaceColor,
           borderRadius: BorderRadius.circular(12.0),
           border: isSelected
               ? Border.all(color: const Color(0xFF5A67D8), width: 1.5)
               : Border.all(color: Colors.transparent, width: 1.5),
         ),
-        child: Row(
-          children: [
-            _buildVehicleIcon(vehicle, size: 48),
-            const SizedBox(width: 16.0),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          vehicle.displayName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.bold,
+        child: Opacity(
+          opacity: isLocked ? 0.5 : 1.0,
+          child: Row(
+            children: [
+              _buildVehicleIcon(vehicle, size: 48),
+              const SizedBox(width: 16.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            vehicle.displayName,
+                            style: TextStyle(
+                              color: ThemeService.textColor,
+                              fontSize: 16.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
-                        const SizedBox(width: 8),
-                        const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 14),
-                        const SizedBox(width: 4),
-                        const Text('ODO', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 0.5)),
-                        const SizedBox(width: 4),
-                        Text(
-                          vehicleOdometers![vehicle.id]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
+                        if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
+                          const SizedBox(width: 8),
+                          const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 14),
+                          const SizedBox(width: 4),
+                          Text('ODO', style: TextStyle(color: ThemeService.mutedColor, fontSize: 11, letterSpacing: 0.5)),
+                          const SizedBox(width: 4),
+                          Text(
+                            vehicleOdometers![vehicle.id]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 6.0),
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (vehicle.vehicleNumber != null && vehicle.vehicleNumber!.isNotEmpty) ...[
+                    ),
+                    const SizedBox(height: 6.0),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (vehicle.vehicleNumber != null && vehicle.vehicleNumber!.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: ThemeService.mutedColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(vehicle.vehicleNumber!,
+                                style: TextStyle(
+                                    color: ThemeService.textColor, fontSize: 11, fontWeight: FontWeight.w500)),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
+                          const SizedBox(width: 8),
+                        ],
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.08),
+                              color: ThemeService.mutedColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text(vehicle.vehicleNumber!,
+                          child: Text('${vehicle.year}',
+                              style: TextStyle(
+                                  color: ThemeService.mutedColor, fontSize: 11, fontWeight: FontWeight.w500)),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                              color: const Color(0xFF00BFA5).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6)),
+                          child: Text(vehicle.fuelType,
                               style: const TextStyle(
-                                  color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500)),
+                                  color: Color(0xFF00BFA5),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
                         ),
-                        const SizedBox(width: 8),
-                        const Text('•', style: TextStyle(color: Colors.grey, fontSize: 10)),
-                        const SizedBox(width: 8),
                       ],
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('${vehicle.year}',
-                            style: TextStyle(
-                                color: Colors.grey[300], fontSize: 11, fontWeight: FontWeight.w500)),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text('•', style: TextStyle(color: Colors.grey, fontSize: 10)),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: const Color(0xFF00BFA5).withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6)),
-                        child: Text(vehicle.fuelType,
-                            style: const TextStyle(
-                                color: Color(0xFF00BFA5),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: Color(0xFF5A67D8)),
-          ],
+              if (isLocked)
+                Icon(Icons.lock, color: ThemeService.mutedColor)
+              else if (isSelected)
+                const Icon(Icons.check_circle, color: Color(0xFF5A67D8)),
+            ],
+          ),
         ),
       ),
     );
@@ -489,7 +516,7 @@ class VehicleSelector extends StatelessWidget {
 
   Color _parseVehicleColor(String? colorStr) {
     if (colorStr == null || colorStr.isEmpty || colorStr == 'None') {
-      return Colors.grey;
+      return const Color(0xFF00FF9D); // Default neon color
     }
     final c = colorStr.toLowerCase();
     if (c.startsWith('#')) {
@@ -503,15 +530,37 @@ class VehicleSelector extends StatelessWidget {
       } catch (_) {}
     }
     
-    if (c.contains('white')) return Colors.white;
-    if (c.contains('black')) return const Color(0xFF222222);
-    if (c.contains('silver')) return const Color(0xFFC0C0C0);
-    if (c.contains('grey')) return const Color(0xFF808080);
-    if (c.contains('blue')) return const Color(0xFF5A78E6);
-    if (c.contains('red')) return const Color(0xFFE65A5A);
-    if (c.contains('green')) return const Color(0xFF00FF88);
-    
-    return Colors.grey;
+    switch (c) {
+      case 'red': return Colors.red;
+      case 'blue': return Colors.blue;
+      case 'black': return Colors.black;
+      case 'white': return Colors.white;
+      case 'silver': return Colors.grey.shade400;
+      case 'grey': return Colors.grey;
+      case 'green': return Colors.green;
+      case 'yellow': return Colors.yellow;
+      case 'orange': return Colors.orange;
+      case 'brown': return Colors.brown;
+      case 'gold': return const Color(0xFFFFD700);
+      default: return const Color(0xFF00FF9D); // Default neon color
+    }
+  }
+
+  IconData _getIconForType(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'motorcycle':
+      case 'bike':
+        return Icons.motorcycle;
+      case 'truck':
+        return Icons.local_shipping;
+      case 'bus':
+        return Icons.directions_bus;
+      case 'scooter':
+        return Icons.electric_scooter;
+      case 'car':
+      default:
+        return Icons.directions_car;
+    }
   }
 
   Widget _buildVehicleIcon(Vehicle? vehicle, {double size = 48}) {
@@ -520,37 +569,25 @@ class VehicleSelector extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: const Color(0xFF2A2A33),
+          color: ThemeService.surfaceColor,
           borderRadius: BorderRadius.circular(14.0),
         ),
         child: Icon(CupertinoIcons.car_detailed, color: Colors.grey, size: size * 0.6),
       );
     }
 
-    final hasColor = vehicle.color != null && vehicle.color!.isNotEmpty && vehicle.color != 'None';
-    if (hasColor) {
-      final iconColor = _parseVehicleColor(vehicle.color);
-      bool isDarkColor = iconColor.computeLuminance() < 0.05;
-      final bgColor = isDarkColor ? Colors.white.withOpacity(0.8) : iconColor.withOpacity(0.15);
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(14.0),
-        ),
-        alignment: Alignment.center,
-        child: Icon(
-          CupertinoIcons.car_detailed,
-          color: iconColor,
-          size: size * 0.6,
-        ),
-      );
-    }
+    final iconData = _getIconForType(vehicle.vehicleType);
+    final iconColor = _parseVehicleColor(vehicle.color);
+    bool isDarkColor = iconColor.computeLuminance() < 0.05;
+    bool isVeryLight = iconColor.computeLuminance() > 0.8;
+    
+    Color displayIconColor = iconColor;
+    Color bgColor = isDarkColor ? Colors.white.withOpacity(0.8) : iconColor.withOpacity(0.15);
 
-    final isTata = vehicle.make.toLowerCase().contains('tata');
-    final bgColor = isTata ? const Color(0xFF202330) : const Color(0xFF302020);
-    final iconColor = isTata ? const Color(0xFF5A78E6) : const Color(0xFFE65A5A);
+    if (!ThemeService.isDarkMode && isVeryLight) {
+      displayIconColor = iconColor;
+      bgColor = Colors.black.withOpacity(0.6);
+    }
 
     return Container(
       width: size,
@@ -561,8 +598,8 @@ class VehicleSelector extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Icon(
-        CupertinoIcons.car_detailed,
-        color: iconColor,
+        iconData,
+        color: displayIconColor,
         size: size * 0.6,
       ),
     );

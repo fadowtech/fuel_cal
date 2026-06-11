@@ -7,7 +7,7 @@ import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:intl/intl.dart';
 import 'package:fuel_cal/models/expense_model.dart';
-
+import 'package:fuel_cal/services/ad_service.dart';
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
 Color get _cardColor => ThemeService.cardColor;
@@ -169,6 +169,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       } else {
         ref.invalidate(expensesProvider);
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(widget.existingExpense != null
+              ? (widget.isServiceMode ? 'Service updated successfully!' : 'Expense updated successfully!')
+              : (widget.isServiceMode ? 'Service added successfully!' : 'Expense added successfully!')),
+          backgroundColor: Colors.green,
+        ),
+      );
       Navigator.pop(context);
     } else if (mounted) {
       String errMsg = result is String ? result : 'Failed to update expense.';
@@ -196,7 +204,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
               primary: _neonColor,
               onPrimary: Colors.black,
               surface: _surfaceColor,
-              onSurface: Colors.white,
+              onSurface: ThemeService.textColor,
             ),
           ),
           child: child!,
@@ -215,7 +223,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                 primary: _neonColor,
                 onPrimary: Colors.black,
                 surface: _surfaceColor,
-                onSurface: Colors.white,
+                onSurface: ThemeService.textColor,
               ),
             ),
             child: child!,
@@ -259,8 +267,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                         color: _surfaceColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.chevron_left_rounded,
-                          color: Colors.white, size: 24),
+                      child: Icon(Icons.chevron_left_rounded,
+                          color: ThemeService.textColor, size: 24),
                     ),
                   ),
                   Expanded(
@@ -268,16 +276,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(widget.existingExpense != null 
-                              ? 'Edit ${widget.initialCategory == 'Service' ? 'Service' : 'Expense'}' 
-                              : (widget.initialCategory == 'Service' ? 'Add Service' : 'Add Expense'),
-                            style: const TextStyle(
-                                color: Colors.white,
+                              ? 'Edit ${widget.isServiceMode ? 'Service' : 'Expense'}' 
+                              : (widget.isServiceMode ? 'Add Service' : 'Add Expense'),
+                            style: TextStyle(
+                                color: ThemeService.textColor,
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(widget.existingExpense != null 
-                              ? 'Update your ${widget.initialCategory == 'Service' ? 'service' : 'expense'}' 
-                              : 'Log a new ${widget.initialCategory == 'Service' ? 'service' : 'expense'}',
+                              ? 'Update your ${widget.isServiceMode ? 'service' : 'expense'}' 
+                              : 'Log a new ${widget.isServiceMode ? 'service' : 'expense'}',
                             style: TextStyle(
                                 color: _mutedColor, fontSize: 12)),
                       ],
@@ -316,7 +324,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _buildTextField(
                       label: 'Title',
                       isRequired: true,
@@ -329,7 +337,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       },
                       bottomWidget: Text('e.g. Car wash at Cleanly', style: TextStyle(color: _mutedColor, fontSize: 12)),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     GestureDetector(
                       onTap: _pickDate,
                       child: Container(
@@ -348,16 +356,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
               child: Row(
                           children: [
                             Icon(Icons.calendar_today_outlined, color: _neonColor, size: 24),
-                            const SizedBox(width: 16),
+                            SizedBox(width: 16),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Date & time', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                                  const SizedBox(height: 2),
+                                  SizedBox(height: 2),
                                   Text(
                                     dateFormat.format(_selectedDate),
-                                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: ThemeService.textColor, fontSize: 15, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -370,7 +378,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         ),
                     ),
                   ]),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _Section('CATEGORY', [
                       Wrap(
                         spacing: 12,
@@ -397,7 +405,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(cat['icon'], color: _neonColor, size: 20),
-                                          const SizedBox(width: 8),
+                                          SizedBox(width: 8),
                                           Text(
                                             cat['name']!,
                                             style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 13),
@@ -411,16 +419,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                                     decoration: BoxDecoration(
                                       color: Colors.transparent,
                                       borderRadius: BorderRadius.circular(24),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                      border: Border.all(color: ThemeService.textColor.withValues(alpha: 0.05)),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(cat['icon'], color: const Color(0xFF3B82F6), size: 20),
-                                        const SizedBox(width: 8),
+                                        SizedBox(width: 8),
                                         Text(
                                           cat['name']!,
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 13),
+                                          style: TextStyle(color: ThemeService.textColor, fontWeight: FontWeight.w500, fontSize: 13),
                                         ),
                                       ],
                                     ),
@@ -434,31 +442,60 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                           child: Text(_categoryErrorText!, style: TextStyle(color: _dangerColor, fontSize: 12)),
                         ),
                     ], infoIcon: true),
-                  const SizedBox(height: 8),
-                  _Section('NOTES', [
-                    Container(
-                      height: 80,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                      ),
-                      child: TextField(
-                        controller: _notesController,
-                        maxLines: null,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Add any notes (location, description, etc.)',
-                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 14),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
+                  SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _surfaceColor),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _cardColor,
+                          border: Border(left: BorderSide(color: _neonColor, width: 4)),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: Icon(Icons.notes, color: _neonColor, size: 20),
+                            ),
+                            SizedBox(width: 12),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: Text('Notes', style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w500)),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: TextField(
+                                  controller: _notesController,
+                                  maxLines: null,
+                                  style: TextStyle(color: ThemeService.textColor, fontSize: 14),
+                                  decoration: InputDecoration(
+                                    hintText: 'Add any notes',
+                                    hintStyle: TextStyle(color: _mutedColor.withOpacity(0.5), fontSize: 14),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ], isOptional: true),
-                  const SizedBox(height: 24),
+                  ),
+                  SizedBox(height: 24),
                   GestureDetector(
                     onTap: _isLoading ? null : _saveExpense,
                     child: Container(
@@ -471,14 +508,14 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.save_outlined, color: Colors.black, size: 22),
-                          const SizedBox(width: 8),
+                          Icon(Icons.save_outlined, color: Colors.black, size: 22),
+                          SizedBox(width: 8),
                           Text(_isLoading 
                                 ? 'Saving...' 
                                 : (widget.existingExpense != null 
                                     ? 'Update ${widget.initialCategory == 'Service' ? 'Service' : 'Expense'}' 
                                     : 'Save ${widget.initialCategory == 'Service' ? 'Service' : 'Expense'}'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: Colors.black,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold)),
@@ -486,6 +523,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       ),
                     ),
                   ),
+                  SizedBox(height: 24),
+                  const BannerAdWidget(),
                 ],
               ),
             ),
@@ -516,10 +555,10 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           child: RichText(
             text: TextSpan(
               text: label,
-              style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(color: ThemeService.textColor.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500),
               children: [
                 if (isRequired)
-                  const TextSpan(
+                  TextSpan(
                     text: ' *',
                     style: TextStyle(color: Colors.redAccent),
                   ),
@@ -543,12 +582,13 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
               child: Row(
             children: [
               Icon(icon, color: errorText != null ? Colors.redAccent : _neonColor, size: 20),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: customField ?? TextField(
                   controller: controller,
+                  textCapitalization: TextCapitalization.words,
                   keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                   onChanged: onChanged,
                   decoration: InputDecoration(
                     hintText: hint,
@@ -559,7 +599,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   ),
                 ),
               ),
-              if (suffix != null) Text(suffix, style: const TextStyle(color: Colors.white, fontSize: 14)),
+              if (suffix != null) Text(suffix, style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
             ],
           ),
             ),
@@ -570,7 +610,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             padding: const EdgeInsets.only(left: 4, top: 6),
             child: Text(
               errorText,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.redAccent,
                 fontSize: 12,
               ),
@@ -601,10 +641,10 @@ class _AmountChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.transparent,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(color: ThemeService.textColor.withValues(alpha: 0.1)),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+        child: Text(label, style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -623,9 +663,9 @@ class _ReceiptOption extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: _neonColor, size: 24),
-        const SizedBox(height: 8),
-        Text(title, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 2),
+        SizedBox(height: 8),
+        Text(title, style: TextStyle(color: ThemeService.textColor, fontSize: 12, fontWeight: FontWeight.bold)),
+        SizedBox(height: 2),
         Text(subtitle, style: TextStyle(color: _mutedColor, fontSize: 9)),
       ],
     );
@@ -665,7 +705,7 @@ class _Section extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           ...children,
         ],
       ),

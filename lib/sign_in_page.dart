@@ -84,7 +84,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                                 ),
                                 const SizedBox(width: 8),
                                 const Text(
-                                  'Fuel',
+                                  'Fuelvox',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 28,
@@ -260,64 +260,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: 32),
-                  
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Divider(color: ThemeService.mutedColor.withOpacity(0.2)),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'or continue with',
-                          style: TextStyle(
-                            color: ThemeService.mutedColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(color: ThemeService.mutedColor.withOpacity(0.2)),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Google Button
-                  Container(
-                    width: double.infinity,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: isDark ? ThemeService.surfaceColor : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? ThemeService.surfaceColor : Colors.grey.shade300,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.network(
-                          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
-                          height: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Google',
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
+ 
                   const SizedBox(height: 32),
                   
                   // Sign Up Link

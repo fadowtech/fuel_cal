@@ -8,6 +8,7 @@ import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/notification_service.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:intl/intl.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 
 class AddReminderPage extends StatefulWidget {
   final Map<String, dynamic>? editData;
@@ -54,6 +55,16 @@ class _AddReminderPageState extends State<AddReminderPage> {
     {'name': 'Tolls Recharge', 'icon': Icons.toll_outlined, 'color': Color(0xFFEC4899)},
   ];
 
+  String _formatNumber(dynamic val) {
+    if (val == null) return '';
+    if (val is num) return val == val.toInt() ? val.toInt().toString() : val.toString();
+    if (val is String) {
+      final d = double.tryParse(val);
+      if (d != null) return d == d.toInt() ? d.toInt().toString() : val;
+    }
+    return val.toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -62,9 +73,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
       if (raw != null) {
         _selectedCategory = raw['category'] ?? '';
         _titleController.text = raw['title'] ?? '';
-        _kmController.text = raw['due_km']?.toString() ?? '';
+        _kmController.text = _formatNumber(raw['due_km']);
         
-        _amountController.text = raw['amount'] != null ? raw['amount'].toString() : '';
+        _amountController.text = _formatNumber(raw['amount']);
         _notesController.text = raw['notes'] ?? '';
         if (raw['due_date'] != null) {
           _dueDate = DateTime.parse(raw['due_date']);
@@ -107,7 +118,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
               primary: _neonColor,
               onPrimary: Colors.black,
               surface: _surfaceColor,
-              onSurface: Colors.white,
+              onSurface: ThemeService.textColor,
             ),
           ),
           child: child!,
@@ -135,33 +146,34 @@ class _AddReminderPageState extends State<AddReminderPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 children: [
                   _buildSectionTitle('1. Reminder Details'),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildDetailsSection(),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   
                   _buildSectionTitle('2. Repeat'),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildRepeatSection(),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   
                   _buildSectionTitle('3. Notifications'),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildNotificationsSection(),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   
                   _buildSectionTitle('4. Priority'),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildPrioritySection(),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   
                   _buildNotesCard(),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   _buildSectionTitle('Summary'),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   _buildSummarySection(),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   _buildSaveButton(),
-                  const SizedBox(height: 40),
+                  SizedBox(height: 40),
+                  const BannerAdWidget(),
                 ],
               ),
             ),
@@ -285,14 +297,14 @@ class _AddReminderPageState extends State<AddReminderPage> {
                 color: _surfaceColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.chevron_left_rounded, color: Colors.white),
+              child: Icon(Icons.chevron_left_rounded, color: ThemeService.textColor),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.editData != null ? 'Edit reminder' : 'Add reminder', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(widget.editData != null ? 'Edit reminder' : 'Add reminder', style: TextStyle(color: ThemeService.textColor, fontSize: 20, fontWeight: FontWeight.bold)),
               Text('Set your alert', style: TextStyle(color: _mutedColor, fontSize: 13)),
             ],
           ),
@@ -308,12 +320,12 @@ class _AddReminderPageState extends State<AddReminderPage> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: ThemeService.textColor.withOpacity(0.05),
           borderRadius: BorderRadius.circular(20),
         ),
         alignment: Alignment.center,
         child: _isLoading
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: ThemeService.textColor, strokeWidth: 2))
             : Text(
                 'Save',
                 style: TextStyle(color: _neonColor, fontSize: 16, fontWeight: FontWeight.bold),
@@ -325,7 +337,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+      style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w500),
     );
   }
 
@@ -365,7 +377,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(cat['icon'] as IconData, color: _neonColor, size: 18),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               Text(cat['name'] as String,
                                   style: TextStyle(
                                       color: _neonColor,
@@ -379,16 +391,16 @@ class _AddReminderPageState extends State<AddReminderPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
                             color: Colors.transparent,
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                            border: Border.all(color: ThemeService.textColor.withValues(alpha: 0.05)),
                             borderRadius: BorderRadius.circular(20)),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(cat['icon'] as IconData, color: Colors.blueAccent, size: 18),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Text(cat['name'] as String,
-                                style: const TextStyle(
-                                    color: Colors.white,
+                                style: TextStyle(
+                                    color: ThemeService.textColor,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500)),
                           ],
@@ -402,11 +414,11 @@ class _AddReminderPageState extends State<AddReminderPage> {
               padding: const EdgeInsets.only(left: 4, top: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.redAccent, size: 14),
-                  const SizedBox(width: 4),
+                  Icon(Icons.error_outline, color: Colors.redAccent, size: 14),
+                  SizedBox(width: 4),
                   Text(
                     _categoryErrorText!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    style: TextStyle(color: Colors.redAccent, fontSize: 12),
                   ),
                 ],
               ),
@@ -420,13 +432,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
     return Column(
       children: [
         _buildTitleCard(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildAmountCard(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildDueDateCard(),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildDueKmCard(),
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
         Row(
           children: [
             Text('CATEGORY',
@@ -435,11 +447,11 @@ class _AddReminderPageState extends State<AddReminderPage> {
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.0)),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Icon(Icons.info_outline, color: _mutedColor, size: 16),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildCategoryFilter(),
       ],
     );
@@ -449,7 +461,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
     return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _titleErrorText != null ? Colors.redAccent : Colors.white.withOpacity(0.1)),
+            border: Border.all(color: _titleErrorText != null ? Colors.redAccent : ThemeService.textColor.withOpacity(0.1)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
@@ -468,31 +480,32 @@ class _AddReminderPageState extends State<AddReminderPage> {
               color: const Color(0xFFA855F7).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.build_outlined, color: Color(0xFFA855F7), size: 20),
+            child: Icon(Icons.build_outlined, color: Color(0xFFA855F7), size: 20),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 RichText(
-                  text: const TextSpan(
+                  text: TextSpan(
                     children: [
-                      TextSpan(text: 'Reminder Title ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: 'Reminder Title ', style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
                       TextSpan(text: '*', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
                     color: _backgroundColor,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _titleErrorText != null ? Colors.redAccent : Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: _titleErrorText != null ? Colors.redAccent : ThemeService.textColor.withOpacity(0.1)),
                   ),
                   child: TextField(
                     controller: _titleController,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    textCapitalization: TextCapitalization.words,
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                     maxLength: 60,
                     onChanged: (_) {
                       if (_titleErrorText != null) setState(() => _titleErrorText = null);
@@ -517,7 +530,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                     padding: const EdgeInsets.only(left: 4, top: 4),
                     child: Text(
                       _titleErrorText!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.redAccent,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -538,7 +551,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
     return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _dateErrorText != null ? Colors.redAccent : Colors.white.withOpacity(0.1)),
+            border: Border.all(color: _dateErrorText != null ? Colors.redAccent : ThemeService.textColor.withOpacity(0.1)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
@@ -557,22 +570,22 @@ class _AddReminderPageState extends State<AddReminderPage> {
               color: const Color(0xFF22C55E).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.calendar_today_outlined, color: Color(0xFF22C55E), size: 20),
+            child: Icon(Icons.calendar_today_outlined, color: Color(0xFF22C55E), size: 20),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 RichText(
-                  text: const TextSpan(
+                  text: TextSpan(
                     children: [
-                      TextSpan(text: 'Due Date ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: 'Due Date ', style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
                       TextSpan(text: '*', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 GestureDetector(
                   onTap: _pickDate,
                   child: Container(
@@ -580,7 +593,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                     decoration: BoxDecoration(
                       color: _backgroundColor,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -588,7 +601,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                         Expanded(
                           child: Text(
                             _dueDate != null ? DateFormat('dd MMM yyyy').format(_dueDate!) : 'Select date',
-                            style: TextStyle(color: _dueDate != null ? Colors.white : _mutedColor, fontSize: 12),
+                            style: TextStyle(color: _dueDate != null ? ThemeService.textColor : _mutedColor, fontSize: 12),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -602,7 +615,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                     padding: const EdgeInsets.only(left: 4, top: 4),
                     child: Text(
                       _dateErrorText!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.redAccent,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -623,7 +636,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
     return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
@@ -642,9 +655,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
               color: const Color(0xFFEAB308).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.speed_outlined, color: Color(0xFFEAB308), size: 20),
+            child: Icon(Icons.speed_outlined, color: Color(0xFFEAB308), size: 20),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,22 +665,22 @@ class _AddReminderPageState extends State<AddReminderPage> {
                 RichText(
                   text: TextSpan(
                     children: [
-                      const TextSpan(text: 'Due in KM ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: 'Due in KM ', style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
                       TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
                     color: _backgroundColor,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
                   ),
                   child: TextField(
                     controller: _kmController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 12),
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: 'Enter KM',
@@ -678,7 +691,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                       suffixIcon: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         decoration: BoxDecoration(
-                          border: Border(left: BorderSide(color: Colors.white.withOpacity(0.1))),
+                          border: Border(left: BorderSide(color: ThemeService.textColor.withOpacity(0.1))),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -705,7 +718,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
     return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            border: Border.all(color: ThemeService.textColor.withValues(alpha: 0.1)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
@@ -726,7 +739,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
             ),
             child: Icon(CurrencyService.currentCurrencyIconNotRounded, color: const Color(0xFF10B981), size: 20),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -734,22 +747,22 @@ class _AddReminderPageState extends State<AddReminderPage> {
                 RichText(
                   text: TextSpan(
                     children: [
-                      const TextSpan(text: 'Amount ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: 'Amount ', style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
                       TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
                     color: _backgroundColor,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    border: Border.all(color: ThemeService.textColor.withValues(alpha: 0.1)),
                   ),
                   child: TextField(
                     controller: _amountController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 12),
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: 'e.g. 300',
@@ -774,7 +787,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
     return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
@@ -793,9 +806,9 @@ class _AddReminderPageState extends State<AddReminderPage> {
               color: const Color(0xFF3B82F6).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 20),
+            child: Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 20),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -803,23 +816,23 @@ class _AddReminderPageState extends State<AddReminderPage> {
                 RichText(
                   text: TextSpan(
                     children: [
-                      const TextSpan(text: 'Notes ', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+                      TextSpan(text: 'Notes ', style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
                       TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
                     color: _backgroundColor,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
                   ),
                   child: TextField(
                     controller: _notesController,
                     maxLines: 3,
                     maxLength: 200,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 12),
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
                       hintText: 'Add any notes...',
@@ -861,14 +874,14 @@ class _AddReminderPageState extends State<AddReminderPage> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.repeat, color: Color(0xFF22C55E), size: 24),
-                const SizedBox(width: 16),
+                Icon(Icons.repeat, color: Color(0xFF22C55E), size: 24),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Repeat Reminder', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 2),
+                      Text('Repeat Reminder', style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w500)),
+                      SizedBox(height: 2),
                       Text('Set a repeating schedule', style: TextStyle(color: _mutedColor, fontSize: 12)),
                     ],
                   ),
@@ -877,7 +890,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                   _repeatReminder ? 'On' : 'Off',
                   style: TextStyle(color: _mutedColor, fontSize: 12),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Transform.scale(
                   scale: 0.7,
                   alignment: Alignment.centerRight,
@@ -893,7 +906,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
               ],
             ),
           ),
-          Divider(color: Colors.white.withOpacity(0.05), height: 1),
+          Divider(color: ThemeService.textColor.withOpacity(0.05), height: 1),
           Opacity(
             opacity: _repeatReminder ? 1.0 : 0.5,
             child: GestureDetector(
@@ -906,8 +919,8 @@ class _AddReminderPageState extends State<AddReminderPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Repeat Every', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 2),
+                        Text('Repeat Every', style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                        SizedBox(height: 2),
                         Text(
                           _getRepeatText(), 
                           style: TextStyle(color: _mutedColor, fontSize: 12),
@@ -987,20 +1000,20 @@ class _AddReminderPageState extends State<AddReminderPage> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: ThemeService.textColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Text(
+              Text(
                 'Repeat Reminder',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _buildIntervalOption('Monthly', Icons.calendar_today, context),
               _buildIntervalOption('Quarterly (3 Months)', Icons.calendar_view_week, context),
               _buildIntervalOption('Half-Yearly (6 Months)', Icons.calendar_view_month, context),
               _buildIntervalOption('Yearly', Icons.calendar_month, context),
-              Divider(color: Colors.white.withOpacity(0.05)),
+              Divider(color: ThemeService.textColor.withOpacity(0.05)),
               ListTile(
                 title: Text('Custom Interval', style: TextStyle(color: _neonColor, fontWeight: FontWeight.w500)),
                 trailing: Icon(Icons.chevron_right, color: _neonColor, size: 20),
@@ -1023,7 +1036,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
 
     return ListTile(
       leading: Icon(icon, color: _mutedColor, size: 20),
-      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      title: Text(title, style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
       trailing: isSelected 
           ? Icon(Icons.radio_button_checked, color: _neonColor, size: 20)
           : Icon(Icons.radio_button_unchecked, color: _mutedColor, size: 20),
@@ -1085,22 +1098,22 @@ class _AddReminderPageState extends State<AddReminderPage> {
                             Navigator.pop(context);
                             _showIntervalPicker();
                           },
-                          child: const Icon(Icons.arrow_back, color: Colors.white),
+                          child: Icon(Icons.arrow_back, color: ThemeService.textColor),
                         ),
-                        const Expanded(
+                        Expanded(
                           child: Center(
                             child: Text(
                               'Custom Interval',
-                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 24), // Balance the row
+                        SizedBox(width: 24), // Balance the row
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    const Text('Repeat Every', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 24),
+                    Text('Repeat Every', style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                    SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
@@ -1109,13 +1122,13 @@ class _AddReminderPageState extends State<AddReminderPage> {
                             decoration: BoxDecoration(
                               color: _backgroundColor,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
                             ),
                             child: TextField(
                               controller: TextEditingController(text: customNumber.toString())..selection = TextSelection.collapsed(offset: customNumber.toString().length),
                               keyboardType: TextInputType.number,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(vertical: 12),
@@ -1127,7 +1140,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           flex: 2,
                           child: Container(
@@ -1135,15 +1148,15 @@ class _AddReminderPageState extends State<AddReminderPage> {
                             decoration: BoxDecoration(
                               color: _backgroundColor,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: customUnit,
                                 dropdownColor: _backgroundColor,
                                 isExpanded: true,
-                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                icon: Icon(Icons.keyboard_arrow_down, color: ThemeService.textColor),
+                                style: TextStyle(color: ThemeService.textColor, fontSize: 14),
                                 items: ['Days', 'Weeks', 'Months', 'Years']
                                     .map((u) => DropdownMenuItem(value: u, child: Text(u)))
                                     .toList(),
@@ -1158,7 +1171,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
                     GestureDetector(
                       onTap: () {
                         setState(() {
@@ -1173,7 +1186,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         decoration: BoxDecoration(color: _neonColor, borderRadius: BorderRadius.circular(16)),
                         alignment: Alignment.center,
-                        child: const Text('Save', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: Text('Save', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -1202,22 +1215,22 @@ class _AddReminderPageState extends State<AddReminderPage> {
               padding: const EdgeInsets.all(16),
               child: Row(
         children: [
-          const Icon(Icons.notifications_active_outlined, color: Color(0xFFEAB308), size: 24),
-          const SizedBox(width: 16),
+          Icon(Icons.notifications_active_outlined, color: Color(0xFFEAB308), size: 24),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Notify Before', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 2),
+                Text('Notify Before', style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w500)),
+                SizedBox(height: 2),
                 Text('Choose when to notify', style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
             ),
           ),
           _buildNotifyPill(30, '30 Days'),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _buildNotifyPill(7, '7 Days'),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _buildNotifyPill(1, '1 Day'),
         ],
       ),
@@ -1241,14 +1254,14 @@ class _AddReminderPageState extends State<AddReminderPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.transparent : Colors.white.withOpacity(0.05),
+          color: isSelected ? Colors.transparent : ThemeService.textColor.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: isSelected ? _neonColor : Colors.transparent),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? _neonColor : Colors.white,
+            color: isSelected ? _neonColor : ThemeService.textColor,
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
@@ -1274,21 +1287,21 @@ class _AddReminderPageState extends State<AddReminderPage> {
               child: Row(
         children: [
           Icon(Icons.flag_outlined, color: _dangerColor, size: 24),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Set Priority', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 2),
+                Text('Set Priority', style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w500)),
+                SizedBox(height: 2),
                 Text('Choose reminder priority', style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
             ),
           ),
           _buildPriorityPill('High', _dangerColor),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _buildPriorityPill('Medium', Color(0xFFEAB308)),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           _buildPriorityPill('Low', Color(0xFF22C55E)),
         ],
       ),
@@ -1304,14 +1317,14 @@ class _AddReminderPageState extends State<AddReminderPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.transparent : Colors.white.withOpacity(0.05),
+          color: isSelected ? Colors.transparent : ThemeService.textColor.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: isSelected ? color : Colors.transparent),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? color : Colors.white,
+            color: isSelected ? color : ThemeService.textColor,
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
@@ -1382,7 +1395,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                   ),
                   child: Icon(iconData, color: iconColor, size: 24),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1415,7 +1428,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
                           Container(
@@ -1423,22 +1436,22 @@ class _AddReminderPageState extends State<AddReminderPage> {
                             height: 4,
                             decoration: BoxDecoration(color: iconColor, shape: BoxShape.circle),
                           ),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           Text(
                             _selectedCategory,
                             style: TextStyle(color: iconColor, fontSize: 12),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Row(
                         children: [
                           Icon(Icons.calendar_today_outlined, color: _mutedColor, size: 12),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(displayDate, style: TextStyle(color: _mutedColor, fontSize: 13)),
-                          const SizedBox(width: 16),
+                          SizedBox(width: 16),
                           Icon(Icons.speed, color: _mutedColor, size: 14),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             displayKm,
                             style: TextStyle(color: _mutedColor, fontSize: 13),

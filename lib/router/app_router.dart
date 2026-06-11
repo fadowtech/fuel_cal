@@ -18,10 +18,12 @@ import '../currency_selection_page.dart';
 import '../onboarding_settings_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final isAuthenticated = ref.watch(authProvider.select((state) => state.isAuthenticated));
+  final authState = ref.watch(authProvider);
+  final isAuthenticated = authState.isAuthenticated;
+  final isInitializing = authState.isInitializing;
 
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/splash',
     redirect: (context, state) {
       final uriStr = state.uri.toString();
       final isLoggingIn = uriStr == '/signin' || 
@@ -29,6 +31,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                           uriStr.startsWith('/otp') ||
                           uriStr == '/forgot_password' ||
                           uriStr == '/reset_password';
+
+      if (isInitializing) {
+        return '/splash';
+      }
+
+      if (uriStr == '/splash') {
+        return isAuthenticated ? '/dashboard' : '/signin';
+      }
 
       if (!isAuthenticated && !isLoggingIn) {
         return '/signin';
@@ -41,6 +51,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const Scaffold(
+          backgroundColor: Color(0xFF1E1E1E),
+          body: Center(
+            child: CircularProgressIndicator(color: Color(0xFF00E676)),
+          ),
+        ),
+      ),
       GoRoute(
         path: '/signin',
         builder: (context, state) => const SignInPage(),
@@ -156,7 +175,7 @@ class _MainDashboardWrapperState extends State<MainDashboardWrapper> {
     final localAuth = LocalAuthentication();
     try {
       final didAuthenticate = await localAuth.authenticate(
-        localizedReason: 'Please authenticate to unlock FuelMate',
+        localizedReason: 'Please authenticate to unlock Fuelvox',
         persistAcrossBackgrounding: true,
       );
       if (didAuthenticate && mounted) {

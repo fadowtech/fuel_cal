@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/router/app_router.dart';
@@ -21,6 +22,8 @@ import 'package:fuel_cal/add_reminder_page.dart';
 import 'package:fuel_cal/add_expense_page.dart';
 import 'package:fuel_cal/widgets/connectivity_wrapper.dart';
 import 'package:fuel_cal/services/notification_service.dart';
+import 'package:fuel_cal/services/subscription_service.dart';
+import 'package:fuel_cal/upgrade_page.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -46,6 +49,8 @@ void main() async {
   await ThemeService.init();
   await NotificationService.init();
   await CurrencyService.init();
+  await SubscriptionService.init();
+  await MobileAds.instance.initialize();
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
@@ -104,8 +109,11 @@ class _FuelCalculatorAppState extends ConsumerState<FuelCalculatorApp> {
         return MaterialApp.router(
           routerConfig: router,
           builder: (context, child) {
-            return ConnectivityWrapper(
-              child: child!,
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: isDarkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+              child: ConnectivityWrapper(
+                child: child!,
+              ),
             );
           },
           debugShowCheckedModeBanner: false,
@@ -308,7 +316,7 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
                 decoration: BoxDecoration(
                   color: _cardColor,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(color: ThemeService.mutedColor.withOpacity(0.1)),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
                   ],
@@ -319,17 +327,23 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
                     _buildFabMenuItem(Icons.local_gas_station_rounded, const Color(0xFF22C55E), 'Add Fuel', () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelPage()));
                     }),
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                     _buildFabMenuItem(Icons.account_balance_wallet_rounded, const Color(0xFFEF4444), 'Add Expense', () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const AddExpensePage()));
                     }),
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                     _buildFabMenuItem(Icons.build_rounded, const Color(0xFF3B82F6), 'Add Service', () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const AddExpensePage(isServiceMode: true)));
                     }),
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                     _buildFabMenuItem(Icons.notifications_active_rounded, const Color(0xFFF59E0B), 'Add Reminder', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const AddReminderPage()));
+                      final reminders = ref.read(remindersProvider).value ?? [];
+                      final maxReminders = ref.read(maxRemindersProvider).value ?? 5;
+                      if (reminders.length >= maxReminders) {
+                        _showUpgradeDialog(context, 'Reminders', maxReminders);
+                      } else {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const AddReminderPage()));
+                      }
                     }),
                   ],
                 ),
@@ -338,6 +352,40 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
           ),
         ),
       ],
+    );
+  }
+
+  void _showUpgradeDialog(BuildContext context, String feature, int limit) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardColor,
+        title: Row(
+          children: [
+            Icon(Icons.lock, color: _neonColor),
+            const SizedBox(width: 8),
+            const Text('Plan Limit Reached', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Text(
+          'Your current plan allows up to $limit $feature. Please upgrade to add more.',
+          style: TextStyle(color: _mutedColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: _mutedColor)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage()));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: _neonColor, foregroundColor: Colors.black),
+            child: const Text('Upgrade'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -354,7 +402,7 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
           children: [
             Icon(icon, color: color, size: 24),
             const SizedBox(width: 16),
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+            Text(label, style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -434,7 +482,7 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
           color: ThemeService.neonColor,
           shape: BoxShape.circle,
           border: Border.all(
-            color: const Color(0xFF161E2E), // Match the dark navbar background perfectly
+            color: ThemeService.isDarkMode ? const Color(0xFF161B22) : Colors.white, // Match the dark/light navbar background perfectly
             width: 6, // Make the border a bit thicker as in screenshot
           ),
         ),
@@ -874,18 +922,8 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
           const SizedBox(height: 24),
 
           // Output / Results Card
-          GestureDetector(
-            onTap: () {
-              if (_fuelEfficiency > 0.0) {
-                String output = 'Fuel Efficiency Calculation:\n'
-                    '  Distance Traveled: ${_distanceController.text} KM\n'
-                    '  Fuel Used: ${_fuelUsedController.text} Liters\n'
-                    '  Fuel Efficiency: ${_formatNumber(_fuelEfficiency)} KM/L\n'
-                    '  Efficiency Rating: $_efficiencyRating';
-                _copyToClipboard(output);
-              }
-            },
-            child: Container(
+          if (_fuelEfficiency > 0.0)
+            Container(
               decoration: BoxDecoration(
                 color: _cardColor,
                 borderRadius: BorderRadius.circular(24),
@@ -928,13 +966,31 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Your Fuel Efficiency',
-                                style: TextStyle(
-                                  color: _mutedColor,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Your Fuel Efficiency',
+                                    style: TextStyle(
+                                      color: _mutedColor,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: Icon(Icons.copy, size: 16, color: _mutedColor),
+                                    onPressed: () {
+                                      String output = 'Fuel Efficiency Calculation:\n'
+                                          '  Distance Traveled: ${_distanceController.text} KM\n'
+                                          '  Fuel Used: ${_fuelUsedController.text} Liters\n'
+                                          '  Fuel Efficiency: ${_formatNumber(_fuelEfficiency)} KM/L\n'
+                                          '  Efficiency Rating: $_efficiencyRating';
+                                      _copyToClipboard(output);
+                                    },
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 6),
                               Row(
@@ -1001,7 +1057,6 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                 ],
               ),
             ),
-          ),
 
           // Error Message container
           if (_errorMessage.isNotEmpty) ...[

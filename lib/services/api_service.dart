@@ -132,6 +132,38 @@ class ApiService {
     }
   }
 
+  Future<void> syncProfile() async {
+    try {
+      final email = await _storage.read(key: 'user_email');
+      if (email == null) return;
+      
+      final meRes = await _dio.get('/users/me');
+      final firstName = meRes.data['first_name'] ?? (meRes.data['full_name'] != null ? meRes.data['full_name'].toString().split(' ').first : email.split('@').first);
+      
+      String lastName = '';
+      if (meRes.data['last_name'] != null) {
+        lastName = meRes.data['last_name'];
+      } else if (meRes.data['full_name'] != null) {
+        final parts = meRes.data['full_name'].toString().split(' ');
+        if (parts.length > 1) {
+          lastName = parts.sublist(1).join(' ');
+        }
+      }
+
+      await ProfileService.saveProfile(
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        phone: meRes.data['phone'] ?? '',
+        gender: meRes.data['gender'],
+        fromLogin: true,
+      );
+      if (meRes.data['currency_code'] != null) {
+        await CurrencyService.saveCurrency(meRes.data['currency_code']);
+      }
+    } catch (_) {}
+  }
+
   Future<bool> signup(String name, String email, String password, {String gender = ''}) async {
     try {
       final parts = name.split(' ');

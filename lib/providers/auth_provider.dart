@@ -13,22 +13,26 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 class AuthState {
   final bool isAuthenticated;
   final bool isLoading;
+  final bool isInitializing;
   final String? error;
 
   AuthState({
     this.isAuthenticated = false,
     this.isLoading = false,
+    this.isInitializing = true,
     this.error,
   });
 
   AuthState copyWith({
     bool? isAuthenticated,
     bool? isLoading,
+    bool? isInitializing,
     String? error,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       isLoading: isLoading ?? this.isLoading,
+      isInitializing: isInitializing ?? this.isInitializing,
       error: error ?? this.error,
     );
   }
@@ -48,7 +52,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> checkAuthStatus() async {
     final token = await _storage.read(key: 'access_token');
     if (token != null) {
-      state = state.copyWith(isAuthenticated: true);
+      state = state.copyWith(isAuthenticated: true, isInitializing: false);
+      _ref.read(apiServiceProvider).syncProfile().then((_) {
+        _ref.invalidate(profileProvider);
+      });
+    } else {
+      state = state.copyWith(isAuthenticated: false, isInitializing: false);
     }
   }
 

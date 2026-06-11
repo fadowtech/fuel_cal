@@ -8,6 +8,8 @@ import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/expense_details_page.dart';
 import 'package:fuel_cal/reminder_details_page.dart';
+import 'package:fuel_cal/fuel_log_details_page.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
@@ -73,11 +75,23 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     final remindersList = remindersAsync.valueOrNull ?? [];
     final vehiclesMap = {for (var v in (vehiclesAsync.valueOrNull ?? [])) v.id: v};
 
+    final selectedVehicle = ref.watch(selectedVehicleProvider);
+    final activeVehicle = selectedVehicle ?? (vehiclesAsync.valueOrNull?.isNotEmpty == true ? vehiclesAsync.valueOrNull!.first : null);
+
     List<UnifiedLog> unifiedLogs = [];
+
+    bool matchesVehicle(int? logVehicleId) {
+      if (activeVehicle == null) return true;
+      if (logVehicleId == activeVehicle.id) return true;
+      final vList = vehiclesAsync.valueOrNull ?? [];
+      if (logVehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
+      return false;
+    }
 
     // Add Fuel Logs
     for (int i = 0; i < fuelLogsList.length; i++) {
         final log = fuelLogsList[i];
+        if (!matchesVehicle(log.vehicleId)) continue;
         if (log.date != null) {
             unifiedLogs.add(UnifiedLog(LogType.fuel, log.date!, log));
         }
@@ -86,6 +100,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     if (!widget.onlyFuel) {
         // Add Expenses
         for (var expense in expensesList) {
+            if (!matchesVehicle(expense.vehicleId)) continue;
             if (expense.date != null) {
                 unifiedLogs.add(UnifiedLog(LogType.expense, expense.date!, expense));
             }
@@ -93,6 +108,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         
         // Add Services
         for (var service in servicesList) {
+            if (!matchesVehicle(service.vehicleId)) continue;
             if (service.date != null) {
                 unifiedLogs.add(UnifiedLog(LogType.service, service.date!, Expense(id: service.id, userId: service.userId, vehicleId: service.vehicleId, category: service.category, title: service.title, amount: service.amount, date: service.date, notes: service.notes)));
             }
@@ -101,6 +117,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         // Add Reminders
         for (var rem in remindersList) {
            final r = rem as Map<String, dynamic>;
+           if (!matchesVehicle(r['vehicle_id'] as int?)) continue;
            final status = r['status'] as String? ?? 'pending';
            // Reminders timeline uses completed_at if available, else due_date, else created_at
            DateTime? dateToUse;
@@ -297,20 +314,21 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             children: [
               Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.maybePop(context),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        color: _surfaceColor,
-                        borderRadius: BorderRadius.circular(12),
+                  if (widget.onlyFuel)
+                    GestureDetector(
+                      onTap: () => Navigator.maybePop(context),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          color: _surfaceColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.chevron_left_rounded,
+                            color: ThemeService.textColor, size: 24),
                       ),
-                      child: const Icon(Icons.chevron_left_rounded,
-                          color: Colors.white, size: 24),
                     ),
-                  ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -325,14 +343,30 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                   ),
                 ],
               ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                    color: _surfaceColor, shape: BoxShape.circle),
-                child: Icon(Icons.filter_list,
-                    color: _neonColor, size: 20),
-              ),
+              if (widget.onlyFuel)
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AddFuelPage()));
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _neonColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _neonColor.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.add, color: _neonColor, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Add Fuel',
+                          style: TextStyle(color: _neonColor, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -341,13 +375,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             decoration: BoxDecoration(
               color: _surfaceColor,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: ThemeService.isDarkMode ? [] : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                )
-              ],
+              boxShadow: [],
             ),
             child: Row(
               children: [
@@ -361,9 +389,15 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                       });
                     },
                     style: TextStyle(color: ThemeService.textColor, fontSize: 14),
-                    decoration: InputDecoration.collapsed(
+                    decoration: InputDecoration(
                       hintText: 'Search...',
                       hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
                     ),
                   ),
                 ),
@@ -490,7 +524,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => LogDetailPage(log: mockLog)),
+          MaterialPageRoute(builder: (context) => FuelLogDetailsPage(fuelLog: log)),
         );
       },
       child: Container(

@@ -1,4 +1,5 @@
 import 'package:fuel_cal/services/currency_service.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -36,6 +37,15 @@ class _StatsPageState extends ConsumerState<StatsPage> {
   Widget build(BuildContext context) {
     final fuelLogsAsync = ref.watch(fuelLogsProvider);
     final expensesAsync = ref.watch(expensesProvider);
+    final servicesAsync = ref.watch(servicesProvider);
+    
+    final selectedVehicle = ref.watch(selectedVehicleProvider);
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final activeVehicle = selectedVehicle ?? (vehiclesAsync.valueOrNull?.isNotEmpty == true ? vehiclesAsync.valueOrNull!.first : null);
+
+    List<FuelLog> filterLogs(List<FuelLog> list) => activeVehicle == null ? list : list.where((x) => x.vehicleId == activeVehicle.id).toList();
+    List<Expense> filterExpenses(List<Expense> list) => activeVehicle == null ? list : list.where((x) => x.vehicleId == activeVehicle.id).toList();
+    List<Service> filterServices(List<Service> list) => activeVehicle == null ? list : list.where((x) => x.vehicleId == activeVehicle.id).toList();
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -61,8 +71,8 @@ class _StatsPageState extends ConsumerState<StatsPage> {
               const SizedBox(height: 24),
               fuelLogsAsync.when(
                 data: (logs) => expensesAsync.when(
-                  data: (expenses) => ref.watch(servicesProvider).when(
-                    data: (services) => _buildKpiGrid(logs, expenses, services),
+                  data: (expenses) => servicesAsync.when(
+                    data: (services) => _buildKpiGrid(filterLogs(logs), filterExpenses(expenses), filterServices(services)),
                     loading: () => const Center(child: CircularProgressIndicator()),
                     error: (e, s) => const SizedBox(),
                   ),
@@ -73,16 +83,18 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 error: (e, s) => const SizedBox(),
               ),
               const SizedBox(height: 24),
-              if (fuelLogsAsync.hasValue) _buildFuelCostChart(fuelLogsAsync.value!) else _buildPlaceholderChart(),
-              if (fuelLogsAsync.hasValue) _buildMileageChart(fuelLogsAsync.value!) else _buildPlaceholderChart(),
-              if (fuelLogsAsync.hasValue) _buildMonthlyComparisonChart(fuelLogsAsync.value!) else _buildCard('Monthly comparison', _buildPlaceholderChart()),
+              if (fuelLogsAsync.hasValue) _buildFuelCostChart(filterLogs(fuelLogsAsync.value!)) else _buildPlaceholderChart(),
+              if (fuelLogsAsync.hasValue) _buildMileageChart(filterLogs(fuelLogsAsync.value!)) else _buildPlaceholderChart(),
+              if (fuelLogsAsync.hasValue) _buildMonthlyComparisonChart(filterLogs(fuelLogsAsync.value!)) else _buildCard('Monthly comparison', _buildPlaceholderChart()),
               const SizedBox(height: 16),
-              if (fuelLogsAsync.hasValue && expensesAsync.hasValue && ref.read(servicesProvider).hasValue) 
-                _buildExpenseBreakdown(fuelLogsAsync.value!, expensesAsync.value!, ref.read(servicesProvider).value!) 
+              if (fuelLogsAsync.hasValue && expensesAsync.hasValue && servicesAsync.hasValue) 
+                _buildExpenseBreakdown(filterLogs(fuelLogsAsync.value!), filterExpenses(expensesAsync.value!), filterServices(servicesAsync.value!)) 
               else 
                 _buildCard('Expense breakdown', _buildPlaceholderChart()),
               const SizedBox(height: 24),
-              if (fuelLogsAsync.hasValue) _buildSmartInsights(fuelLogsAsync.value!) else const SizedBox(),
+              if (fuelLogsAsync.hasValue) _buildSmartInsights(filterLogs(fuelLogsAsync.value!)) else const SizedBox(),
+              const SizedBox(height: 24),
+              const BannerAdWidget(),
               const SizedBox(height: 100),
             ],
           ),
@@ -300,7 +312,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           trendValue: '${spendTrend.abs().toStringAsFixed(1)}%',
           isTrendUp: spendTrend >= 0,
           trendText: dynamicTrendText,
-          icon: Icons.account_balance_wallet_outlined,
+          icon: Icons.account_balance_wallet,
           themeColor: const Color(0xFF00E676),
           sparklineData: spendData,
         ),
@@ -310,7 +322,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           trendValue: '${distanceTrend.abs().toStringAsFixed(1)}%',
           isTrendUp: distanceTrend >= 0,
           trendText: dynamicTrendText,
-          icon: Icons.add_road,
+          icon: Icons.route,
           themeColor: const Color(0xFF2979FF),
           sparklineData: distanceData,
         ),
@@ -330,7 +342,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           trendValue: '${priceTrend.abs().toStringAsFixed(1)}%',
           isTrendUp: priceTrend >= 0, 
           trendText: dynamicTrendText,
-          icon: Icons.local_gas_station_outlined,
+          icon: Icons.local_gas_station,
           themeColor: const Color(0xFFFF9100),
           sparklineData: priceData,
         ),
@@ -647,11 +659,11 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 Icon(icon, color: color, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(entry.key, style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
+                  child: Text(entry.key, style: TextStyle(color: ThemeService.textColor, fontSize: 15, fontWeight: FontWeight.w500)),
                 ),
                 SizedBox(
                   width: 45,
-                  child: Text('$percentage%', style: TextStyle(color: Colors.white, fontSize: 14), textAlign: TextAlign.right),
+                  child: Text('$percentage%', style: TextStyle(color: ThemeService.textColor, fontSize: 14), textAlign: TextAlign.right),
                 ),
                 const SizedBox(width: 12),
                 SizedBox(

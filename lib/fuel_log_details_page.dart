@@ -1,5 +1,6 @@
 import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:fuel_cal/models/fuel_log_model.dart';
@@ -7,6 +8,7 @@ import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 
 Color get _backgroundColor => ThemeService.backgroundColor;
 Color get _cardColor => ThemeService.cardColor;
@@ -32,9 +34,9 @@ class FuelLogDetailsPage extends ConsumerWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: bgColor ?? Colors.white.withOpacity(0.05),
+          color: bgColor ?? ThemeService.mutedColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor ?? Colors.white.withOpacity(0.15)),
+          border: Border.all(color: borderColor ?? ThemeService.mutedColor.withOpacity(0.2)),
         ),
         child: Icon(icon, color: color, size: 20),
       ),
@@ -72,7 +74,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
                 Text(title, style: TextStyle(color: _mutedColor, fontSize: 12, fontWeight: FontWeight.w500)),
                 if (subtitle != null) ...[
                   const SizedBox(height: 4),
-                  Text(subtitle, style: TextStyle(color: subtitleColor ?? Colors.white, fontSize: 14)),
+                  Text(subtitle, style: TextStyle(color: subtitleColor ?? ThemeService.textColor, fontSize: 14)),
                 ]
               ],
             ),
@@ -102,7 +104,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
             children: [
               Text(label, style: TextStyle(color: _mutedColor, fontSize: 12)),
               const SizedBox(height: 4),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+              Text(value, style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -125,14 +127,14 @@ class FuelLogDetailsPage extends ConsumerWidget {
         backgroundColor: _backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: ThemeService.textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Fuel Details', style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: Text('Fuel Details', style: TextStyle(color: ThemeService.textColor, fontSize: 18)),
         actions: [
           _buildActionButton(
             icon: Icons.edit,
-            color: Colors.white70,
+            color: ThemeService.textColor.withOpacity(0.7),
             onTap: () async {
               await Navigator.push(
                 context,
@@ -154,12 +156,12 @@ class FuelLogDetailsPage extends ConsumerWidget {
                 context: context,
                 builder: (ctx) => AlertDialog(
                   backgroundColor: _cardColor,
-                  title: const Text('Delete Entry', style: TextStyle(color: Colors.white)),
-                  content: const Text('Are you sure you want to delete this entry? This action cannot be undone.', style: TextStyle(color: Colors.white70)),
+                  title: Text('Delete Entry', style: TextStyle(color: ThemeService.textColor)),
+                  content: Text('Are you sure you want to delete this entry? This action cannot be undone.', style: TextStyle(color: ThemeService.textColor.withOpacity(0.7))),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                      child: Text('Cancel', style: TextStyle(color: ThemeService.textColor.withOpacity(0.54))),
                     ),
                     TextButton(
                       onPressed: () async {
@@ -219,7 +221,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Text(
                     stationName,
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: ThemeService.textColor, fontSize: 24, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -235,7 +237,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                   const SizedBox(height: 24),
                   IntrinsicHeight(
                     child: Row(
@@ -243,7 +245,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
                         Expanded(
                           child: _buildHeaderInfo(Icons.calendar_today, const Color(0xFF10B981), 'Date', dateStr),
                         ),
-                        VerticalDivider(color: Colors.white.withOpacity(0.05), width: 32),
+                        VerticalDivider(color: ThemeService.mutedColor.withOpacity(0.1), width: 32),
                         Expanded(
                           child: _buildHeaderInfo(CurrencyService.currentCurrencyIcon, const Color(0xFF3B82F6), 'Total Cost', '${CurrencyService.currencySymbol}${fuelLog.totalCost.toStringAsFixed(0)}'),
                         ),
@@ -268,7 +270,25 @@ class FuelLogDetailsPage extends ConsumerWidget {
                     title: 'ODOMETER',
                     subtitle: '${fuelLog.odometer.toStringAsFixed(0)} KM',
                   ),
-                  Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                  if (fuelLog.remainingRange != null && fuelLog.remainingRange! > 0) ...[
+                    _buildListTile(
+                      icon: Icons.compare_arrows_rounded,
+                      iconColor: const Color(0xFF00E676),
+                      title: 'DISTANCE TO EMPTY BEFORE FUEL',
+                      subtitle: '${fuelLog.remainingRange!.toStringAsFixed(0)} KM',
+                    ),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                  ],
+                  if (fuelLog.remainingRangeAfter != null && fuelLog.remainingRangeAfter! > 0) ...[
+                    _buildListTile(
+                      icon: Icons.compare_arrows_rounded,
+                      iconColor: const Color(0xFF00E676),
+                      title: 'DISTANCE TO EMPTY AFTER FUEL',
+                      subtitle: '${fuelLog.remainingRangeAfter!.toStringAsFixed(0)} KM',
+                    ),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                  ],
                   if (fuelLog.fuelPrice != null) ...[
                     _buildListTile(
                       icon: Icons.price_change_outlined,
@@ -276,7 +296,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
                       title: 'FUEL PRICE',
                       subtitle: '${CurrencyService.currencySymbol}${fuelLog.fuelPrice!.toStringAsFixed(2)} / L',
                     ),
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                   ],
                   if (fuelLog.paymentMethod != null && fuelLog.paymentMethod!.isNotEmpty) ...[
                     _buildListTile(
@@ -285,7 +305,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
                       title: 'PAYMENT METHOD',
                       subtitle: fuelLog.paymentMethod,
                     ),
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                   ],
                   if (fuelLog.location != null && fuelLog.location!.isNotEmpty) ...[
                     _buildListTile(
@@ -294,7 +314,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
                       title: 'LOCATION',
                       subtitle: fuelLog.location,
                     ),
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                   ],
                   _buildListTile(
                     icon: Icons.local_gas_station,
@@ -302,7 +322,7 @@ class FuelLogDetailsPage extends ConsumerWidget {
                     title: 'FULL TANK',
                     subtitle: fuelLog.isFullTank ? 'Yes' : 'No',
                   ),
-                  Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                   if (fuelLog.notes != null && fuelLog.notes!.isNotEmpty)
                     _buildListTile(
                       icon: Icons.notes,
@@ -320,6 +340,8 @@ class FuelLogDetailsPage extends ConsumerWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+            const BannerAdWidget(),
           ],
         ),
       ),

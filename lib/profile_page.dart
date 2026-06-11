@@ -11,9 +11,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/notification_service.dart';
+import 'package:fuel_cal/services/subscription_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:local_auth/local_auth.dart';
-
+import 'package:fuel_cal/services/ad_service.dart';
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
 Color get _cardColor => ThemeService.cardColor;
@@ -36,12 +37,14 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
-  String _selectedCurrencyCode = 'INR';
+  String _selectedCurrencyCode = '';
   String _profileName = ProfileService.defaultName;
   String _profileEmail = ProfileService.defaultEmail;
   String _profilePhone = ProfileService.defaultPhone;
   bool _notificationsEnabled = true;
   bool _fingerprintEnabled = false;
+  int _currentPlanIndex = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -50,28 +53,49 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Future<void> _loadData() async {
-    if (widget.selectedCurrencyCode != null && widget.selectedCurrencyCode!.isNotEmpty) {
-      setState(() {
-        _selectedCurrencyCode = widget.selectedCurrencyCode!;
-      });
-    } else {
-      final currency = await CurrencyService.getCurrency();
-      if (currency != null && currency.isNotEmpty) {
+    // Load currency immediately to prevent flicker
+    CurrencyService.getCurrency().then((currency) {
+      if (mounted) {
         setState(() {
-          _selectedCurrencyCode = currency;
+          if (widget.selectedCurrencyCode != null && widget.selectedCurrencyCode!.isNotEmpty) {
+            _selectedCurrencyCode = widget.selectedCurrencyCode!;
+          } else if (currency != null && currency.isNotEmpty) {
+            _selectedCurrencyCode = currency;
+          } else {
+            _selectedCurrencyCode = 'INR';
+          }
         });
       }
-    }
+    });
 
     final profile = await ProfileService.getProfile();
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _profileName = profile['name']!;
-      _profileEmail = profile['email']!;
-      _profilePhone = profile['phone']!;
-      _notificationsEnabled = prefs.getBool('notifications_enabled_$_profileEmail') ?? false;
-      _fingerprintEnabled = prefs.getBool('fingerprint_enabled_$_profileEmail') ?? false;
-    });
+    final plan = await SubscriptionService.getCurrentPlan();
+    
+    if (mounted) {
+      setState(() {
+        _profileName = profile['name']!;
+        _profileEmail = profile['email']!;
+        _profilePhone = profile['phone']!;
+        _notificationsEnabled = prefs.getBool('notifications_enabled_$_profileEmail') ?? false;
+        _fingerprintEnabled = prefs.getBool('fingerprint_enabled_$_profileEmail') ?? false;
+        _currentPlanIndex = plan;
+        _isLoading = false;
+      });
+    }
+
+    // Attempt to sync from server in the background
+    try {
+      await ref.read(apiServiceProvider).syncProfile();
+      final updatedProfile = await ProfileService.getProfile();
+      if (mounted) {
+        setState(() {
+          _profileName = updatedProfile['name']!;
+          _profileEmail = updatedProfile['email']!;
+          _profilePhone = updatedProfile['phone']!;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -148,11 +172,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               _buildProfileCard(),
               const SizedBox(height: 16),
               GestureDetector(
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const UpgradePage()),
                   );
+                  _loadData();
                 },
                 child: _buildUpgradeButton(),
               ),
@@ -231,7 +256,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   Icons.local_gas_station_outlined,
                   'Manage Fuel',
                   null,
-                  subtitle: 'Price & Fuel Station',
+                  subtitle: 'Set Fuel Price & Add Fuel Station',
                   onTap: () {
                     Navigator.push(
                       context,
@@ -246,11 +271,56 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   Icons.description_outlined,
                   'Reports',
                   null,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const ReportsPage()),
+                  badge: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFACC15).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0xFFFACC15).withOpacity(0.5)),
+                    ),
+                    child: const Text('PRO', style: TextStyle(color: Color(0xFFFACC15), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                   ),
+                  onTap: () {
+                    if (_currentPlanIndex < 3) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: _cardColor,
+                          title: Row(
+                            children: [
+                              const Icon(Icons.workspace_premium, color: Color(0xFFFACC15)),
+                              const SizedBox(width: 8),
+                              const Text('Pro Plan Required', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                          content: Text(
+                            'Export Reports is an exclusive feature for Fuel Log Pro users. Please upgrade to access this feature.',
+                            style: TextStyle(color: _mutedColor),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text('Cancel', style: TextStyle(color: _mutedColor)),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage())).then((_) => _loadData());
+                              },
+                              style: ElevatedButton.styleFrom(backgroundColor: _neonColor, foregroundColor: Colors.black),
+                              child: const Text('Upgrade'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ReportsPage()),
+                      );
+                    }
+                  },
                 ),
               ]),
               const SizedBox(height: 24),
@@ -357,8 +427,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               _buildSignOutButton(),
               const SizedBox(height: 16),
               Center(
-                  child: Text('FuelMate v1.0.0',
+                  child: Text('Fuelvox v1.0.13',
                       style: TextStyle(color: _mutedColor, fontSize: 10))),
+              const SizedBox(height: 24),
+              const BannerAdWidget(),
               const SizedBox(height: 100), // padding for bottom nav
             ],
           ),
@@ -369,13 +441,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   Widget _buildProfileCard() {
     // Robust checks to handle hot-reloads and prevent any uninitialized/null state issues
-    final name = (_profileName != null && (_profileName as dynamic) != null) ? _profileName : 'Tom Hardy';
-    final email = (_profileEmail != null && (_profileEmail as dynamic) != null) ? _profileEmail : 'tom@fuelmate.app';
-    final phone = (_profilePhone != null && (_profilePhone as dynamic) != null) ? _profilePhone : '+91 98765 43210';
+    final name = (_profileName != null && (_profileName as dynamic) != null && _profileName.isNotEmpty) ? _profileName : '';
+    final email = (_profileEmail != null && (_profileEmail as dynamic) != null && _profileEmail.isNotEmpty) ? _profileEmail : '';
+    final phone = (_profilePhone != null && (_profilePhone as dynamic) != null && _profilePhone.isNotEmpty) ? _profilePhone : '';
 
     final firstLetter = name.isNotEmpty
         ? name.trim()[0].toUpperCase()
-        : 'T';
+        : 'U';
 
     return GestureDetector(
       onTap: () async {
@@ -403,26 +475,42 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Text(firstLetter,
-                  style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold)),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
+                    )
+                  : Text(firstLetter,
+                      style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
-                      style: TextStyle(
-                          color: ThemeService.textColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold)),
-                  Text(email,
-                      style: TextStyle(color: _mutedColor, fontSize: 12)),
-                  Text(phone,
-                      style: TextStyle(color: _mutedColor, fontSize: 12)),
+                  if (_isLoading)
+                    Container(width: 120, height: 18, margin: const EdgeInsets.only(bottom: 4), decoration: BoxDecoration(color: _surfaceColor, borderRadius: BorderRadius.circular(4)))
+                  else if (name.isNotEmpty)
+                    Text(name,
+                        style: TextStyle(
+                            color: ThemeService.textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
+                  if (_isLoading)
+                    Container(width: 150, height: 12, margin: const EdgeInsets.only(bottom: 4), decoration: BoxDecoration(color: _surfaceColor, borderRadius: BorderRadius.circular(4)))
+                  else if (email.isNotEmpty)
+                    Text(email,
+                        style: TextStyle(color: _mutedColor, fontSize: 12)),
+                  if (!_isLoading && phone.isNotEmpty)
+                    Text(phone,
+                        style: TextStyle(color: _mutedColor, fontSize: 12)),
                 ],
               ),
             ),
@@ -434,6 +522,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildUpgradeButton() {
+    String title = 'Upgrade to Pro';
+    String subtitle = 'Increase vehicles, reports & reminders';
+    IconData icon = Icons.workspace_premium;
+    Color iconColor = const Color(0xFFEAB308); // Gold color for the premium icon
+
+    if (_currentPlanIndex == 1) {
+      title = 'Remove Ads Active';
+      subtitle = 'Thanks for supporting Fuelvox!';
+      icon = Icons.block;
+    } else if (_currentPlanIndex == 2) {
+      title = 'Fuel Log Plus Active';
+      subtitle = 'You have unlocked Plus features.';
+      icon = Icons.directions_car;
+    } else if (_currentPlanIndex == 3) {
+      title = 'Fuel Log Pro Active';
+      subtitle = 'All premium features unlocked.';
+      icon = Icons.star;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -442,18 +549,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.workspace_premium, color: Colors.black, size: 24),
+          Icon(icon, color: iconColor, size: 24),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Upgrade to Pro',
-                    style: TextStyle(
+                Text(title,
+                    style: const TextStyle(
                         color: Colors.black,
                         fontSize: 14,
                         fontWeight: FontWeight.bold)),
-                Text('Unlimited vehicles, reports & cloud sync',
+                Text(subtitle,
                     style: TextStyle(
                         color: Colors.black.withOpacity(0.8), fontSize: 12)),
               ],
@@ -488,7 +595,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildRow(IconData icon, String label, String? trailing,
-      {String? subtitle, VoidCallback? onTap, Widget? suffixWidget}) {
+      {String? subtitle, VoidCallback? onTap, Widget? suffixWidget, Widget? badge}) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -510,8 +617,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(label,
-                      style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+                  Row(
+                    children: [
+                      Text(label,
+                          style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+                      if (badge != null) ...[
+                        const SizedBox(width: 8),
+                        badge,
+                      ],
+                    ],
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(subtitle,

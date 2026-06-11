@@ -7,6 +7,9 @@ import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/add_vehicle_page.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/vehicle_details_page.dart';
+import 'package:fuel_cal/services/ad_service.dart';
+import 'package:fuel_cal/services/subscription_service.dart';
+import 'package:fuel_cal/upgrade_page.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -28,6 +31,8 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     final vehiclesAsync = ref.watch(vehiclesProvider);
     final logsAsync = ref.watch(fuelLogsProvider);
     final allLogs = logsAsync.value ?? [];
+    final maxVehiclesAsync = ref.watch(maxVehiclesProvider);
+    final maxVehicles = maxVehiclesAsync.value ?? 3;
 
     return Scaffold(
       backgroundColor: _backgroundColor,
@@ -38,6 +43,7 @@ class _GaragePageState extends ConsumerState<GaragePage> {
           onRefresh: () async {
             ref.refresh(vehiclesProvider.future);
             ref.refresh(fuelLogsProvider.future);
+            ref.refresh(maxVehiclesProvider.future);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -60,13 +66,18 @@ class _GaragePageState extends ConsumerState<GaragePage> {
                     );
                   }
                   return Column(
-                    children: vehicles.map((v) => _buildVehicleCard(context, v, allLogs)).toList(),
+                    children: vehicles.map((v) {
+                      final isLocked = vehicles.indexOf(v) >= maxVehicles;
+                      return _buildVehicleCard(context, v, allLogs, isLocked);
+                    }).toList(),
                   );
                 },
                 loading: () => const CircularProgressIndicator(),
                 error: (e, s) => Text('Error: $e', style: const TextStyle(color: Colors.red)),
               ),
               
+              const SizedBox(height: 24),
+              const BannerAdWidget(),
               const SizedBox(height: 100), // padding for bottom nav
             ],
           ),
@@ -93,10 +104,40 @@ class _GaragePageState extends ConsumerState<GaragePage> {
           ],
         ),
         GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddVehiclePage()),
-          ),
+          onTap: () async {
+            final plan = await SubscriptionService.getCurrentPlan();
+            final maxVehicles = SubscriptionService.getMaxVehicles(plan);
+            if (count >= maxVehicles) {
+              if (!context.mounted) return;
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: ThemeService.cardColor,
+                  title: Text('Vehicle Limit Reached', style: TextStyle(color: ThemeService.textColor)),
+                  content: Text('You have reached the maximum number of vehicles ($maxVehicles) for your current plan. Upgrade to add more.', style: TextStyle(color: ThemeService.mutedColor)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancel', style: TextStyle(color: ThemeService.mutedColor)),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage()));
+                      },
+                      child: Text('Upgrade', style: TextStyle(color: ThemeService.neonColor)),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              if (!context.mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddVehiclePage()),
+              );
+            }
+          },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -165,10 +206,18 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     }
   }
 
-  Widget _buildVehicleCard(BuildContext context, Vehicle v, List<dynamic> allLogs) {
+  Widget _buildVehicleCard(BuildContext context, Vehicle v, List<dynamic> allLogs, bool isLocked) {
     final vehicleColor = _getColorFromName(v.color);
     bool isDarkColor = vehicleColor.computeLuminance() < 0.05;
+    bool isVeryLight = vehicleColor.computeLuminance() > 0.8;
+    
+    Color displayIconColor = vehicleColor;
     Color iconBgColor = isDarkColor ? Colors.white.withOpacity(0.8) : vehicleColor.withOpacity(0.1);
+
+    if (!ThemeService.isDarkMode && isVeryLight) {
+      displayIconColor = vehicleColor;
+      iconBgColor = Colors.black.withOpacity(0.6);
+    }
     
     final vehicleLogs = allLogs.where((l) => l.vehicleId == v.id).toList();
     double latestOdo = 0;
@@ -178,45 +227,84 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     }
     String odoText = latestOdo > 0 ? latestOdo.toInt().toString() : '-';
     
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: ThemeService.isDarkMode ? [] : [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: iconBgColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(_getIconForType(v.vehicleType), color: vehicleColor, size: 40),
+    return GestureDetector(
+      onTap: () {
+        if (isLocked) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: _cardColor,
+              title: Text('Upgrade Required', style: TextStyle(color: ThemeService.textColor)),
+              content: Text('Your current plan has expired or reached its limit. Please upgrade your plan to access this vehicle.', style: TextStyle(color: ThemeService.mutedColor)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel', style: TextStyle(color: ThemeService.mutedColor)),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${v.make} ${v.model}',
-                          style: TextStyle(
-                              color: ThemeService.textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold)),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage()));
+                  },
+                  child: Text('Upgrade', style: TextStyle(color: _neonColor)),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => VehicleDetailsPage(vehicle: v)),
+        );
+      },
+      child: Opacity(
+        opacity: isLocked ? 0.5 : 1.0,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: _cardColor,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: ThemeService.isDarkMode ? [] : [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: iconBgColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(_getIconForType(v.vehicleType), color: displayIconColor, size: 40),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text('${v.make} ${v.model}',
+                                  style: TextStyle(color: ThemeService.textColor, fontSize: 20, fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isLocked)
+                                const Icon(Icons.lock, color: Colors.grey, size: 20),
+                            ],
+                          ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -323,6 +411,8 @@ class _GaragePageState extends ConsumerState<GaragePage> {
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 
