@@ -39,9 +39,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     final expensesAsync = ref.watch(expensesProvider);
     final servicesAsync = ref.watch(servicesProvider);
     
-    final selectedVehicle = ref.watch(selectedVehicleProvider);
-    final vehiclesAsync = ref.watch(vehiclesProvider);
-    final activeVehicle = selectedVehicle ?? (vehiclesAsync.valueOrNull?.isNotEmpty == true ? vehiclesAsync.valueOrNull!.first : null);
+    final activeVehicle = ref.watch(activeVehicleProvider);
 
     List<FuelLog> filterLogs(List<FuelLog> list) => activeVehicle == null ? list : list.where((x) => x.vehicleId == activeVehicle.id).toList();
     List<Expense> filterExpenses(List<Expense> list) => activeVehicle == null ? list : list.where((x) => x.vehicleId == activeVehicle.id).toList();

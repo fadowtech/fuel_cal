@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/api_service.dart';
 import '../services/profile_service.dart';
+import '../services/subscription_service.dart';
 import 'data_provider.dart';
 
 final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
@@ -53,8 +54,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final token = await _storage.read(key: 'access_token');
     if (token != null) {
       state = state.copyWith(isAuthenticated: true, isInitializing: false);
-      _ref.read(apiServiceProvider).syncProfile().then((_) {
+      _ref.read(apiServiceProvider).syncProfile().then((_) async {
         _ref.invalidate(profileProvider);
+        final profile = await ProfileService.getProfile();
+        if (profile['email'] != null && profile['email'].toString().isNotEmpty) {
+          await SubscriptionService.login(profile['email']!);
+        }
       });
     } else {
       state = state.copyWith(isAuthenticated: false, isInitializing: false);
@@ -66,6 +71,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final success = await _ref.read(apiServiceProvider).login(email, password);
       if (success) {
+        await SubscriptionService.login(email);
         _ref.invalidate(selectedVehicleProvider);
         _ref.invalidate(vehiclesProvider);
         _ref.invalidate(fuelLogsProvider);
@@ -163,6 +169,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    await SubscriptionService.logout();
     await _ref.read(apiServiceProvider).logout();
     await ProfileService.clearProfile();
     _ref.invalidate(selectedVehicleProvider);

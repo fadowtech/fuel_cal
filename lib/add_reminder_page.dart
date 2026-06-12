@@ -264,11 +264,23 @@ class _AddReminderPageState extends State<AddReminderPage> {
       final notificationsEnabled = prefs.getBool('notifications_enabled_$email') ?? false;
       if (notificationsEnabled && _dueDate != null) {
         final id = widget.editData != null ? widget.editData!['raw_data']['id'] : DateTime.now().millisecondsSinceEpoch.remainder(100000);
+        
+        final daysUntilDue = _dueDate!.difference(DateTime.now()).inDays;
+        DateTime notifyDate = _dueDate!;
+        String notifBody = finalNotes.isNotEmpty ? finalNotes : 'Reminder due!';
+
+        if (daysUntilDue > 30) {
+            notifyDate = _dueDate!.subtract(const Duration(days: 30));
+            if (finalNotes.isEmpty) {
+                notifBody = 'Reminder coming up in 30 days!';
+            }
+        }
+
         await NotificationService.scheduleNotification(
           id: id as int,
           title: _titleController.text.trim(),
-          body: finalNotes.isNotEmpty ? finalNotes : 'Reminder due!',
-          scheduledDate: _dueDate!,
+          body: notifBody,
+          scheduledDate: notifyDate,
         );
       }
 

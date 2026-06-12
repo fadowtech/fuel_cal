@@ -4,7 +4,7 @@ part 'service_model.freezed.dart';
 part 'service_model.g.dart';
 
 @freezed
-class Service with _$Service {
+abstract class Service with _$Service {
   const factory Service({
     required int id,
     @JsonKey(name: 'user_id') required int userId,

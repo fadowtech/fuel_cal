@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
@@ -25,19 +26,38 @@ class SubscriptionService {
     }
   }
 
+  static final ValueNotifier<int> currentPlanNotifier = ValueNotifier<int>(0);
+
+  static Future<void> login(String appUserId) async {
+    try {
+      await Purchases.logIn(appUserId);
+    } catch (e) {
+      print('RevenueCat login error: $e');
+    }
+  }
+
+  static Future<void> logout() async {
+    try {
+      await Purchases.logOut();
+    } catch (e) {
+      print('RevenueCat logout error: $e');
+    }
+  }
+
   // 0: Free, 1: Remove Ads, 2: Plus, 3: Pro
   static Future<int> getCurrentPlan() async {
     try {
       final customerInfo = await Purchases.getCustomerInfo();
-      
+      int plan = 0;
       if (customerInfo.entitlements.all['pro']?.isActive == true) {
-        return 3;
+        plan = 3;
       } else if (customerInfo.entitlements.all['plus']?.isActive == true) {
-        return 2;
+        plan = 2;
       } else if (customerInfo.entitlements.all['remove_ads']?.isActive == true) {
-        return 1;
+        plan = 1;
       }
-      return 0;
+      currentPlanNotifier.value = plan;
+      return plan;
     } catch (e) {
       return 0;
     }

@@ -92,22 +92,30 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final expensesAsync = ref.watch(expensesProvider);
     final servicesAsync = ref.watch(servicesProvider);
     final remindersAsync = ref.watch(remindersProvider);
-    final _selectedVehicle = ref.watch(selectedVehicleProvider);
-
-    final vehiclesList = vehiclesAsync.value ?? [];
-    final maxVehiclesAsync = ref.watch(maxVehiclesProvider);
-    final maxVehicles = maxVehiclesAsync.value ?? 3;
     
-    Vehicle? displayVehicle = _selectedVehicle ?? (vehiclesList.isNotEmpty ? vehiclesList.first : null);
-    if (displayVehicle != null && vehiclesList.indexOf(displayVehicle) >= maxVehicles) {
-      displayVehicle = vehiclesList.isNotEmpty ? vehiclesList.first : null;
-    }
+    Vehicle? displayVehicle = ref.watch(activeVehicleProvider);
+    final vehiclesList = vehiclesAsync.value ?? [];
+    final defaultVehicleId = ref.watch(defaultVehicleIdProvider).value;
+
+    final maxRemindersAsync = ref.watch(maxRemindersProvider);
+    final maxReminders = maxRemindersAsync.value ?? 5;
 
     bool hasUnreadAlerts = false;
     List<dynamic> currentPendingReminders = [];
     if (remindersAsync.value != null) {
-      currentPendingReminders = remindersAsync.value!.where((r) => r['status'] != 'completed' && r['status'] != 'skipped').toList();
-      hasUnreadAlerts = currentPendingReminders.any((r) => !_seenReminderIds.contains(r['id'] as int));
+      final allowedReminders = remindersAsync.value!.take(maxReminders).toList();
+      currentPendingReminders = allowedReminders.where((r) => r['status'] != 'completed' && r['status'] != 'skipped').toList();
+      hasUnreadAlerts = currentPendingReminders.any((r) {
+        if (_seenReminderIds.contains(r['id'] as int)) return false;
+        if (r['due_date'] != null) {
+          try {
+            final DateTime dueDate = DateTime.parse(r['due_date'] as String);
+            final diff = dueDate.difference(DateTime.now()).inDays;
+            if (diff > 30) return false;
+          } catch (_) {}
+        }
+        return true;
+      });
     }
 
     return Scaffold(
@@ -171,6 +179,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     return VehicleSelector(
                       selectedVehicle: displayVehicle,
                       vehicles: vehicles,
+                      defaultVehicleId: defaultVehicleId,
                       currentOdometer: currentOdo,
                       vehicleOdometers: odos,
                       maxVehicles: maxVehicles,

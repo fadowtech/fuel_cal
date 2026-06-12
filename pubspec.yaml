@@ -1,10 +1,10 @@
 name: fuel_cal
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-version: 1.0.13+15
+version: 1.0.15+17
 
 environment:
-  sdk: '>=3.4.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -15,7 +15,7 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  json_annotation: ^4.9.0
+  json_annotation: ^4.12.0
   freezed_annotation: ^3.1.0
   flutter_dotenv: ^6.0.1
   go_router: ^17.3.0

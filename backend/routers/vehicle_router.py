@@ -15,6 +15,10 @@ router = APIRouter(
 @router.post("/", response_model=schemas.Vehicle, status_code=status.HTTP_201_CREATED)
 def create_vehicle(vehicle: schemas.VehicleCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     db_vehicle = models.Vehicle(**vehicle.model_dump(), user_id=current_user.id)
+    
+    if db_vehicle.is_default is True:
+        db.query(models.Vehicle).filter(models.Vehicle.user_id == current_user.id).update({"is_default": False})
+        
     db.add(db_vehicle)
     db.commit()
     db.refresh(db_vehicle)
@@ -56,6 +60,13 @@ def update_vehicle(
         raise HTTPException(status_code=404, detail="Vehicle not found")
     
     update_data = vehicle_update.model_dump(exclude_unset=True)
+    
+    if update_data.get('is_default') is True:
+        db.query(models.Vehicle).filter(
+            models.Vehicle.user_id == current_user.id, 
+            models.Vehicle.id != vehicle_id
+        ).update({"is_default": False})
+
     for key, value in update_data.items():
         setattr(db_vehicle, key, value)
         

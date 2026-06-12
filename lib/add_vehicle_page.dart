@@ -506,17 +506,20 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, String capsType = 'none', String? errorText}) {
+  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, String capsType = 'none', String? errorText, int? maxLength}) {
     return TextField(
       controller: controller,
+      maxLength: maxLength,
       textCapitalization: capsType == 'all' ? TextCapitalization.characters : (capsType == 'words' ? TextCapitalization.words : TextCapitalization.none),
       inputFormatters: [
         if (capsType == 'all') UpperCaseTextFormatter(),
         if (capsType == 'words') TitleCaseTextFormatter(),
+        if (isNumber && maxLength != null) FilteringTextInputFormatter.digitsOnly,
       ],
-      keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+      keyboardType: isNumber ? (maxLength != null ? TextInputType.number : const TextInputType.numberWithOptions(decimal: true)) : TextInputType.text,
       style: TextStyle(color: _textColor, fontSize: 14),
       decoration: InputDecoration(
+        counterText: '',
         hintText: hint,
         hintStyle: TextStyle(color: _mutedColor, fontSize: 14),
         errorText: errorText,
@@ -633,7 +636,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
           _buildTextField(_modelController, modelHint, capsType: 'words', errorText: _modelError),
           const SizedBox(height: 12),
           _buildLabel('Year', isRequired: true),
-          _buildTextField(_yearController, 'Year (e.g. 2022)', isNumber: true, errorText: _yearError),
+          _buildTextField(_yearController, 'Year (e.g. 2022)', isNumber: true, maxLength: 4, errorText: _yearError),
           const SizedBox(height: 12),
           _buildLabel('Variant (Optional)'),
           _buildTextField(_variantController, variantHint, capsType: 'all'),

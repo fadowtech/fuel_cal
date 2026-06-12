@@ -1,5 +1,5 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -9,305 +9,290 @@ part of 'expense_model.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
-
-Expense _$ExpenseFromJson(Map<String, dynamic> json) {
-  return _Expense.fromJson(json);
-}
 
 /// @nodoc
 mixin _$Expense {
-  int get id => throw _privateConstructorUsedError;
-  @JsonKey(name: 'user_id')
-  int get userId => throw _privateConstructorUsedError;
-  @JsonKey(name: 'vehicle_id')
-  int? get vehicleId => throw _privateConstructorUsedError;
-  String get category => throw _privateConstructorUsedError;
-  String get title => throw _privateConstructorUsedError;
-  double get amount => throw _privateConstructorUsedError;
-  DateTime? get date => throw _privateConstructorUsedError;
-  String? get notes => throw _privateConstructorUsedError;
+
+ int get id;@JsonKey(name: 'user_id') int get userId;@JsonKey(name: 'vehicle_id') int? get vehicleId; String get category; String get title; double get amount; DateTime? get date; String? get notes;
+/// Create a copy of Expense
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ExpenseCopyWith<Expense> get copyWith => _$ExpenseCopyWithImpl<Expense>(this as Expense, _$identity);
 
   /// Serializes this Expense to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  Map<String, dynamic> toJson();
 
-  /// Create a copy of Expense
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $ExpenseCopyWith<Expense> get copyWith => throw _privateConstructorUsedError;
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Expense&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.vehicleId, vehicleId) || other.vehicleId == vehicleId)&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.date, date) || other.date == date)&&(identical(other.notes, notes) || other.notes == notes));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,userId,vehicleId,category,title,amount,date,notes);
+
+@override
+String toString() {
+  return 'Expense(id: $id, userId: $userId, vehicleId: $vehicleId, category: $category, title: $title, amount: $amount, date: $date, notes: $notes)';
+}
+
+
 }
 
 /// @nodoc
-abstract class $ExpenseCopyWith<$Res> {
-  factory $ExpenseCopyWith(Expense value, $Res Function(Expense) then) =
-      _$ExpenseCopyWithImpl<$Res, Expense>;
-  @useResult
-  $Res call(
-      {int id,
-      @JsonKey(name: 'user_id') int userId,
-      @JsonKey(name: 'vehicle_id') int? vehicleId,
-      String category,
-      String title,
-      double amount,
-      DateTime? date,
-      String? notes});
-}
+abstract mixin class $ExpenseCopyWith<$Res>  {
+  factory $ExpenseCopyWith(Expense value, $Res Function(Expense) _then) = _$ExpenseCopyWithImpl;
+@useResult
+$Res call({
+ int id,@JsonKey(name: 'user_id') int userId,@JsonKey(name: 'vehicle_id') int? vehicleId, String category, String title, double amount, DateTime? date, String? notes
+});
 
+
+
+
+}
 /// @nodoc
-class _$ExpenseCopyWithImpl<$Res, $Val extends Expense>
+class _$ExpenseCopyWithImpl<$Res>
     implements $ExpenseCopyWith<$Res> {
-  _$ExpenseCopyWithImpl(this._value, this._then);
+  _$ExpenseCopyWithImpl(this._self, this._then);
 
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
+  final Expense _self;
+  final $Res Function(Expense) _then;
 
-  /// Create a copy of Expense
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? userId = null,
-    Object? vehicleId = freezed,
-    Object? category = null,
-    Object? title = null,
-    Object? amount = null,
-    Object? date = freezed,
-    Object? notes = freezed,
-  }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as int,
-      userId: null == userId
-          ? _value.userId
-          : userId // ignore: cast_nullable_to_non_nullable
-              as int,
-      vehicleId: freezed == vehicleId
-          ? _value.vehicleId
-          : vehicleId // ignore: cast_nullable_to_non_nullable
-              as int?,
-      category: null == category
-          ? _value.category
-          : category // ignore: cast_nullable_to_non_nullable
-              as String,
-      title: null == title
-          ? _value.title
-          : title // ignore: cast_nullable_to_non_nullable
-              as String,
-      amount: null == amount
-          ? _value.amount
-          : amount // ignore: cast_nullable_to_non_nullable
-              as double,
-      date: freezed == date
-          ? _value.date
-          : date // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      notes: freezed == notes
-          ? _value.notes
-          : notes // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ) as $Val);
-  }
+/// Create a copy of Expense
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? userId = null,Object? vehicleId = freezed,Object? category = null,Object? title = null,Object? amount = null,Object? date = freezed,Object? notes = freezed,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as int,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as int,vehicleId: freezed == vehicleId ? _self.vehicleId : vehicleId // ignore: cast_nullable_to_non_nullable
+as int?,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as double,date: freezed == date ? _self.date : date // ignore: cast_nullable_to_non_nullable
+as DateTime?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
 }
 
-/// @nodoc
-abstract class _$$ExpenseImplCopyWith<$Res> implements $ExpenseCopyWith<$Res> {
-  factory _$$ExpenseImplCopyWith(
-          _$ExpenseImpl value, $Res Function(_$ExpenseImpl) then) =
-      __$$ExpenseImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call(
-      {int id,
-      @JsonKey(name: 'user_id') int userId,
-      @JsonKey(name: 'vehicle_id') int? vehicleId,
-      String category,
-      String title,
-      double amount,
-      DateTime? date,
-      String? notes});
 }
 
-/// @nodoc
-class __$$ExpenseImplCopyWithImpl<$Res>
-    extends _$ExpenseCopyWithImpl<$Res, _$ExpenseImpl>
-    implements _$$ExpenseImplCopyWith<$Res> {
-  __$$ExpenseImplCopyWithImpl(
-      _$ExpenseImpl _value, $Res Function(_$ExpenseImpl) _then)
-      : super(_value, _then);
 
-  /// Create a copy of Expense
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? userId = null,
-    Object? vehicleId = freezed,
-    Object? category = null,
-    Object? title = null,
-    Object? amount = null,
-    Object? date = freezed,
-    Object? notes = freezed,
-  }) {
-    return _then(_$ExpenseImpl(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as int,
-      userId: null == userId
-          ? _value.userId
-          : userId // ignore: cast_nullable_to_non_nullable
-              as int,
-      vehicleId: freezed == vehicleId
-          ? _value.vehicleId
-          : vehicleId // ignore: cast_nullable_to_non_nullable
-              as int?,
-      category: null == category
-          ? _value.category
-          : category // ignore: cast_nullable_to_non_nullable
-              as String,
-      title: null == title
-          ? _value.title
-          : title // ignore: cast_nullable_to_non_nullable
-              as String,
-      amount: null == amount
-          ? _value.amount
-          : amount // ignore: cast_nullable_to_non_nullable
-              as double,
-      date: freezed == date
-          ? _value.date
-          : date // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-      notes: freezed == notes
-          ? _value.notes
-          : notes // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ));
-  }
+/// Adds pattern-matching-related methods to [Expense].
+extension ExpensePatterns on Expense {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _Expense value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _Expense() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _Expense value)  $default,){
+final _that = this;
+switch (_that) {
+case _Expense():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _Expense value)?  $default,){
+final _that = this;
+switch (_that) {
+case _Expense() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id, @JsonKey(name: 'user_id')  int userId, @JsonKey(name: 'vehicle_id')  int? vehicleId,  String category,  String title,  double amount,  DateTime? date,  String? notes)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _Expense() when $default != null:
+return $default(_that.id,_that.userId,_that.vehicleId,_that.category,_that.title,_that.amount,_that.date,_that.notes);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id, @JsonKey(name: 'user_id')  int userId, @JsonKey(name: 'vehicle_id')  int? vehicleId,  String category,  String title,  double amount,  DateTime? date,  String? notes)  $default,) {final _that = this;
+switch (_that) {
+case _Expense():
+return $default(_that.id,_that.userId,_that.vehicleId,_that.category,_that.title,_that.amount,_that.date,_that.notes);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id, @JsonKey(name: 'user_id')  int userId, @JsonKey(name: 'vehicle_id')  int? vehicleId,  String category,  String title,  double amount,  DateTime? date,  String? notes)?  $default,) {final _that = this;
+switch (_that) {
+case _Expense() when $default != null:
+return $default(_that.id,_that.userId,_that.vehicleId,_that.category,_that.title,_that.amount,_that.date,_that.notes);case _:
+  return null;
+
+}
+}
+
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$ExpenseImpl implements _Expense {
-  const _$ExpenseImpl(
-      {required this.id,
-      @JsonKey(name: 'user_id') required this.userId,
-      @JsonKey(name: 'vehicle_id') this.vehicleId,
-      required this.category,
-      required this.title,
-      required this.amount,
-      this.date,
-      this.notes});
 
-  factory _$ExpenseImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ExpenseImplFromJson(json);
+class _Expense implements Expense {
+  const _Expense({required this.id, @JsonKey(name: 'user_id') required this.userId, @JsonKey(name: 'vehicle_id') this.vehicleId, required this.category, required this.title, required this.amount, this.date, this.notes});
+  factory _Expense.fromJson(Map<String, dynamic> json) => _$ExpenseFromJson(json);
 
-  @override
-  final int id;
-  @override
-  @JsonKey(name: 'user_id')
-  final int userId;
-  @override
-  @JsonKey(name: 'vehicle_id')
-  final int? vehicleId;
-  @override
-  final String category;
-  @override
-  final String title;
-  @override
-  final double amount;
-  @override
-  final DateTime? date;
-  @override
-  final String? notes;
+@override final  int id;
+@override@JsonKey(name: 'user_id') final  int userId;
+@override@JsonKey(name: 'vehicle_id') final  int? vehicleId;
+@override final  String category;
+@override final  String title;
+@override final  double amount;
+@override final  DateTime? date;
+@override final  String? notes;
 
-  @override
-  String toString() {
-    return 'Expense(id: $id, userId: $userId, vehicleId: $vehicleId, category: $category, title: $title, amount: $amount, date: $date, notes: $notes)';
-  }
+/// Create a copy of Expense
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ExpenseCopyWith<_Expense> get copyWith => __$ExpenseCopyWithImpl<_Expense>(this, _$identity);
 
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$ExpenseImpl &&
-            (identical(other.id, id) || other.id == id) &&
-            (identical(other.userId, userId) || other.userId == userId) &&
-            (identical(other.vehicleId, vehicleId) ||
-                other.vehicleId == vehicleId) &&
-            (identical(other.category, category) ||
-                other.category == category) &&
-            (identical(other.title, title) || other.title == title) &&
-            (identical(other.amount, amount) || other.amount == amount) &&
-            (identical(other.date, date) || other.date == date) &&
-            (identical(other.notes, notes) || other.notes == notes));
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(
-      runtimeType, id, userId, vehicleId, category, title, amount, date, notes);
-
-  /// Create a copy of Expense
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$ExpenseImplCopyWith<_$ExpenseImpl> get copyWith =>
-      __$$ExpenseImplCopyWithImpl<_$ExpenseImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$ExpenseImplToJson(
-      this,
-    );
-  }
+@override
+Map<String, dynamic> toJson() {
+  return _$ExpenseToJson(this, );
 }
 
-abstract class _Expense implements Expense {
-  const factory _Expense(
-      {required final int id,
-      @JsonKey(name: 'user_id') required final int userId,
-      @JsonKey(name: 'vehicle_id') final int? vehicleId,
-      required final String category,
-      required final String title,
-      required final double amount,
-      final DateTime? date,
-      final String? notes}) = _$ExpenseImpl;
-
-  factory _Expense.fromJson(Map<String, dynamic> json) = _$ExpenseImpl.fromJson;
-
-  @override
-  int get id;
-  @override
-  @JsonKey(name: 'user_id')
-  int get userId;
-  @override
-  @JsonKey(name: 'vehicle_id')
-  int? get vehicleId;
-  @override
-  String get category;
-  @override
-  String get title;
-  @override
-  double get amount;
-  @override
-  DateTime? get date;
-  @override
-  String? get notes;
-
-  /// Create a copy of Expense
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ExpenseImplCopyWith<_$ExpenseImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Expense&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.vehicleId, vehicleId) || other.vehicleId == vehicleId)&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.date, date) || other.date == date)&&(identical(other.notes, notes) || other.notes == notes));
 }
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,userId,vehicleId,category,title,amount,date,notes);
+
+@override
+String toString() {
+  return 'Expense(id: $id, userId: $userId, vehicleId: $vehicleId, category: $category, title: $title, amount: $amount, date: $date, notes: $notes)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ExpenseCopyWith<$Res> implements $ExpenseCopyWith<$Res> {
+  factory _$ExpenseCopyWith(_Expense value, $Res Function(_Expense) _then) = __$ExpenseCopyWithImpl;
+@override @useResult
+$Res call({
+ int id,@JsonKey(name: 'user_id') int userId,@JsonKey(name: 'vehicle_id') int? vehicleId, String category, String title, double amount, DateTime? date, String? notes
+});
+
+
+
+
+}
+/// @nodoc
+class __$ExpenseCopyWithImpl<$Res>
+    implements _$ExpenseCopyWith<$Res> {
+  __$ExpenseCopyWithImpl(this._self, this._then);
+
+  final _Expense _self;
+  final $Res Function(_Expense) _then;
+
+/// Create a copy of Expense
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? userId = null,Object? vehicleId = freezed,Object? category = null,Object? title = null,Object? amount = null,Object? date = freezed,Object? notes = freezed,}) {
+  return _then(_Expense(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as int,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
+as int,vehicleId: freezed == vehicleId ? _self.vehicleId : vehicleId // ignore: cast_nullable_to_non_nullable
+as int?,category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as double,date: freezed == date ? _self.date : date // ignore: cast_nullable_to_non_nullable
+as DateTime?,notes: freezed == notes ? _self.notes : notes // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+// dart format on

@@ -75,8 +75,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     final remindersList = remindersAsync.valueOrNull ?? [];
     final vehiclesMap = {for (var v in (vehiclesAsync.valueOrNull ?? [])) v.id: v};
 
-    final selectedVehicle = ref.watch(selectedVehicleProvider);
-    final activeVehicle = selectedVehicle ?? (vehiclesAsync.valueOrNull?.isNotEmpty == true ? vehiclesAsync.valueOrNull!.first : null);
+    final activeVehicle = ref.watch(activeVehicleProvider);
 
     List<UnifiedLog> unifiedLogs = [];
 

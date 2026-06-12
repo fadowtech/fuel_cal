@@ -37,6 +37,23 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   void initState() {
     super.initState();
     _checkSubscriptionAndLoadAd();
+    SubscriptionService.currentPlanNotifier.addListener(_onPlanChanged);
+  }
+
+  void _onPlanChanged() {
+    if (SubscriptionService.currentPlanNotifier.value > 0) {
+      if (_shouldShow) {
+        setState(() {
+          _shouldShow = false;
+        });
+        _bannerAd?.dispose();
+        _bannerAd = null;
+      }
+    } else {
+      if (!_shouldShow && _bannerAd == null) {
+        _checkSubscriptionAndLoadAd();
+      }
+    }
   }
 
   Future<void> _checkSubscriptionAndLoadAd() async {
@@ -59,7 +76,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
           });
         },
         onAdFailedToLoad: (ad, err) {
-          print('Failed to load a banner ad: \${err.message}');
+          print('Failed to load a banner ad: ${err.message}');
           ad.dispose();
         },
       ),
@@ -68,6 +85,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   void dispose() {
+    SubscriptionService.currentPlanNotifier.removeListener(_onPlanChanged);
     _bannerAd?.dispose();
     super.dispose();
   }

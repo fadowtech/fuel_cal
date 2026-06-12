@@ -5,6 +5,10 @@ import '../models/vehicle_model.dart';
 import '../add_vehicle_page.dart';
 import '../upgrade_page.dart';
 import '../services/theme_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import '../providers/data_provider.dart';
 
 extension VehicleUI on Vehicle {
   String get displayName => '$make $model';
@@ -32,13 +36,14 @@ extension VehicleUI on Vehicle {
   }
 }
 
-class VehicleSelector extends StatelessWidget {
+class VehicleSelector extends ConsumerWidget {
   final Vehicle? selectedVehicle;
   final List<Vehicle> vehicles;
   final ValueChanged<Vehicle?> onVehicleSelected;
   final double? currentOdometer;
   final Map<int, double>? vehicleOdometers;
   final int maxVehicles;
+  final int? defaultVehicleId;
 
   const VehicleSelector({
     super.key,
@@ -47,13 +52,14 @@ class VehicleSelector extends StatelessWidget {
     this.selectedVehicle,
     this.currentOdometer,
     this.vehicleOdometers,
+    this.defaultVehicleId,
     this.maxVehicles = 3,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
-      onTap: () => _showVehiclePicker(context),
+      onTap: () => _showVehiclePicker(context, ref),
       child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
@@ -69,12 +75,27 @@ class VehicleSelector extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Selected vehicle',
-                    style: TextStyle(
-                      color: ThemeService.mutedColor,
-                      fontSize: 12.0,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'Selected vehicle',
+                        style: TextStyle(
+                          color: ThemeService.mutedColor,
+                          fontSize: 12.0,
+                        ),
+                      ),
+                      if (selectedVehicle != null && selectedVehicle!.id == defaultVehicleId) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5A67D8).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('DEFAULT', style: TextStyle(color: Color(0xFF5A67D8), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4.0),
                   Row(
@@ -174,7 +195,7 @@ class VehicleSelector extends StatelessWidget {
     );
   }
 
-  void _showVehiclePicker(BuildContext context) {
+  void _showVehiclePicker(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -279,20 +300,44 @@ class VehicleSelector extends StatelessWidget {
                           ...filteredVehicles.map((v) {
                             final originalIndex = vehicles.indexOf(v);
                             final isLocked = originalIndex >= maxVehicles;
-                            return _buildVehicleItem(context, v, isLocked);
+                            return _buildVehicleItem(context, v, isLocked, ref);
                           }),
 
                         const SizedBox(height: 16),
                     // Add New Vehicle Button
                     GestureDetector(
                       onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AddVehiclePage(),
-                          ),
-                        );
+                        Navigator.pop(context); // Close the bottom sheet first
+                        if (vehicles.length >= maxVehicles) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              backgroundColor: ThemeService.cardColor,
+                              title: Text('Vehicle Limit Reached', style: TextStyle(color: ThemeService.textColor)),
+                              content: Text('You have reached the maximum number of vehicles ($maxVehicles) for your current plan. Upgrade to add more.', style: TextStyle(color: ThemeService.mutedColor)),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text('Cancel', style: TextStyle(color: ThemeService.mutedColor)),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage()));
+                                  },
+                                  child: Text('Upgrade', style: TextStyle(color: ThemeService.neonColor)),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AddVehiclePage(),
+                            ),
+                          );
+                        }
                       },
                       child: DottedBorder(
                         options: RoundedRectDottedBorderOptions(
@@ -375,7 +420,7 @@ class VehicleSelector extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleItem(BuildContext context, Vehicle vehicle, bool isLocked) {
+  Widget _buildVehicleItem(BuildContext context, Vehicle vehicle, bool isLocked, WidgetRef ref) {
     bool isSelected = selectedVehicle?.id == vehicle.id;
     return GestureDetector(
       onTap: () {
@@ -503,10 +548,66 @@ class VehicleSelector extends StatelessWidget {
                   ],
                 ),
               ),
-              if (isLocked)
-                Icon(Icons.lock, color: ThemeService.mutedColor)
-              else if (isSelected)
-                const Icon(Icons.check_circle, color: Color(0xFF5A67D8)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isLocked)
+                    Icon(Icons.lock, color: ThemeService.mutedColor)
+                  else if (isSelected)
+                    const Icon(Icons.check_circle, color: Color(0xFF5A67D8)),
+                    
+                  if (!isLocked) ...[
+                    const SizedBox(width: 8),
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, color: ThemeService.textColor),
+                      color: ThemeService.surfaceColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onSelected: (value) async {
+                        if (value == 'default') {
+                           final prefs = await SharedPreferences.getInstance();
+                           await prefs.setInt('default_vehicle_id', vehicle.id);
+                           
+                           final vehicleData = vehicle.toJson();
+                           vehicleData['is_default'] = true;
+                           ref.read(apiServiceProvider).updateVehicle(vehicle.id, vehicleData);
+                           ref.refresh(vehiclesProvider);
+                           onVehicleSelected(vehicle);
+                           if (context.mounted) {
+                             Navigator.pop(context); // Close the modal to show the snackbar clearly on the main screen
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               SnackBar(
+                                 content: Row(
+                                   children: [
+                                     Icon(Icons.check_circle, color: ThemeService.backgroundColor),
+                                     const SizedBox(width: 8),
+                                     Text('Default set successfully', style: TextStyle(color: ThemeService.backgroundColor, fontWeight: FontWeight.bold)),
+                                   ],
+                                 ),
+                                 backgroundColor: const Color(0xFF00FF9D),
+                                 behavior: SnackBarBehavior.floating,
+                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                 margin: const EdgeInsets.all(16),
+                               ),
+                             );
+                           }
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'default',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.star_border, color: Color(0xFF5A67D8), size: 20),
+                              const SizedBox(width: 12),
+                              const Text('Set as default', style: TextStyle(color: Color(0xFF5A67D8), fontSize: 14)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),

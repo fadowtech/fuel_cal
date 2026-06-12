@@ -39,6 +39,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     final remindersAsync = ref.watch(remindersProvider);
+    final maxRemindersAsync = ref.watch(maxRemindersProvider);
+    final maxReminders = maxRemindersAsync.value ?? 5;
     
     return Scaffold(
       backgroundColor: ThemeService.backgroundColor,
@@ -50,7 +52,18 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       ),
       body: remindersAsync.when(
         data: (reminders) {
-          final pendingReminders = reminders.where((r) => r['status'] != 'completed' && r['status'] != 'skipped').toList();
+          final allowedReminders = reminders.take(maxReminders).toList();
+          final pendingReminders = allowedReminders.where((r) {
+            if (r['status'] == 'completed' || r['status'] == 'skipped') return false;
+            if (r['due_date'] != null) {
+              try {
+                final DateTime dueDate = DateTime.parse(r['due_date'] as String);
+                final diff = dueDate.difference(DateTime.now()).inDays;
+                if (diff > 30) return false;
+              } catch (_) {}
+            }
+            return true;
+          }).toList();
           
           if (pendingReminders.isEmpty) {
             return Center(

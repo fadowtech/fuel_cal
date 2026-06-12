@@ -221,8 +221,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     if (vehiclesAsync.isLoading) return;
     
     final vehicles = vehiclesAsync.value ?? [];
-    final selectedVehicle = ref.read(selectedVehicleProvider);
-    final activeVehicle = selectedVehicle ?? (vehicles.isNotEmpty ? vehicles.first : null);
+    final activeVehicle = ref.read(activeVehicleProvider);
     
     if (activeVehicle != null && _manageFuels.isNotEmpty) {
       final fuelType = activeVehicle.fuelType;
@@ -260,8 +259,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   void _initializeData(List<dynamic> logs, List<dynamic> vehicles) {
     if (_isInitialized) return;
     
-    final selectedVehicle = ref.read(selectedVehicleProvider);
-    final activeVehicle = selectedVehicle ?? (vehicles.isNotEmpty ? vehicles.first : null);
+    final activeVehicle = ref.read(activeVehicleProvider);
     
     if (activeVehicle != null && activeVehicle.tankCapacity > 0) {
       _tankCapacity = activeVehicle.tankCapacity;
@@ -484,11 +482,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
     setState(() => _isLoading = true);
 
+    final activeVehicle = ref.read(activeVehicleProvider);
     final apiService = ref.read(apiServiceProvider);
-    
-    final selectedVehicle = ref.read(selectedVehicleProvider);
-    final vehicles = ref.read(vehiclesProvider).value ?? [];
-    final activeVehicle = selectedVehicle ?? (vehicles.isNotEmpty ? vehicles.first : null);
     
     final Map<String, dynamic> payload = {
       "vehicle_id": activeVehicle?.id,

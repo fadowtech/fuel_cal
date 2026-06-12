@@ -39,6 +39,7 @@ class Vehicle(Base):
     poor_mileage = Column(Float, nullable=True)
     notes = Column(String, nullable=True)
     color = Column(String, nullable=True)
+    is_default = Column(Boolean, default=False)
     
     owner = relationship("User", back_populates="vehicles")
     logs = relationship("FuelLog", back_populates="vehicle")

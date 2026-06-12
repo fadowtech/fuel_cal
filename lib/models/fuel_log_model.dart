@@ -4,7 +4,7 @@ part 'fuel_log_model.freezed.dart';
 part 'fuel_log_model.g.dart';
 
 @freezed
-class FuelLog with _$FuelLog {
+abstract class FuelLog with _$FuelLog {
   const factory FuelLog({
     required int id,
     @JsonKey(name: 'user_id') required int userId,

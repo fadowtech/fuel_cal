@@ -59,6 +59,7 @@ class VehicleBase(BaseModel):
     poor_mileage: Optional[float] = None
     notes: Optional[str] = None
     color: Optional[str] = None
+    is_default: Optional[bool] = False
 
 class VehicleCreate(VehicleBase):
     pass

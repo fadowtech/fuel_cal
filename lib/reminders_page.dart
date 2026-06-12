@@ -457,13 +457,71 @@ class _RemindersPageState extends State<RemindersPage> {
       return diff <= 30;
     }).toList();
 
+    final unlocked30Days = next30Days.where((r) => r['is_locked'] != true).toList();
+    
+    final locked30DaysCount = categoryFiltered.where((r) {
+      if (r['is_locked'] != true) return false;
+      final DateTime? date = r['raw_date'];
+      if (date == null) return false;
+      final diff = date.difference(DateTime.now()).inDays;
+      return diff <= 30;
+    }).length;
+
+    final locked60DaysCount = categoryFiltered.where((r) {
+      if (r['is_locked'] != true) return false;
+      final DateTime? date = r['raw_date'];
+      if (date == null) return false;
+      final diff = date.difference(DateTime.now()).inDays;
+      return diff > 30 && diff <= 60;
+    }).length;
+
+    final lockedUpcomingCount = locked30DaysCount + locked60DaysCount;
+
+    Widget? customSubtitleWidget;
+    if (locked30DaysCount > 0 && locked60DaysCount > 0) {
+      customSubtitleWidget = RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          style: TextStyle(color: _textColor.withOpacity(0.85), fontSize: 13, height: 1.5),
+          children: [
+            TextSpan(text: '$locked30DaysCount', style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 14)),
+            const TextSpan(text: ' Reminders locked for (Next 30 days) and '),
+            TextSpan(text: '$locked60DaysCount', style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 14)),
+            const TextSpan(text: ' Reminders for Next 31 - 60 Days'),
+          ],
+        ),
+      );
+    } else if (locked30DaysCount > 0) {
+      customSubtitleWidget = RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          style: TextStyle(color: _textColor.withOpacity(0.85), fontSize: 13, height: 1.5),
+          children: [
+            TextSpan(text: '$locked30DaysCount', style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 14)),
+            const TextSpan(text: ' Reminders locked for (Next 30 days)\nUpgrade to Pro to view and manage all reminders.'),
+          ],
+        ),
+      );
+    } else if (locked60DaysCount > 0) {
+      customSubtitleWidget = RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          style: TextStyle(color: _textColor.withOpacity(0.85), fontSize: 13, height: 1.5),
+          children: [
+            TextSpan(text: '$locked60DaysCount', style: TextStyle(color: _neonColor, fontWeight: FontWeight.bold, fontSize: 14)),
+            const TextSpan(text: ' Reminders locked for Next 31 - 60 Days\nUpgrade to Pro to view and manage all reminders.'),
+          ],
+        ),
+      );
+    }
+
     return [
       _buildSectionHeader('Upcoming Alerts', 'Sort', Icons.sort, subtitle: '(Next 30 days)', onActionTap: _showSortOptions),
       const SizedBox(height: 12),
-      if (next30Days.isEmpty)
+      if (unlocked30Days.isEmpty && lockedUpcomingCount == 0)
         _buildEmptyState('No upcoming alerts in the next 30 days')
       else
-        ...next30Days.map((r) => _buildReminderCard(r, false)),
+        ...unlocked30Days.map((r) => _buildReminderCard(r, false)),
       const SizedBox(height: 24),
       
       _buildSectionHeader('Next 31 - 60 Days', '', null),
@@ -471,13 +529,16 @@ class _RemindersPageState extends State<RemindersPage> {
       Builder(
         builder: (context) {
           final futureReminders = categoryFiltered.where((r) {
+            if (r['is_locked'] == true) return false;
             final DateTime? date = r['raw_date'];
             if (date == null) return false;
             final diff = date.difference(DateTime.now()).inDays;
             return diff > 30 && diff <= 60;
           }).toList();
 
-          if (futureReminders.isEmpty) return _buildEmptyState('No upcoming alerts in 31-60 days');
+          if (futureReminders.isEmpty) {
+            return _buildEmptyState('No upcoming alerts in 31-60 days');
+          }
 
           return GestureDetector(
             onTap: () async {
@@ -491,58 +552,61 @@ class _RemindersPageState extends State<RemindersPage> {
                 _fetchReminders();
               }
             },
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _cardColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _textColor.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _textColor.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.calendar_today_outlined, color: _textColor.withOpacity(0.54), size: 24),
                   ),
-                  child: Icon(Icons.calendar_today_outlined, color: _textColor.withOpacity(0.54), size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.red, // Bright red like the screenshot
-                              borderRadius: BorderRadius.circular(8),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${futureReminders.length}+',
+                                style: TextStyle(color: _textColor, fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
                             ),
-                            child: Text(
-                              '${futureReminders.length}+',
-                              style: TextStyle(color: _textColor, fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('Reminders', style: TextStyle(color: _textColor, fontSize: 15, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text('View reminders between 31 and 60 days', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                    ],
+                            const SizedBox(width: 8),
+                            Text('Reminders', style: TextStyle(color: _textColor, fontSize: 15, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text('View reminders between 31 and 60 days', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                      ],
+                    ),
                   ),
-                ),
-                Icon(Icons.chevron_right, color: _mutedColor, size: 20),
-              ],
+                  Icon(Icons.chevron_right, color: _mutedColor, size: 20),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    ),
-    
-    const SizedBox(height: 24),
+          );
+        },
+      ),
+      
+      if (lockedUpcomingCount > 0)
+        _buildLockedRemindersCard(lockedUpcomingCount, customSubtitleWidget: customSubtitleWidget),
+        
+      const SizedBox(height: 24),
       _buildSmartReminders(),
       const SizedBox(height: 16),
       _buildInfoFooter(),
@@ -554,13 +618,18 @@ class _RemindersPageState extends State<RemindersPage> {
         ? _upcomingReminders 
         : _upcomingReminders.where((r) => r['category'] == _selectedCategory).toList();
 
+    final unlockedReminders = filteredReminders.where((r) => r['is_locked'] != true).toList();
+    final lockedRemindersCount = filteredReminders.where((r) => r['is_locked'] == true).length;
+
     return [
       _buildSectionHeader(_selectedCategory == 'All' ? 'All Reminders' : '$_selectedCategory Reminders', 'Sort', Icons.sort, onActionTap: _showSortOptions),
       const SizedBox(height: 16),
-      if (filteredReminders.isEmpty)
+      if (unlockedReminders.isEmpty && lockedRemindersCount == 0)
         _buildEmptyState('No reminders found')
       else
-        ...filteredReminders.map((r) => _buildReminderCard(r, false)),
+        ...unlockedReminders.map((r) => _buildReminderCard(r, false)),
+      if (lockedRemindersCount > 0)
+        _buildLockedRemindersCard(lockedRemindersCount),
       _buildSmartReminders(),
       const SizedBox(height: 16),
       _buildInfoFooter(),
@@ -576,6 +645,9 @@ class _RemindersPageState extends State<RemindersPage> {
        ? categoryFiltered 
        : categoryFiltered.where((r) => r['status'] == _completedFilter).toList();
 
+    final unlockedList = filteredList.where((r) => r['is_locked'] != true).toList();
+    final lockedCount = filteredList.where((r) => r['is_locked'] == true).length;
+
     return [
       _buildSectionHeader(
         _completedFilter == 'All' ? 'Completed & Skipped' : '$_completedFilter Reminders',
@@ -584,10 +656,12 @@ class _RemindersPageState extends State<RemindersPage> {
         onActionTap: _showCompletedFilterOptions
       ),
       const SizedBox(height: 12),
-      if (filteredList.isEmpty)
+      if (unlockedList.isEmpty && lockedCount == 0)
         _buildEmptyState('No ${_completedFilter.toLowerCase()} reminders yet')
       else
-        ...filteredList.map((r) => _buildReminderCard(r, true)),
+        ...unlockedList.map((r) => _buildReminderCard(r, true)),
+      if (lockedCount > 0)
+        _buildLockedRemindersCard(lockedCount),
       const SizedBox(height: 24),
     ];
   }
@@ -746,6 +820,82 @@ class _RemindersPageState extends State<RemindersPage> {
         });
       }
     });
+  }
+
+  Widget _buildLockedRemindersCard(int lockedCount, {Widget? customSubtitleWidget}) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      decoration: BoxDecoration(
+        color: _cardColor, // Dark card background
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _neonColor.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(top: -10, left: -30, child: Icon(Icons.star, color: _neonColor.withOpacity(0.5), size: 16)),
+              Positioned(bottom: -10, left: 10, child: Icon(Icons.star, color: _neonColor.withOpacity(0.3), size: 10)),
+              Positioned(top: 10, right: -40, child: Icon(Icons.star, color: _neonColor.withOpacity(0.5), size: 14)),
+              Positioned(bottom: -20, right: -20, child: Icon(Icons.star, color: _neonColor.withOpacity(0.4), size: 12)),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: _backgroundColor, // Darker inner circle
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _neonColor.withOpacity(0.8), width: 2), // Thicker, more solid green border
+                  boxShadow: [
+                    BoxShadow(
+                      color: _neonColor.withOpacity(0.15),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.lock, color: _neonColor, size: 32),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(text: '$lockedCount Reminders ', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+                TextSpan(text: 'Locked', style: TextStyle(color: _neonColor, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          customSubtitleWidget ?? Text(
+            'Upgrade to Pro to view and manage\nall reminders.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _mutedColor, fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                 Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _neonColor,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.workspace_premium, size: 20),
+              label: const Text('Upgrade to Pro', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildReminderCard(Map<String, dynamic> data, bool isCompleted) {

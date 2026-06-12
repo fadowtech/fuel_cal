@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/vehicle_model.dart';
 import '../models/fuel_log_model.dart';
 import '../models/expense_model.dart';
@@ -21,12 +22,55 @@ final maxRemindersProvider = FutureProvider<int>((ref) async {
   return SubscriptionService.getMaxReminders(plan);
 });
 
+final defaultVehicleIdProvider = FutureProvider<int?>((ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('default_vehicle_id');
+});
+
 final selectedVehicleProvider = StateProvider<Vehicle?>((ref) => null);
+
+final activeVehicleProvider = Provider<Vehicle?>((ref) {
+  final selected = ref.watch(selectedVehicleProvider);
+  final vehicles = ref.watch(vehiclesProvider).value ?? [];
+  final defaultId = ref.watch(defaultVehicleIdProvider).value;
+  final maxVehicles = ref.watch(maxVehiclesProvider).value ?? 3;
+  
+  Vehicle? displayVehicle = selected;
+  if (displayVehicle == null && vehicles.isNotEmpty) {
+    if (defaultId != null) {
+      try {
+        displayVehicle = vehicles.firstWhere((v) => v.id == defaultId);
+      } catch (_) {
+        displayVehicle = vehicles.first;
+      }
+    } else {
+      displayVehicle = vehicles.first;
+    }
+  }
+
+  if (displayVehicle != null && vehicles.indexOf(displayVehicle) >= maxVehicles) {
+    displayVehicle = vehicles.isNotEmpty ? vehicles.first : null;
+  }
+  
+  return displayVehicle;
+});
 
 final vehiclesProvider = FutureProvider<List<Vehicle>>((ref) async {
   final apiService = ref.watch(apiServiceProvider);
   final data = await apiService.getVehicles();
-  return data.map((json) => Vehicle.fromJson(json)).toList();
+  final vehicles = data.map((json) => Vehicle.fromJson(json)).toList();
+  
+  try {
+    final defaultVehicle = vehicles.firstWhere((v) => v.isDefault);
+    final prefs = await SharedPreferences.getInstance();
+    final currentDefault = prefs.getInt('default_vehicle_id');
+    if (currentDefault != defaultVehicle.id) {
+      await prefs.setInt('default_vehicle_id', defaultVehicle.id);
+      Future.microtask(() => ref.invalidate(defaultVehicleIdProvider));
+    }
+  } catch (_) {}
+  
+  return vehicles;
 });
 
 final fuelLogsProvider = FutureProvider<List<FuelLog>>((ref) async {

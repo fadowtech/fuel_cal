@@ -427,7 +427,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               _buildSignOutButton(),
               const SizedBox(height: 16),
               Center(
-                  child: Text('Fuelvox v1.0.13',
+                  child: Text('Fuelvox v1.0.15',
                       style: TextStyle(color: _mutedColor, fontSize: 10))),
               const SizedBox(height: 24),
               const BannerAdWidget(),

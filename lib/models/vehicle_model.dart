@@ -4,7 +4,7 @@ part 'vehicle_model.freezed.dart';
 part 'vehicle_model.g.dart';
 
 @freezed
-class Vehicle with _$Vehicle {
+abstract class Vehicle with _$Vehicle {
   const factory Vehicle({
     required int id,
     @JsonKey(name: 'user_id') required int userId,
@@ -22,6 +22,7 @@ class Vehicle with _$Vehicle {
     @JsonKey(name: 'poor_mileage') double? poorMileage,
     String? notes,
     String? color,
+    @JsonKey(name: 'is_default') @Default(false) bool isDefault,
   }) = _Vehicle;
 
   factory Vehicle.fromJson(Map<String, dynamic> json) => _$VehicleFromJson(json);
