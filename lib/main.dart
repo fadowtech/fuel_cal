@@ -226,6 +226,7 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
   int _selectedIndex = 0; // Controls PageView (current visible main tab)
   int _bottomNavIndex = 0;
   bool _isFabMenuOpen = false;
+  DateTime? _currentBackPressTime;
 
   int _previousMainTabIndex =
       0; // Stores the index of the tab active before 'More' was selected
@@ -268,12 +269,47 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
           ),
         ];
 
-        return Scaffold(
-          key: _scaffoldKey,
-          backgroundColor: ThemeService.backgroundColor, // Match background color
-          extendBody: true, // Allow body to flow under bottom nav
-          body: Stack(
-            children: [
+        return WillPopScope(
+          onWillPop: () async {
+            if (_selectedIndex != 0) {
+              setState(() {
+                _selectedIndex = 0;
+                _bottomNavIndex = 0;
+                _pageController.jumpToPage(0);
+              });
+              return false;
+            }
+            
+            DateTime now = DateTime.now();
+            if (_currentBackPressTime == null || 
+                now.difference(_currentBackPressTime!) > const Duration(seconds: 2)) {
+              _currentBackPressTime = now;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.verified_user, color: ThemeService.neonColor, size: 20),
+                      SizedBox(width: 12),
+                      Text('Press back again to exit FuelVox', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                  backgroundColor: ThemeService.cardColor,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  margin: EdgeInsets.only(bottom: 80, left: 20, right: 20), // Above bottom nav
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+              return false;
+            }
+            return true;
+          },
+          child: Scaffold(
+            key: _scaffoldKey,
+            backgroundColor: ThemeService.backgroundColor, // Match background color
+            extendBody: true, // Allow body to flow under bottom nav
+            body: Stack(
+              children: [
               PageView(
                 controller: _pageController,
             onPageChanged: (index) {
@@ -290,6 +326,7 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
             ],
           ),
           bottomNavigationBar: _buildCustomBottomNav(),
+        ),
         );
       },
     );

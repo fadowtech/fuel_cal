@@ -270,6 +270,17 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
 
     if (logs.isNotEmpty) {
       List<dynamic> filteredLogs = List.from(logs);
+      
+      if (activeVehicle != null) {
+        filteredLogs = filteredLogs.where((log) {
+          int? vId = log.vehicleId;
+          if (vId == null && vehicles.isNotEmpty) {
+            vId = vehicles.first.id;
+          }
+          return vId == activeVehicle.id;
+        }).toList();
+      }
+
       if (widget.existingLog != null) {
         filteredLogs.removeWhere((log) => log.id == widget.existingLog!['id']);
       }

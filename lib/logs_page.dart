@@ -128,13 +128,13 @@ class _LogsPageState extends ConsumerState<LogsPage> {
            final r = rem as Map<String, dynamic>;
            if (!matchesVehicle(r['vehicle_id'] as int?)) continue;
            final status = r['status'] as String? ?? 'pending';
-           // Reminders timeline uses completed_at if available, else due_date, else created_at
+           // Reminders timeline uses created_at to represent when the event occurred
            DateTime? dateToUse;
-           if (status == 'completed' || status == 'skipped') {
-               if (r['completed_at'] != null) dateToUse = DateTime.tryParse(r['completed_at']);
+           if (r['created_at'] != null) {
+               dateToUse = DateTime.tryParse(r['created_at'])?.toLocal();
            }
            if (dateToUse == null && r['due_date'] != null) {
-               dateToUse = DateTime.tryParse(r['due_date']);
+               dateToUse = DateTime.tryParse(r['due_date'])?.toLocal();
            }
            if (dateToUse != null) {
                unifiedLogs.add(UnifiedLog(LogType.reminder, dateToUse, r));
@@ -610,7 +610,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(log.stationName?.isNotEmpty == true ? log.stationName! : 'Gas Station',
+                  Text('Fuel Added',
                       style: TextStyle(
                           color: ThemeService.textColor,
                           fontSize: 14,
@@ -859,8 +859,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
   Widget _buildReminderCard(BuildContext context, Map<String, dynamic> rem) {
     final timeFormat = DateFormat('hh:mm a');
-    final dateStr = rem['due_date'] != null 
-        ? timeFormat.format(DateTime.parse(rem['due_date'])) 
+    final dateStr = rem['created_at'] != null 
+        ? timeFormat.format(DateTime.parse(rem['created_at']).toLocal()) 
         : 'Unknown Time';
     final status = rem['status'] as String? ?? 'pending';
     
@@ -952,7 +952,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(rem['title'] ?? 'Reminder',
+                Text('Reminder Added',
                     style: TextStyle(
                         color: ThemeService.textColor,
                         fontSize: 14,

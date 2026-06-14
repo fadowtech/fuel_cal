@@ -129,6 +129,7 @@ class ReminderBase(BaseModel):
     priority: Optional[str] = "High"
     status: Optional[str] = "pending"
     completed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
 
 class ReminderCreate(ReminderBase):
     pass

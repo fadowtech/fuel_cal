@@ -100,6 +100,7 @@ class Reminder(Base):
     priority = Column(String, default="High")
     status = Column(String, default="pending") # "pending", "completed", "skipped"
     completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     user = relationship("User")
     vehicle = relationship("Vehicle")

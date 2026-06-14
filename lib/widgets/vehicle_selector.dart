@@ -680,7 +680,7 @@ class VehicleSelector extends ConsumerWidget {
         return Icons.electric_scooter;
       case 'car':
       default:
-        return Icons.directions_car;
+        return CupertinoIcons.car_detailed;
     }
   }
 
