@@ -131,10 +131,14 @@ class _LogsPageState extends ConsumerState<LogsPage> {
            // Reminders timeline uses created_at to represent when the event occurred
            DateTime? dateToUse;
            if (r['created_at'] != null) {
-               dateToUse = DateTime.tryParse(r['created_at'])?.toLocal();
+               String ds = r['created_at'];
+               if (!ds.endsWith('Z')) ds = '${ds}Z';
+               dateToUse = DateTime.tryParse(ds)?.toLocal();
            }
            if (dateToUse == null && r['due_date'] != null) {
-               dateToUse = DateTime.tryParse(r['due_date'])?.toLocal();
+               String ds = r['due_date'];
+               if (!ds.endsWith('Z')) ds = '${ds}Z';
+               dateToUse = DateTime.tryParse(ds)?.toLocal();
            }
            if (dateToUse != null) {
                unifiedLogs.add(UnifiedLog(LogType.reminder, dateToUse, r));
@@ -379,11 +383,11 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                 )
               else
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
                   decoration: BoxDecoration(
-                    color: _surfaceColor,
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)),
+                    border: Border.all(color: const Color(0xFF5A67D8), width: 1.2),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
@@ -417,8 +421,10 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty)
+                                if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
                                   Text(v.vehicleNumber!, style: TextStyle(color: _mutedColor, fontSize: 10)),
+                                ]
                               ],
                             ),
                           );
@@ -859,9 +865,25 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
   Widget _buildReminderCard(BuildContext context, Map<String, dynamic> rem) {
     final timeFormat = DateFormat('hh:mm a');
-    final dateStr = rem['created_at'] != null 
-        ? timeFormat.format(DateTime.parse(rem['created_at']).toLocal()) 
-        : 'Unknown Time';
+    
+    DateTime? parseDate(String? ds) {
+        if (ds == null) return null;
+        if (!ds.endsWith('Z')) ds = '${ds}Z';
+        return DateTime.tryParse(ds)?.toLocal();
+    }
+
+    final createdDate = parseDate(rem['created_at']);
+    final dueDate = parseDate(rem['due_date']);
+
+    final dateStr = createdDate != null 
+        ? timeFormat.format(createdDate) 
+        : (dueDate != null 
+            ? timeFormat.format(dueDate) 
+            : 'Unknown Time');
+    
+    final dueStr = dueDate != null 
+        ? DateFormat('dd MMM yyyy').format(dueDate)
+        : '';
     final status = rem['status'] as String? ?? 'pending';
     
     String? amountStr = rem['amount']?.toString();
@@ -920,14 +942,45 @@ class _LogsPageState extends ConsumerState<LogsPage> {
       ),
       child: GestureDetector(
       onTap: () {
+        final status = rem['status'] as String? ?? 'pending';
+        Color statusColor = const Color(0xFF10B981);
+        if (status == 'pending') statusColor = const Color(0xFFF59E0B);
+        if (status == 'skipped') statusColor = Colors.orangeAccent;
+        if (status == 'completed') statusColor = const Color(0xFF3B82F6);
+        
+        final cat = rem['category'] as String? ?? 'General';
+        IconData catIcon = Icons.notifications;
+        Color catColor = const Color(0xFF22C55E);
+        if (cat == 'Service') { catIcon = Icons.build_outlined; catColor = const Color(0xFF22C55E); }
+        else if (cat == 'Insurance') { catIcon = Icons.security_outlined; catColor = const Color(0xFFEF4444); }
+        else if (cat == 'Maintenance') { catIcon = Icons.settings_outlined; catColor = const Color(0xFFA855F7); }
+        else if (cat == 'Registration') { catIcon = Icons.receipt_long_outlined; catColor = const Color(0xFF3B82F6); }
+        else if (cat == 'Parking') { catIcon = Icons.local_parking_outlined; catColor = const Color(0xFFEAB308); }
+        else if (cat == 'Wash') { catIcon = Icons.local_car_wash_outlined; catColor = const Color(0xFF06B6D4); }
+        else if (cat == 'Tolls Recharge') { catIcon = Icons.toll_outlined; catColor = const Color(0xFFEC4899); }
+
+        final formattedDate = rem['due_date'] != null 
+            ? DateFormat('dd MMM yyyy').format(DateTime.parse(rem['due_date']).toLocal()) 
+            : '';
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ReminderDetailsPage(
-              data: rem,
+              data: {
+                'icon': catIcon,
+                'color': catColor,
+                'date': formattedDate,
+                'title': rem['title'] ?? 'Reminder',
+                'category': cat,
+                'status': status,
+                'statusColor': statusColor,
+                'is_completed': status == 'completed',
+                'raw_data': rem,
+              },
             ),
           ),
-        );
+        ).then((_) => ref.invalidate(remindersProvider));
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -958,7 +1011,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                         fontSize: 14,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('${rem['category'] ?? 'General'}',
+                Text('${rem['category'] ?? 'General'}${dueStr.isNotEmpty ? ' • Due: $dueStr' : ''}',
                     style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
             ),

@@ -134,10 +134,19 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
                 }
             }
         } else if (dueDate != null) {
-          final diff = dueDate.difference(DateTime.now()).inDays;
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+          final diff = dueDay.difference(today).inDays;
           if (diff < 0) {
             status = 'Overdue';
-            timeLeft = '${diff.abs()} days ago';
+            timeLeft = '${diff.abs()} days overdue';
+          } else if (diff == 0) {
+            status = 'Due Today';
+            timeLeft = 'Today';
+          } else if (diff == 1) {
+            status = 'Due Tomorrow';
+            timeLeft = 'Tomorrow';
           } else if (diff <= 3) {
             status = 'Due soon';
             timeLeft = '$diff days left';
@@ -155,7 +164,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
           'status': status,
           'statusColor': apiStatus != 'pending' 
               ? (apiStatus == 'skipped' ? Colors.orange : const Color(0xFF22C55E)) 
-              : (status == 'Due soon' || status == 'Overdue' ? _dangerColor : color),
+              : (status == 'Overdue' ? _dangerColor : (status == 'Due Today' || status == 'Due Tomorrow' || status == 'Due soon' ? const Color(0xFFF59E0B) : color)),
           'timeleft': apiStatus != 'pending' ? '' : timeLeft,
           'date': dueDate != null ? DateFormat('dd MMM yyyy').format(dueDate) : '',
           'raw_date': dueDate,

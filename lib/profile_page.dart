@@ -445,7 +445,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               _buildSignOutButton(),
                     const SizedBox(height: 16),
                     Center(
-                        child: Text('Fuelvox v1.0.15',
+                        child: Text('Fuelvox v1.0.19',
                             style: TextStyle(color: _mutedColor, fontSize: 10))),
                     const SizedBox(height: 100), // padding for bottom nav
                   ],

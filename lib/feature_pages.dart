@@ -630,7 +630,134 @@ class ServicesPage extends ConsumerStatefulWidget {
 
 class _ServicesPageState extends ConsumerState<ServicesPage> {
   String _selectedFilter = 'All';
+  DateTime _selectedMonth = DateTime.now();
   final List<String> _serviceCategories = ['Service', 'Engine', 'Brakes', 'Suspension', 'General', 'Tires'];
+
+  Future<void> _pickMonthOnly() async {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final selectedIndex = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: _surfaceColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Select Month', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  childAspectRatio: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: 12,
+                itemBuilder: (context, index) {
+                  final isSelected = _selectedMonth.month == index + 1;
+                  final isFutureMonth = _selectedMonth.year == DateTime.now().year && (index + 1) > DateTime.now().month;
+                  
+                  return GestureDetector(
+                    onTap: isFutureMonth ? null : () => Navigator.pop(context, index + 1),
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected ? _neonColor : Colors.white.withValues(alpha: isFutureMonth ? 0.02 : 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        months[index], 
+                        style: TextStyle(
+                          color: isSelected ? Colors.black : (isFutureMonth ? Colors.white.withValues(alpha: 0.2) : Colors.white), 
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 13
+                        )
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      }
+    );
+
+    if (selectedIndex != null) {
+      setState(() {
+        _selectedMonth = DateTime(_selectedMonth.year, selectedIndex, 1);
+      });
+    }
+  }
+
+  Future<void> _pickYearOnly() async {
+    final currentYear = DateTime.now().year;
+    final startYear = 1990;
+    final endYear = currentYear;
+    final years = List.generate(endYear - startYear + 1, (index) => endYear - index);
+    
+    final selectedYear = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: _surfaceColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Column(
+            children: [
+              Text('Select Year', style: TextStyle(color: _textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              Expanded(
+                child: GridView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 2.2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: years.length,
+                itemBuilder: (context, index) {
+                  final year = years[index];
+                  final isSelected = _selectedMonth.year == year;
+                  return GestureDetector(
+                    onTap: () => Navigator.pop(context, year),
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected ? _neonColor : Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(year.toString(), style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                    ),
+                  );
+                },
+              ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      }
+    );
+
+    if (selectedYear != null) {
+      setState(() {
+        int newMonth = _selectedMonth.month;
+        if (selectedYear == DateTime.now().year && newMonth > DateTime.now().month) {
+          newMonth = DateTime.now().month;
+        }
+        _selectedMonth = DateTime(selectedYear, newMonth, 1);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -670,8 +797,12 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
             if (s.vehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
             return false;
           }).toList();
+          final monthFiltered = services.where((s) {
+            final d = s.date ?? DateTime.now();
+            return d.year == _selectedMonth.year && d.month == _selectedMonth.month;
+          }).toList();
           
-          final allServices = services;
+          final allServices = monthFiltered;
           
           final filteredServices = _selectedFilter == 'All'
               ? allServices
@@ -682,13 +813,58 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
             (sum, item) => sum + item.amount,
           );
 
+          int prevMonthTotal = 0;
+          final prevMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
+          final prevMonthServices = services.where((s) {
+             final d = s.date ?? DateTime.now();
+             return d.year == prevMonth.year && d.month == prevMonth.month;
+          });
+          prevMonthTotal = prevMonthServices.fold<double>(
+            0.0,
+            (sum, item) => sum + item.amount,
+          ).toInt();
+
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: _pickMonthOnly,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                      child: Row(
+                        children: [
+                          Text(DateFormat('MMM').format(_selectedMonth), style: TextStyle(color: _textColor, fontSize: 12)),
+                          const SizedBox(width: 4),
+                          Icon(Icons.keyboard_arrow_down, color: _textColor, size: 14),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _pickYearOnly,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                      child: Row(
+                        children: [
+                          Text(DateFormat('yyyy').format(_selectedMonth), style: TextStyle(color: _textColor, fontSize: 12)),
+                          const SizedBox(width: 4),
+                          Icon(Icons.keyboard_arrow_down, color: _textColor, size: 14),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               _TotalSpendDonutCard(
                 total: total.toInt(),
-                previousTotal: 0,
-                selectedMonth: DateTime.now(),
+                previousTotal: prevMonthTotal,
+                selectedMonth: _selectedMonth,
                 expenses: filteredServices.map((s) => Expense(id: s.id, userId: s.userId, vehicleId: s.vehicleId, category: s.category, title: s.title, amount: s.amount, date: s.date, notes: s.notes)).toList(),
               ),
               const SizedBox(height: 16),
@@ -1574,42 +1750,39 @@ class _TotalSpendDonutCard extends StatelessWidget {
                     ],
                   )
                 else
-                  Text('No prior data', style: TextStyle(color: _mutedColor, fontSize: 10)),
+                  Text('No data', style: TextStyle(color: _mutedColor, fontSize: 10)),
               ],
             ),
           ),
-          
-          Expanded(
-            flex: 3,
-            child: Center(
-              child: SizedBox(
-                width: 80, height: 80,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CustomPaint(
-                      size: const Size(80, 80),
-                      painter: _DonutChartPainter(
-                        percentages: breakdown.map((e) => e['percent'] as double).toList(),
-                        colors: breakdown.map((e) => e['color'] as Color).toList(),
-                        strokeWidth: 12,
-                      ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: SizedBox(
+              width: 80, height: 80,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(80, 80),
+                    painter: _DonutChartPainter(
+                      percentages: breakdown.map((e) => e['percent'] as double).toList(),
+                      colors: breakdown.map((e) => e['color'] as Color).toList(),
+                      strokeWidth: 12,
                     ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('₹$total', style: TextStyle(color: _textColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                        Text('Total', style: TextStyle(color: _mutedColor, fontSize: 9)),
-                      ],
-                    )
-                  ],
-                ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('₹$total', style: TextStyle(color: _textColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                      Text('Total', style: TextStyle(color: _mutedColor, fontSize: 9)),
+                    ],
+                  )
+                ],
               ),
             ),
           ),
           
           Expanded(
-            flex: 3,
+            flex: 5,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1622,12 +1795,12 @@ class _TotalSpendDonutCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       Expanded(child: Text(item['name'] as String, style: TextStyle(color: _textColor, fontSize: 10), overflow: TextOverflow.ellipsis)),
                       SizedBox(
-                        width: 30,
+                        width: 28,
                         child: Text('${(item['percent'] as double).toInt()}%', style: TextStyle(color: _textColor, fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.right),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       SizedBox(
-                        width: 55,
+                        width: 40,
                         child: Text('₹${NumberFormat('#,##0').format(item['amount'])}', style: TextStyle(color: _mutedColor, fontSize: 10), textAlign: TextAlign.right),
                       ),
                     ],

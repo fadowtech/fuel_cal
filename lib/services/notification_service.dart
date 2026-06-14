@@ -102,6 +102,28 @@ class NotificationService {
     );
   }
 
+  static Future<void> showImmediateNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    await _notificationsPlugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'fuel_mate_reminders',
+          'Reminders',
+          channelDescription: 'Notifications for vehicle reminders',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  }
+
   static Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id: id);
   }

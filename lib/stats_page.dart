@@ -74,7 +74,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 },
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -129,11 +129,11 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           ],
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
           decoration: BoxDecoration(
-            color: _surfaceColor,
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)),
+            border: Border.all(color: const Color(0xFF5A67D8), width: 1.2),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<int>(
@@ -167,8 +167,10 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty)
+                        if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty) ...[
+                          const SizedBox(height: 2),
                           Text(v.vehicleNumber!, style: TextStyle(color: _mutedColor, fontSize: 10)),
+                        ]
                       ],
                     ),
                   );

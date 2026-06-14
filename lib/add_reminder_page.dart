@@ -70,7 +70,7 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
   void initState() {
     super.initState();
     if (widget.editData != null) {
-      final raw = widget.editData!['raw_data'];
+      final raw = widget.editData!['raw_data'] ?? widget.editData!;
       if (raw != null) {
         _selectedCategory = raw['category'] ?? '';
         _titleController.text = raw['title'] ?? '';

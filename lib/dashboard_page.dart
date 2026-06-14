@@ -1637,10 +1637,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         String timeLeft = '';
         
         if (dueDate != null) {
-          final diff = dueDate.difference(DateTime.now()).inDays;
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+          final diff = dueDay.difference(today).inDays;
+          
           if (diff < 0) {
             severity = 'danger';
             timeLeft = '${diff.abs()} days overdue';
+          } else if (diff == 0) {
+            severity = 'warning';
+            timeLeft = 'Today';
+          } else if (diff == 1) {
+            severity = 'warning';
+            timeLeft = 'Tomorrow';
           } else if (diff <= 3) {
             severity = 'warning';
             timeLeft = '$diff days left';
@@ -1660,8 +1670,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           bgColor = _dangerColor.withOpacity(0.15);
           textColor = _dangerColor;
         } else if (severity == 'warning') {
-          bgColor = _warningColor.withOpacity(0.15);
-          textColor = _warningColor;
+          bgColor = const Color(0xFFF59E0B).withOpacity(0.15);
+          textColor = const Color(0xFFF59E0B);
         } else {
           bgColor = _infoColor.withOpacity(0.15);
           textColor = _infoColor;
@@ -1670,7 +1680,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         final mappedData = {
           'title': r['title'] ?? 'Alert',
           'category': r['category'] ?? 'General',
-          'status': severity == 'danger' ? 'Overdue' : (severity == 'warning' ? 'Due soon' : 'Upcoming'),
+          'status': severity == 'danger' ? 'Overdue' : (timeLeft == 'Today' ? 'Due Today' : (timeLeft == 'Tomorrow' ? 'Due Tomorrow' : (severity == 'warning' ? 'Due soon' : 'Upcoming'))),
           'statusColor': textColor,
           'icon': Icons.settings, // Default fallback
           'color': const Color(0xFFA855F7), // Default fallback
@@ -1791,7 +1801,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                         const SizedBox(width: 6),
                         Text(
                           '${vehicle.make} ${vehicle.model}',
-                          style: TextStyle(color: _neonColor, fontSize: 12, fontWeight: FontWeight.w500),
+                          style: TextStyle(color: _neonColor, fontSize: 10, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),

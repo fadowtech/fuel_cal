@@ -66,11 +66,11 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           Padding(
             padding: const EdgeInsets.only(right: 16.0, top: 6.0, bottom: 6.0),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
               decoration: BoxDecoration(
-                color: ThemeService.surfaceColor,
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)),
+                border: Border.all(color: const Color(0xFF5A67D8), width: 1.2),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<int>(
@@ -104,8 +104,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty)
+                            if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
                               Text(v.vehicleNumber!, style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
+                            ]
                           ],
                         ),
                       );
@@ -222,6 +224,23 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         timeLeft = 'Upcoming';
     }
 
+    final status = r['status'] as String? ?? 'pending';
+    Color statusColor = const Color(0xFF10B981);
+    if (status == 'pending') statusColor = const Color(0xFFF59E0B);
+    if (status == 'skipped') statusColor = Colors.orangeAccent;
+    if (status == 'completed') statusColor = const Color(0xFF3B82F6);
+    
+    final cat = r['category'] as String? ?? 'General';
+    IconData catIcon = Icons.notifications;
+    Color catColor = const Color(0xFF22C55E);
+    if (cat == 'Service') { catIcon = Icons.build_outlined; catColor = const Color(0xFF22C55E); }
+    else if (cat == 'Insurance') { catIcon = Icons.security_outlined; catColor = const Color(0xFFEF4444); }
+    else if (cat == 'Maintenance') { catIcon = Icons.settings_outlined; catColor = const Color(0xFFA855F7); }
+    else if (cat == 'Registration') { catIcon = Icons.receipt_long_outlined; catColor = const Color(0xFF3B82F6); }
+    else if (cat == 'Parking') { catIcon = Icons.local_parking_outlined; catColor = const Color(0xFFEAB308); }
+    else if (cat == 'Wash') { catIcon = Icons.local_car_wash_outlined; catColor = const Color(0xFF06B6D4); }
+    else if (cat == 'Tolls Recharge') { catIcon = Icons.toll_outlined; catColor = const Color(0xFFEC4899); }
+
     return GestureDetector(
       onTap: () async {
         await _markAsSeen(r['id'] as int);
@@ -230,9 +249,14 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           MaterialPageRoute(
             builder: (context) => ReminderDetailsPage(
               data: {
+                'icon': catIcon,
+                'color': catColor,
                 'title': r['title'] ?? 'Alert',
-                'category': r['category'] ?? 'General',
+                'category': cat,
                 'date': timeLeft,
+                'status': status,
+                'statusColor': statusColor,
+                'is_completed': status == 'completed',
                 'raw_data': r,
               },
             ),
@@ -329,7 +353,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                         const SizedBox(width: 6),
                         Text(
                           '${vehicle.make} ${vehicle.model}',
-                          style: TextStyle(color: ThemeService.neonColor, fontSize: 12, fontWeight: FontWeight.w500),
+                          style: TextStyle(color: ThemeService.neonColor, fontSize: 10, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),

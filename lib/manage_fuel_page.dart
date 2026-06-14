@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
@@ -336,6 +337,19 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                 TextField(
                   controller: stationController,
                   textCapitalization: TextCapitalization.words,
+                  inputFormatters: [
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      if (newValue.text.isEmpty) return newValue;
+                      String newText = newValue.text.split(' ').map((word) {
+                        if (word.isEmpty) return '';
+                        return word[0].toUpperCase() + word.substring(1);
+                      }).join(' ');
+                      return newValue.copyWith(
+                        text: newText,
+                        selection: newValue.selection,
+                      );
+                    }),
+                  ],
                   style: TextStyle(color: ThemeService.textColor),
                   decoration: InputDecoration(
                     hintText: 'Enter station name',

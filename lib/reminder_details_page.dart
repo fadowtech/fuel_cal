@@ -116,6 +116,39 @@ class ReminderDetailsPage extends StatelessWidget {
     final iconColor = data['color'] as Color? ?? ThemeService.neonColor;
     final iconData = data['icon'] as IconData? ?? Icons.notifications;
 
+    String timeStatus = 'Upcoming';
+    Color pillColor = const Color(0xFF10B981);
+    
+    if (data['is_completed'] == true) {
+      timeStatus = 'Completed';
+      pillColor = const Color(0xFF3B82F6);
+    } else if (data['status'] == 'skipped') {
+      timeStatus = 'Skipped';
+      pillColor = Colors.orangeAccent;
+    } else if (data['raw_data'] != null) {
+      final dueDateStr = data['raw_data']['due_date'] as String?;
+      if (dueDateStr != null) {
+        final dueDate = DateTime.tryParse(dueDateStr);
+        if (dueDate != null) {
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+          final diff = dueDay.difference(today).inDays;
+          
+          if (diff < 0) {
+            timeStatus = 'Overdue';
+            pillColor = Colors.redAccent;
+          } else if (diff == 0) {
+            timeStatus = 'Due Today';
+            pillColor = const Color(0xFFFFBB33);
+          } else if (diff == 1) {
+            timeStatus = 'Due Tomorrow';
+            pillColor = const Color(0xFFFFBB33);
+          }
+        }
+      }
+    }
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
@@ -274,15 +307,15 @@ class ReminderDetailsPage extends StatelessWidget {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withOpacity(0.1),
+                        color: pillColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.schedule, color: Color(0xFF10B981), size: 12),
+                          Icon(Icons.schedule, color: pillColor, size: 12),
                           const SizedBox(width: 4),
-                          Text(data['is_completed'] == true ? 'Completed' : 'Upcoming', style: const TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
+                          Text(timeStatus, style: TextStyle(color: pillColor, fontSize: 11, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),

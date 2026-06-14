@@ -61,45 +61,22 @@ class VehicleSelector extends ConsumerWidget {
     return GestureDetector(
       onTap: () => _showVehiclePicker(context, ref),
       child: Container(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         decoration: BoxDecoration(
-          color: ThemeService.surfaceColor, // Adaptable to light/dark
+          color: ThemeService.surfaceColor, // Dark background
           borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(color: ThemeService.mutedColor.withOpacity(0.1)),
+          border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)), // subtle blue border
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildVehicleIcon(selectedVehicle, size: 52),
+            _buildVehicleIcon(selectedVehicle, size: 56),
             const SizedBox(width: 16.0),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: [
-                      Text(
-                        'Selected vehicle',
-                        style: TextStyle(
-                          color: ThemeService.mutedColor,
-                          fontSize: 12.0,
-                        ),
-                      ),
-                      if (selectedVehicle != null && selectedVehicle!.id == defaultVehicleId) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF5A67D8).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('DEFAULT', style: TextStyle(color: Color(0xFF5A67D8), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4.0),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Flexible(
                         child: Text(
@@ -112,84 +89,79 @@ class VehicleSelector extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (currentOdometer != null) ...[
-                        const SizedBox(width: 8),
-                        Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 14)),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 14),
-                        const SizedBox(width: 4),
-                        Text('ODO', style: TextStyle(color: ThemeService.mutedColor, fontSize: 11, letterSpacing: 0.5)),
-                        const SizedBox(width: 4),
-                        Text.rich(
-                          TextSpan(
-                            text: currentOdometer!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                            style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold),
-                            children: [
-                              TextSpan(text: ' km', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12, fontWeight: FontWeight.normal)),
-                            ],
+                      if (selectedVehicle != null && selectedVehicle!.id == defaultVehicleId) ...[
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            border: Border.all(color: const Color(0xFF00BFA5)),
+                            borderRadius: BorderRadius.circular(4),
                           ),
+                          child: const Text('DEFAULT', style: TextStyle(color: Color(0xFF00BFA5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                         ),
                       ],
                     ],
                   ),
                   if (selectedVehicle != null) ...[
-                    const SizedBox(height: 4.0),
+                    const SizedBox(height: 8.0),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8.0,
+                      runSpacing: 4.0,
                       children: [
                         if (selectedVehicle!.vehicleNumber != null && selectedVehicle!.vehicleNumber!.isNotEmpty) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFF5A67D8).withOpacity(0.8), // Blueish border
-                                ),
-                            ),
-                            child: Text(selectedVehicle!.vehicleNumber!,
-                                style: TextStyle(
-                                    color: ThemeService.textColor, fontSize: 11, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
-                          const SizedBox(width: 8),
+                          _buildPill(Icons.badge_outlined, selectedVehicle!.vehicleNumber!),
+                          Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
                         ],
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: ThemeService.mutedColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('${selectedVehicle!.year}',
-                              style: TextStyle(
-                                  color: ThemeService.mutedColor, fontSize: 11, fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: const Color(0xFF00BFA5).withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(6)),
-                          child: Text(selectedVehicle!.fuelType,
-                              style: const TextStyle(
-                                  color: Color(0xFF00BFA5),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold)),
-                        ),
+                        _buildPill(Icons.calendar_today_outlined, '${selectedVehicle!.year}'),
+                        Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
+                        _buildPill(Icons.water_drop_outlined, selectedVehicle!.fuelType, iconColor: const Color(0xFF00BFA5), textColor: const Color(0xFF00BFA5)),
                       ],
                     ),
-                  ]
+                  ],
                 ],
               ),
             ),
-                        Icon(
-                      Icons.keyboard_arrow_down,
-                      color: ThemeService.textColor,
-                    ),     ],
+            const SizedBox(width: 12.0),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (currentOdometer != null) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.speed, color: Color(0xFF5A67D8), size: 16),
+                      const SizedBox(width: 4),
+                      Text.rich(
+                        TextSpan(
+                          text: currentOdometer!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
+                          style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                          children: [
+                            TextSpan(text: ' km', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12, fontWeight: FontWeight.normal)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12.0),
+                ],
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF22222A),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.keyboard_arrow_down,
+                    color: ThemeService.textColor,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -388,6 +360,32 @@ class VehicleSelector extends ConsumerWidget {
   );
 }
 
+
+  Widget _buildPill(IconData icon, String text, {Color? iconColor, Color? textColor}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF22222A),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: iconColor ?? const Color(0xFF5A67D8), size: 12),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              color: textColor ?? ThemeService.textColor.withOpacity(0.9),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBottomButton(IconData icon, String title) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
@@ -446,7 +444,7 @@ class VehicleSelector extends ConsumerWidget {
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    Navigator.pop(context); // close modal
+                    Navigator.pop(context);
                     Navigator.push(context, MaterialPageRoute(builder: (context) => const UpgradePage()));
                   },
                   child: const Text('Upgrade', style: TextStyle(color: Color(0xFF00FF9D))),
@@ -460,172 +458,178 @@ class VehicleSelector extends ConsumerWidget {
         Navigator.pop(context);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8.0),
-        padding: const EdgeInsets.all(12.0),
+        margin: const EdgeInsets.only(bottom: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF5A67D8).withOpacity(0.1) : ThemeService.surfaceColor,
-          borderRadius: BorderRadius.circular(12.0),
-          border: isSelected
-              ? Border.all(color: const Color(0xFF5A67D8), width: 1.5)
-              : Border.all(color: Colors.transparent, width: 1.5),
+          color: ThemeService.surfaceColor,
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)),
         ),
         child: Opacity(
           opacity: isLocked ? 0.5 : 1.0,
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _buildVehicleIcon(vehicle, size: 48),
+              _buildVehicleIcon(vehicle, size: 56),
               const SizedBox(width: 16.0),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Flexible(
                           child: Text(
                             vehicle.displayName,
                             style: TextStyle(
                               color: ThemeService.textColor,
-                              fontSize: 16.0,
+                              fontSize: 18.0,
                               fontWeight: FontWeight.bold,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isDefault) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                                color: ThemeService.neonColor.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
+                              color: Colors.transparent,
+                              border: Border.all(color: const Color(0xFF00BFA5)),
+                              borderRadius: BorderRadius.circular(4),
                             ),
-                            child: Text('DEFAULT', style: TextStyle(color: ThemeService.neonColor, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                          ),
-                        ],
-                        if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
-                          const SizedBox(width: 8),
-                          const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 14),
-                          const SizedBox(width: 4),
-                          Text('ODO', style: TextStyle(color: ThemeService.mutedColor, fontSize: 11, letterSpacing: 0.5)),
-                          const SizedBox(width: 4),
-                          Text(
-                            vehicleOdometers![vehicle.id]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                            style: TextStyle(color: ThemeService.textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                            child: const Text('DEFAULT', style: TextStyle(color: Color(0xFF00BFA5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                           ),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 6.0),
+                    const SizedBox(height: 8.0),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8.0,
+                      runSpacing: 4.0,
                       children: [
                         if (vehicle.vehicleNumber != null && vehicle.vehicleNumber!.isNotEmpty) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: ThemeService.mutedColor.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(vehicle.vehicleNumber!,
-                                style: TextStyle(
-                                    color: ThemeService.textColor, fontSize: 11, fontWeight: FontWeight.w500)),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
-                          const SizedBox(width: 8),
+                          _buildPill(Icons.badge_outlined, vehicle.vehicleNumber!),
+                          Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
                         ],
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: ThemeService.mutedColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('${vehicle.year}',
-                              style: TextStyle(
-                                  color: ThemeService.mutedColor, fontSize: 11, fontWeight: FontWeight.w500)),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('•', style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: const Color(0xFF00BFA5).withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(6)),
-                          child: Text(vehicle.fuelType,
-                              style: const TextStyle(
-                                  color: Color(0xFF00BFA5),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold)),
-                        ),
+                        _buildPill(Icons.calendar_today_outlined, '${vehicle.year}'),
+                        Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
+                        _buildPill(Icons.water_drop_outlined, vehicle.fuelType, iconColor: const Color(0xFF00BFA5), textColor: const Color(0xFF00BFA5)),
                       ],
                     ),
                   ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              const SizedBox(width: 12.0),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (isLocked)
-                    Icon(Icons.lock, color: ThemeService.mutedColor)
-                  else if (isSelected)
-                    const Icon(Icons.check_circle, color: Color(0xFF5A67D8)),
-                    
-                  if (!isLocked) ...[
-                    const SizedBox(width: 8),
-                    PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert, color: ThemeService.textColor),
-                      color: ThemeService.surfaceColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      onSelected: (value) async {
-                        if (value == 'default') {
-                           final prefs = await SharedPreferences.getInstance();
-                           await prefs.setInt('default_vehicle_id', vehicle.id);
-                           
-                           final vehicleData = vehicle.toJson();
-                           vehicleData['is_default'] = true;
-                           ref.read(apiServiceProvider).updateVehicle(vehicle.id, vehicleData);
-                           ref.refresh(vehiclesProvider);
-                           ref.invalidate(defaultVehicleIdProvider);
-                           onVehicleSelected(vehicle);
-                           if (context.mounted) {
-                             Navigator.pop(context); // Close the modal to show the snackbar clearly on the main screen
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               SnackBar(
-                                 content: Row(
-                                   children: [
-                                     Icon(Icons.check_circle, color: ThemeService.backgroundColor),
-                                     const SizedBox(width: 8),
-                                     Text('Default set successfully', style: TextStyle(color: ThemeService.backgroundColor, fontWeight: FontWeight.bold)),
-                                   ],
-                                 ),
-                                 backgroundColor: const Color(0xFF00FF9D),
-                                 behavior: SnackBarBehavior.floating,
-                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                 margin: const EdgeInsets.all(16),
-                               ),
-                             );
-                           }
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'default',
-                          child: Row(
+                  if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.speed, color: Color(0xFF5A67D8), size: 16),
+                        const SizedBox(width: 4),
+                        Text.rich(
+                          TextSpan(
+                            text: vehicleOdometers![vehicle.id]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold),
                             children: [
-                              const Icon(Icons.star_border, color: Color(0xFF5A67D8), size: 20),
-                              const SizedBox(width: 12),
-                              const Text('Set as default', style: TextStyle(color: Color(0xFF5A67D8), fontSize: 14)),
+                              TextSpan(text: ' km', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12, fontWeight: FontWeight.normal)),
                             ],
                           ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12.0),
                   ],
+                  Row(
+                    children: [
+                      if (isLocked)
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF22222A),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.lock, color: ThemeService.mutedColor, size: 16),
+                        )
+                      else if (isSelected)
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF5A67D8),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.check, color: Colors.white, size: 18),
+                        ),
+                      if (!isLocked) ...[
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                          color: ThemeService.surfaceColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: EdgeInsets.zero,
+                          offset: const Offset(0, 40),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF22222A),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                          ),
+                          onSelected: (value) async {
+                            if (value == 'default') {
+                               final prefs = await SharedPreferences.getInstance();
+                               await prefs.setInt('default_vehicle_id', vehicle.id);
+                               
+                               final vehicleData = vehicle.toJson();
+                               vehicleData['is_default'] = true;
+                               ref.read(apiServiceProvider).updateVehicle(vehicle.id, vehicleData);
+                               ref.refresh(vehiclesProvider);
+                               ref.invalidate(defaultVehicleIdProvider);
+                               onVehicleSelected(vehicle);
+                               if (context.mounted) {
+                                 Navigator.pop(context);
+                                 ScaffoldMessenger.of(context).showSnackBar(
+                                   SnackBar(
+                                     content: Row(
+                                       children: [
+                                         Icon(Icons.check_circle, color: ThemeService.backgroundColor),
+                                         const SizedBox(width: 8),
+                                         Text('Default set successfully', style: TextStyle(color: ThemeService.backgroundColor, fontWeight: FontWeight.bold)),
+                                       ],
+                                     ),
+                                     backgroundColor: const Color(0xFF00FF9D),
+                                     behavior: SnackBarBehavior.floating,
+                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                     margin: const EdgeInsets.all(16),
+                                   ),
+                                 );
+                               }
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'default',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.star_border, color: Color(0xFF5A67D8), size: 20),
+                                  const SizedBox(width: 12),
+                                  const Text('Set as default', style: TextStyle(color: Color(0xFF5A67D8), fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ],
@@ -684,43 +688,32 @@ class VehicleSelector extends ConsumerWidget {
     }
   }
 
-  Widget _buildVehicleIcon(Vehicle? vehicle, {double size = 48}) {
+  Widget _buildVehicleIcon(Vehicle? vehicle, {double size = 56}) {
     if (vehicle == null) {
       return Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: ThemeService.surfaceColor,
+          color: const Color(0xFFF0F0F5),
           borderRadius: BorderRadius.circular(14.0),
         ),
-        child: Icon(CupertinoIcons.car_detailed, color: Colors.grey, size: size * 0.6),
+        child: Icon(CupertinoIcons.car_detailed, color: const Color(0xFF1E1E26), size: size * 0.6),
       );
     }
 
     final iconData = _getIconForType(vehicle.vehicleType);
-    final iconColor = _parseVehicleColor(vehicle.color);
-    bool isDarkColor = iconColor.computeLuminance() < 0.05;
-    bool isVeryLight = iconColor.computeLuminance() > 0.8;
     
-    Color displayIconColor = iconColor;
-    Color bgColor = isDarkColor ? Colors.white.withOpacity(0.8) : iconColor.withOpacity(0.15);
-
-    if (!ThemeService.isDarkMode && isVeryLight) {
-      displayIconColor = iconColor;
-      bgColor = Colors.black.withOpacity(0.6);
-    }
-
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: const Color(0xFFF0F0F5),
         borderRadius: BorderRadius.circular(14.0),
       ),
       alignment: Alignment.center,
       child: Icon(
         iconData,
-        color: displayIconColor,
+        color: const Color(0xFF1E1E26),
         size: size * 0.6,
       ),
     );
