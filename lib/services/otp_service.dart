@@ -34,8 +34,8 @@ class OtpService {
         'smtp.gmail.com',
         port: 465,
         ssl: true,
-        username: 'fadownoreply@gmail.com',
-        password: 'klkgsgeufxycylwr',
+        username: 'noreply@fadowtech.com',
+        password: 'tspanqjrlbctsttc',
       );
 
       // Generate 6-digit OTP
@@ -82,9 +82,28 @@ class OtpService {
 
       // Construct email
       final message = Message()
-        ..from = const Address('fadownoreply@gmail.com', 'FuelVox Support')
+        ..from = const Address('noreply@fadowtech.com', 'FuelVox Support')
         ..recipients.add(recipientEmail)
         ..subject = emailSubject
+        ..text = '''
+FuelVox: $subtitleText
+
+$titleText
+$actionText
+
+Your verification code is: $otp
+
+This code expires in 5 minutes.
+
+For your security, never share this verification code with anyone. If you didn't request this email, you can safely ignore it.
+
+Need Help?
+Our support team is here for you.
+support@fuelvox.app
+
+Thank you,
+FuelVox Team
+'''
         ..html = '''
         <div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
           Your verification code is $otp. $snippetSpacer

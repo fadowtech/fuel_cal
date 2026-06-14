@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/services/api_service.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -141,9 +142,12 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                       valueColor: AlwaysStoppedAnimation<Color>(_neonColor),
                     ),
                   )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                    child: Form(
+                : Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                          child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -378,6 +382,11 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                       ),
                     ),
                   ),
+                ),
+                if (MediaQuery.of(context).viewInsets.bottom == 0)
+                  const BannerAdWidget(),
+              ],
+            ),
           ),
         ],
       ),

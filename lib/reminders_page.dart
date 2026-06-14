@@ -11,16 +11,17 @@ import 'package:fuel_cal/services/ad_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/services/subscription_service.dart';
 import 'package:fuel_cal/upgrade_page.dart';
-
-class RemindersPage extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/providers/data_provider.dart';
+class RemindersPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? initialActionData;
   const RemindersPage({super.key, this.initialActionData});
 
   @override
-  State<RemindersPage> createState() => _RemindersPageState();
+  ConsumerState<RemindersPage> createState() => _RemindersPageState();
 }
 
-class _RemindersPageState extends State<RemindersPage> {
+class _RemindersPageState extends ConsumerState<RemindersPage> {
   Color get _neonColor => ThemeService.neonColor;
   Color get _surfaceColor => ThemeService.surfaceColor;
   Color get _cardColor => ThemeService.cardColor;
@@ -91,7 +92,19 @@ class _RemindersPageState extends State<RemindersPage> {
 
       final apiReminders = await ApiService().getReminders();
       
-      final formattedReminders = apiReminders.asMap().entries.map((entry) {
+      final activeVehicle = ref.read(activeVehicleProvider);
+      
+      final filteredApiReminders = apiReminders.where((r) {
+        if (activeVehicle == null) return true;
+        int? vId;
+        if (r['vehicle_id'] != null) vId = r['vehicle_id'] is int ? r['vehicle_id'] : int.tryParse(r['vehicle_id'].toString());
+        if (vId == activeVehicle.id) return true;
+        final vList = ref.read(vehiclesProvider).valueOrNull ?? [];
+        if (vId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
+        return false;
+      }).toList();
+      
+      final formattedReminders = filteredApiReminders.asMap().entries.map((entry) {
         final i = entry.key;
         final r = entry.value as Map<String, dynamic>;
         final categoryData = _categories.firstWhere(
@@ -1081,6 +1094,7 @@ class _RemindersPageState extends State<RemindersPage> {
             onPressed: (context) async {
               final success = await ApiService().deleteReminder(data['id'] as int);
               if (success) {
+                ref.invalidate(remindersProvider);
                 _fetchReminders();
               }
             },

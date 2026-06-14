@@ -320,6 +320,7 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                     _buildSectionHeader(Icons.more_horiz, 'ADDITIONAL (OPTIONAL)'),
                     _buildAdditionalSection(),
                     const SizedBox(height: 32),
+                  if (MediaQuery.of(context).viewInsets.bottom == 0)
                     const BannerAdWidget(),
                   ],
                 ),

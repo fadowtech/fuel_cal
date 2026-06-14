@@ -32,6 +32,8 @@ class _StatsPageState extends ConsumerState<StatsPage> {
   String _monthlyComparisonFilter = 'This year';
   int _expenseMonth = DateTime.now().month;
   int _expenseYear = DateTime.now().year;
+  bool _showAllVehicles = false;
+  int? _localVehicleFilterId;
 
   @override
   Widget build(BuildContext context) {
@@ -39,75 +41,142 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     final expensesAsync = ref.watch(expensesProvider);
     final servicesAsync = ref.watch(servicesProvider);
     
-    final activeVehicle = ref.watch(activeVehicleProvider);
+    final globalActiveVehicle = ref.watch(activeVehicleProvider);
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final vList = vehiclesAsync.valueOrNull ?? [];
+    
+    final activeVehicleToUse = _showAllVehicles 
+        ? null 
+        : (_localVehicleFilterId != null 
+            ? vList.firstWhere((v) => v.id == _localVehicleFilterId, orElse: () => globalActiveVehicle ?? vList.first)
+            : globalActiveVehicle);
 
-    List<FuelLog> filterLogs(List<FuelLog> list) => activeVehicle == null ? list : list.where((x) => x.vehicleId == activeVehicle.id).toList();
-    List<Expense> filterExpenses(List<Expense> list) => activeVehicle == null ? list : list.where((x) => x.vehicleId == activeVehicle.id).toList();
-    List<Service> filterServices(List<Service> list) => activeVehicle == null ? list : list.where((x) => x.vehicleId == activeVehicle.id).toList();
+    List<FuelLog> filterLogs(List<FuelLog> list) => activeVehicleToUse == null ? list : list.where((x) => x.vehicleId == activeVehicleToUse.id || (x.vehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicleToUse.id)).toList();
+    List<Expense> filterExpenses(List<Expense> list) => activeVehicleToUse == null ? list : list.where((x) => x.vehicleId == activeVehicleToUse.id || (x.vehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicleToUse.id)).toList();
+    List<Service> filterServices(List<Service> list) => activeVehicleToUse == null ? list : list.where((x) => x.vehicleId == activeVehicleToUse.id || (x.vehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicleToUse.id)).toList();
 
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: RefreshIndicator(
-          color: _neonColor,
-          backgroundColor: _cardColor,
-          onRefresh: () async {
-            ref.invalidate(fuelLogsProvider);
-            ref.invalidate(expensesProvider);
-            ref.invalidate(servicesProvider);
-            try {
-              await ref.read(fuelLogsProvider.future);
-            } catch (_) {}
-          },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 24),
-              fuelLogsAsync.when(
-                data: (logs) => expensesAsync.when(
-                  data: (expenses) => servicesAsync.when(
-                    data: (services) => _buildKpiGrid(filterLogs(logs), filterExpenses(expenses), filterServices(services)),
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, s) => const SizedBox(),
+        child: Column(
+          children: [
+            Expanded(
+              child: RefreshIndicator(
+                color: _neonColor,
+                backgroundColor: _cardColor,
+                onRefresh: () async {
+                  ref.invalidate(fuelLogsProvider);
+                  ref.invalidate(expensesProvider);
+                  ref.invalidate(servicesProvider);
+                  try {
+                    await ref.read(fuelLogsProvider.future);
+                  } catch (_) {}
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 24),
+                      fuelLogsAsync.when(
+                        data: (logs) => expensesAsync.when(
+                          data: (expenses) => servicesAsync.when(
+                            data: (services) => _buildKpiGrid(filterLogs(logs), filterExpenses(expenses), filterServices(services)),
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error: (e, s) => const SizedBox(),
+                          ),
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (e, s) => const SizedBox(),
+                        ),
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (e, s) => const SizedBox(),
+                      ),
+                      const SizedBox(height: 24),
+                      if (fuelLogsAsync.hasValue) _buildFuelCostChart(filterLogs(fuelLogsAsync.value!)) else _buildPlaceholderChart(),
+                      if (fuelLogsAsync.hasValue) _buildMileageChart(filterLogs(fuelLogsAsync.value!)) else _buildPlaceholderChart(),
+                      if (fuelLogsAsync.hasValue) _buildMonthlyComparisonChart(filterLogs(fuelLogsAsync.value!)) else _buildCard('Monthly comparison', _buildPlaceholderChart()),
+                      const SizedBox(height: 16),
+                      if (fuelLogsAsync.hasValue && expensesAsync.hasValue && servicesAsync.hasValue) 
+                        _buildExpenseBreakdown(filterLogs(fuelLogsAsync.value!), filterExpenses(expensesAsync.value!), filterServices(servicesAsync.value!)) 
+                      else 
+                        _buildCard('Expense breakdown', _buildPlaceholderChart()),
+                      const SizedBox(height: 24),
+                      if (fuelLogsAsync.hasValue) _buildSmartInsights(filterLogs(fuelLogsAsync.value!)) else const SizedBox(),
+                      const SizedBox(height: 100),
+                    ],
                   ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, s) => const SizedBox(),
                 ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, s) => const SizedBox(),
               ),
-              const SizedBox(height: 24),
-              if (fuelLogsAsync.hasValue) _buildFuelCostChart(filterLogs(fuelLogsAsync.value!)) else _buildPlaceholderChart(),
-              if (fuelLogsAsync.hasValue) _buildMileageChart(filterLogs(fuelLogsAsync.value!)) else _buildPlaceholderChart(),
-              if (fuelLogsAsync.hasValue) _buildMonthlyComparisonChart(filterLogs(fuelLogsAsync.value!)) else _buildCard('Monthly comparison', _buildPlaceholderChart()),
-              const SizedBox(height: 16),
-              if (fuelLogsAsync.hasValue && expensesAsync.hasValue && servicesAsync.hasValue) 
-                _buildExpenseBreakdown(filterLogs(fuelLogsAsync.value!), filterExpenses(expensesAsync.value!), filterServices(servicesAsync.value!)) 
-              else 
-                _buildCard('Expense breakdown', _buildPlaceholderChart()),
-              const SizedBox(height: 24),
-              if (fuelLogsAsync.hasValue) _buildSmartInsights(filterLogs(fuelLogsAsync.value!)) else const SizedBox(),
-              const SizedBox(height: 24),
-              const BannerAdWidget(),
-              const SizedBox(height: 100),
-            ],
-          ),
+            ),
+            const BannerAdWidget(),
+          ],
         ),
-      ),
       ),
     );
   }
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('Analytics', style: TextStyle(color: ThemeService.textColor, fontSize: 24, fontWeight: FontWeight.bold)),
-        Text('Insights & trends', style: TextStyle(color: _mutedColor, fontSize: 12)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Analytics', style: TextStyle(color: ThemeService.textColor, fontSize: 24, fontWeight: FontWeight.bold)),
+            Text('Insights & trends', style: TextStyle(color: _mutedColor, fontSize: 12)),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: _surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: _showAllVehicles ? -1 : (_localVehicleFilterId ?? ref.watch(activeVehicleProvider)?.id ?? -1),
+              icon: Icon(Icons.keyboard_arrow_down, color: ThemeService.textColor, size: 18),
+              dropdownColor: _cardColor,
+              itemHeight: 56,
+              style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold),
+              onChanged: (int? newValue) {
+                setState(() {
+                  if (newValue == -1) {
+                    _showAllVehicles = true;
+                    _localVehicleFilterId = null;
+                  } else {
+                    _showAllVehicles = false;
+                    _localVehicleFilterId = newValue;
+                  }
+                });
+              },
+              items: [
+                const DropdownMenuItem<int>(
+                  value: -1,
+                  child: Text("All Vehicles"),
+                ),
+                ...(ref.watch(vehiclesProvider).valueOrNull ?? []).map((v) {
+                  return DropdownMenuItem<int>(
+                    value: v.id,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty)
+                          Text(v.vehicleNumber!, style: TextStyle(color: _mutedColor, fontSize: 10)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

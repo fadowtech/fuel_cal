@@ -18,9 +18,8 @@ import '../currency_selection_page.dart';
 import '../onboarding_settings_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
-  final isAuthenticated = authState.isAuthenticated;
-  final isInitializing = authState.isInitializing;
+  final isAuthenticated = ref.watch(authProvider.select((s) => s.isAuthenticated));
+  final isInitializing = ref.watch(authProvider.select((s) => s.isInitializing));
 
   return GoRouter(
     initialLocation: '/splash',

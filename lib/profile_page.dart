@@ -158,16 +158,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Profile & Settings',
-                  style: TextStyle(
-                      color: ThemeService.textColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold)),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Profile & Settings',
+                        style: TextStyle(
+                            color: ThemeService.textColor,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               _buildProfileCard(),
               const SizedBox(height: 16),
@@ -327,7 +330,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               _buildGroup('SECURITY', [
                 _buildRow(
                   Icons.fingerprint,
-                  'Fingerprint login',
+                  'Biometric Login',
                   _fingerprintEnabled ? 'On' : 'Off',
                   suffixWidget: Transform.scale(
                     scale: 0.7,
@@ -424,16 +427,33 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ]),
               const SizedBox(height: 24),
-              _buildSignOutButton(),
-              const SizedBox(height: 16),
-              Center(
-                  child: Text('Fuelvox v1.0.15',
-                      style: TextStyle(color: _mutedColor, fontSize: 10))),
+              _buildGroup('ABOUT', [
+                _buildRow(
+                  Icons.privacy_tip_outlined,
+                  'Privacy Policy',
+                  null,
+                  onTap: _showPrivacy,
+                ),
+                _buildRow(
+                  Icons.mail_outline,
+                  'Contact Us',
+                  null,
+                  onTap: _showContactUs,
+                ),
+              ]),
               const SizedBox(height: 24),
-              const BannerAdWidget(),
-              const SizedBox(height: 100), // padding for bottom nav
-            ],
-          ),
+              _buildSignOutButton(),
+                    const SizedBox(height: 16),
+                    Center(
+                        child: Text('Fuelvox v1.0.15',
+                            style: TextStyle(color: _mutedColor, fontSize: 10))),
+                    const SizedBox(height: 100), // padding for bottom nav
+                  ],
+                ),
+              ),
+            ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );
@@ -673,6 +693,62 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     fontWeight: FontWeight.bold)),
           ],
         ),
+      ),
+    );
+  }
+  void _showPrivacy() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardColor,
+        title: Text('Privacy Policy', style: TextStyle(color: ThemeService.textColor, fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Text(
+            '''This privacy policy applies to the Fuel Calculator app (hereby referred to as "Application") for mobile devices that was created by Emishper Raj (hereby referred to as "Service Provider") as a Free and Premium service. This service is intended for use "AS IS".
+
+Information Collection, Data Storage, and Use
+The Application collects information when you download and use it. For a better experience, while using the Application, the Service Provider may require you to provide us with certain personally identifiable information (such as your name, email address, and vehicle details). This information is transmitted via a secure API and safely stored in the Service Provider's own database. The information that the Service Provider requests will be retained by them and used as described in this privacy policy.
+
+Third-Party Access
+Only aggregated, anonymized data is periodically transmitted to external services to aid the Service Provider in improving the Application and their service. The Application utilizes third-party services that have their own Privacy Policy about handling data, including:
+• Google Play Services
+• Google AdMob
+• RevenueCat
+
+Opt-Out Rights & Data Retention
+You can stop all collection of information by the Application easily by uninstalling it. The Service Provider will retain User Provided data for as long as you use the Application. If you'd like them to delete User Provided Data, please contact them at fuelfox@fadowtech.com.
+
+Contact Us
+If you have any questions regarding privacy while using the Application, or have questions about the practices, please contact the Service Provider via email at fuelfox@fadowtech.com.''',
+            style: TextStyle(color: _mutedColor, fontSize: 13, height: 1.5),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: TextStyle(color: _neonColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showContactUs() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardColor,
+        title: Text('Contact Us', style: TextStyle(color: ThemeService.textColor, fontWeight: FontWeight.bold)),
+        content: Text(
+          'If you have any questions, feedback, or need support, please feel free to reach out to us at:\n\nfuelfox@fadowtech.com',
+          style: TextStyle(color: _mutedColor, fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close', style: TextStyle(color: _neonColor)),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/services/currency_service.dart';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fuel_cal/services/api_service.dart';
@@ -10,15 +11,15 @@ import 'package:fuel_cal/services/profile_service.dart';
 import 'package:intl/intl.dart';
 import 'package:fuel_cal/services/ad_service.dart';
 
-class AddReminderPage extends StatefulWidget {
+class AddReminderPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? editData;
   const AddReminderPage({super.key, this.editData});
 
   @override
-  State<AddReminderPage> createState() => _AddReminderPageState();
+  ConsumerState<AddReminderPage> createState() => _AddReminderPageState();
 }
 
-class _AddReminderPageState extends State<AddReminderPage> {
+class _AddReminderPageState extends ConsumerState<AddReminderPage> {
   Color get _neonColor => ThemeService.neonColor;
   Color get _surfaceColor => ThemeService.surfaceColor;
   Color get _cardColor => ThemeService.cardColor;
@@ -173,6 +174,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
                   SizedBox(height: 32),
                   _buildSaveButton(),
                   SizedBox(height: 40),
+                if (MediaQuery.of(context).viewInsets.bottom == 0)
                   const BannerAdWidget(),
                 ],
               ),
@@ -225,6 +227,8 @@ class _AddReminderPageState extends State<AddReminderPage> {
 
     String finalNotes = _notesController.text.trim();
 
+    final activeVehicle = ref.read(activeVehicleProvider);
+    
     final data = {
       'category': _selectedCategory,
       'title': _titleController.text.trim(),
@@ -237,6 +241,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
       'repeat_until': _repeatUntilDate?.toIso8601String(),
       'notify_before_days': _selectedNotifications.join(','),
       'priority': _priority,
+      'vehicle_id': activeVehicle?.id,
     };
 
     if (widget.editData != null && widget.editData!['raw_data']['status'] != null) {
@@ -287,6 +292,7 @@ class _AddReminderPageState extends State<AddReminderPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(widget.editData != null ? 'Reminder updated successfully!' : 'Reminder saved successfully!'), backgroundColor: Colors.green),
       );
+      ref.invalidate(remindersProvider);
       Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

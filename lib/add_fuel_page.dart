@@ -578,6 +578,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     _buildAdditional(),
 
                     SizedBox(height: 32),
+                  if (MediaQuery.of(context).viewInsets.bottom == 0)
                     const BannerAdWidget(),
                   ],
                 ),

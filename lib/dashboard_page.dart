@@ -103,7 +103,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     bool hasUnreadAlerts = false;
     List<dynamic> currentPendingReminders = [];
     if (remindersAsync.value != null) {
-      final allowedReminders = remindersAsync.value!.take(maxReminders).toList();
+      final Map<int, List<dynamic>> groupedReminders = {};
+      for (final r in remindersAsync.value!) {
+        int? parsedVId;
+        if (r['vehicle_id'] != null) parsedVId = r['vehicle_id'] is int ? r['vehicle_id'] : int.tryParse(r['vehicle_id'].toString());
+        int vId = parsedVId ?? (vehiclesList.isNotEmpty ? vehiclesList.first.id : -1);
+        groupedReminders.putIfAbsent(vId, () => []).add(r);
+      }
+      final List<dynamic> allowedReminders = [];
+      for (final group in groupedReminders.values) {
+        allowedReminders.addAll(group.take(maxReminders));
+      }
       currentPendingReminders = allowedReminders.where((r) => r['status'] != 'completed' && r['status'] != 'skipped').toList();
       hasUnreadAlerts = currentPendingReminders.any((r) {
         if (_seenReminderIds.contains(r['id'] as int)) return false;
@@ -231,7 +241,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 ),
                 remindersAsync.when(
                   skipLoadingOnReload: true,
-                  data: (reminders) => _buildAlertsList(reminders),
+                  data: (reminders) => _buildAlertsList(reminders, displayVehicle),
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (err, stack) => Text('Error: $err', style: TextStyle(color: _dangerColor)),
                 ),
@@ -1362,7 +1372,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         SizedBox(
-          height: 145, // Increased to prevent overflow
+          height: 130, // Restored to 130 so the car icon doesn't overlap the top arc
           width: 180,
           child: Stack(
             alignment: Alignment.bottomCenter, // Align bottom to sit on the flat edge
@@ -1380,7 +1390,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(bottom: 12), // Adjusted for better centering within the arc
+                padding: const EdgeInsets.only(bottom: 0), // Adjusted to allow central text to move down slightly relative to stack
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1389,12 +1399,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     Text('ODO • LIFETIME\nDISTANCE', 
                       textAlign: TextAlign.center,
                       style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 10, height: 1.4, letterSpacing: 0.5)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       formatter.format(lifetimeDistance),
                       style: TextStyle(color: ThemeService.textColor, fontSize: 34, fontWeight: FontWeight.bold, height: 1.0),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text('KM', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12, letterSpacing: 1.0)),
                   ],
                 ),
@@ -1402,16 +1412,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('0', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12)),
-            const SizedBox(width: 140),
-            Text('${(maxOdo / 1000).toStringAsFixed(0)}K', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12)),
-          ],
+        Transform.translate(
+          offset: const Offset(0, -15), // Pulls the "0" and "30K" labels UP to reduce padding without squishing the inside!
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('0', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12)),
+              const SizedBox(width: 155), // Increased slightly to align exactly under the arc's ends
+              Text('${(maxOdo / 1000).toStringAsFixed(0)}K', style: TextStyle(color: ThemeService.isDarkMode ? Colors.grey : _textColor, fontSize: 12)),
+            ],
+          ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1577,9 +1589,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
-  Widget _buildAlertsList(List<dynamic> reminders) {
+  Widget _buildAlertsList(List<dynamic> reminders, Vehicle? displayVehicle) {
+    final vehiclesList = ref.read(vehiclesProvider).valueOrNull ?? [];
+    final vehicleReminders = displayVehicle != null 
+        ? reminders.where((rem) {
+            if (rem['vehicle_id'] == displayVehicle.id) return true;
+            if (rem['vehicle_id'] == null && vehiclesList.isNotEmpty && vehiclesList.first.id == displayVehicle.id) return true;
+            return false;
+          }).toList()
+        : <dynamic>[];
+
     // Filter pending upcoming reminders
-    final pendingReminders = reminders.where((r) => r['status'] != 'completed' && r['status'] != 'skipped').toList();
+    final pendingReminders = vehicleReminders.where((r) => r['status'] != 'completed' && r['status'] != 'skipped').toList();
     
     // Sort by due date (closest first)
     pendingReminders.sort((a, b) {
@@ -1669,6 +1690,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         else if (cat == 'Tolls Recharge') { mappedData['icon'] = Icons.toll_outlined; mappedData['color'] = const Color(0xFFEC4899); }
         else { mappedData['icon'] = Icons.grid_view_rounded; mappedData['color'] = const Color(0xFF22C55E); }
 
+        Vehicle? vehicle;
+        for (var v in vehiclesList) {
+          if (v.id == r['vehicle_id']) {
+            vehicle = v;
+            break;
+          }
+        }
+        if (vehicle == null && vehiclesList.isNotEmpty) {
+          vehicle = vehiclesList.first;
+        }
+
         return GestureDetector(
           onTap: () async {
             await Navigator.push(
@@ -1687,15 +1719,34 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             decoration: _getCardDecoration(),
             child: Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.warning_amber_rounded,
-                      color: textColor, size: 20),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.notifications_active_outlined,
+                          color: textColor, size: 20),
+                    ),
+                    if (severity == 'danger' || severity == 'warning')
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF4B4B),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: _backgroundColor, width: 2),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1705,11 +1756,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       Text(r['title'] ?? 'Alert',
                           style: TextStyle(
                               color: _textColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500)),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
                       Text.rich(
                         TextSpan(
-                          style: TextStyle(color: _mutedColor, fontSize: 12),
+                          style: TextStyle(color: _mutedColor, fontSize: 13),
                           children: [
                             TextSpan(text: '${r['category'] ?? 'General'} • '),
                             TextSpan(
@@ -1724,6 +1776,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     ],
                   ),
                 ),
+                if (vehicle != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.directions_car, color: _neonColor, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${vehicle.make} ${vehicle.model}',
+                          style: TextStyle(color: _neonColor, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(width: 12),
+                Icon(Icons.chevron_right_rounded, color: _mutedColor, size: 20),
               ],
             ),
           ),

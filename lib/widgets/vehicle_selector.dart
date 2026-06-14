@@ -204,13 +204,16 @@ class VehicleSelector extends ConsumerWidget {
         String searchQuery = '';
         return StatefulBuilder(
           builder: (context, setState) {
-            final filteredVehicles = vehicles.where((v) {
-              final query = searchQuery.toLowerCase();
-              return v.make.toLowerCase().contains(query) ||
-                     v.model.toLowerCase().contains(query);
-            }).toList();
+            return Consumer(
+              builder: (context, ref, child) {
+                final defaultId = ref.watch(defaultVehicleIdProvider).value;
+                final filteredVehicles = vehicles.where((v) {
+                  final query = searchQuery.toLowerCase();
+                  return v.make.toLowerCase().contains(query) ||
+                         v.model.toLowerCase().contains(query);
+                }).toList();
 
-            return Container(
+                return Container(
               height: MediaQuery.of(context).size.height * 0.90,
               decoration: BoxDecoration(
                 color: ThemeService.backgroundColor,
@@ -300,7 +303,7 @@ class VehicleSelector extends ConsumerWidget {
                           ...filteredVehicles.map((v) {
                             final originalIndex = vehicles.indexOf(v);
                             final isLocked = originalIndex >= maxVehicles;
-                            return _buildVehicleItem(context, v, isLocked, ref);
+                            return _buildVehicleItem(context, v, isLocked, ref, defaultId);
                           }),
 
                         const SizedBox(height: 16),
@@ -371,17 +374,19 @@ class VehicleSelector extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 32),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-      },
-    );
-  }
+                  ], // closes ListView's children
+                ), // closes ListView
+              ), // closes Expanded
+            ], // closes Column's children
+          ), // closes Column
+        ); // closes Container
+            },
+          );
+        },
+      );
+    },
+  );
+}
 
   Widget _buildBottomButton(IconData icon, String title) {
     return Container(
@@ -420,8 +425,10 @@ class VehicleSelector extends ConsumerWidget {
     );
   }
 
-  Widget _buildVehicleItem(BuildContext context, Vehicle vehicle, bool isLocked, WidgetRef ref) {
+  Widget _buildVehicleItem(BuildContext context, Vehicle vehicle, bool isLocked, WidgetRef ref, int? defaultId) {
     bool isSelected = selectedVehicle?.id == vehicle.id;
+    final isDefault = (defaultId != null && vehicle.id == defaultId) || vehicle.isDefault;
+
     return GestureDetector(
       onTap: () {
         if (isLocked) {
@@ -486,6 +493,18 @@ class VehicleSelector extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (isDefault) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                                color: ThemeService.neonColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: ThemeService.neonColor.withOpacity(0.3)),
+                            ),
+                            child: Text('DEFAULT', style: TextStyle(color: ThemeService.neonColor, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                          ),
+                        ],
                         if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
                           const SizedBox(width: 8),
                           const Icon(Icons.speed, color: Color(0xFF00FF9D), size: 14),
@@ -571,6 +590,7 @@ class VehicleSelector extends ConsumerWidget {
                            vehicleData['is_default'] = true;
                            ref.read(apiServiceProvider).updateVehicle(vehicle.id, vehicleData);
                            ref.refresh(vehiclesProvider);
+                           ref.invalidate(defaultVehicleIdProvider);
                            onVehicleSelected(vehicle);
                            if (context.mounted) {
                              Navigator.pop(context); // Close the modal to show the snackbar clearly on the main screen

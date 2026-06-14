@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/api_service.dart';
 import 'package:fuel_cal/add_reminder_page.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 
 class ReminderDetailsPage extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -342,37 +343,43 @@ class ReminderDetailsPage extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Change Status', style: TextStyle(color: ThemeService.textColor, fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('Update the status of this item.', style: TextStyle(color: ThemeService.textColor.withOpacity(0.54), fontSize: 13)),
-              const SizedBox(height: 16),
-              Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (data['is_completed'] == true) ...[
-                    if (data['status'] == 'Completed') ...[
-                      Expanded(child: _buildSkipButton(context)),
-                      const SizedBox(width: 16),
+                  Text('Change Status', style: TextStyle(color: ThemeService.textColor, fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Update the status of this item.', style: TextStyle(color: ThemeService.textColor.withOpacity(0.54), fontSize: 13)),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (data['is_completed'] == true) ...[
+                        if (data['status'] == 'Completed') ...[
+                          Expanded(child: _buildSkipButton(context)),
+                          const SizedBox(width: 16),
+                        ],
+                        if (data['status'] == 'Skipped') ...[
+                          Expanded(child: _buildDoneButton(context)),
+                          const SizedBox(width: 16),
+                        ],
+                        Expanded(child: _buildRestoreButton(context)),
+                      ] else ...[
+                        Expanded(child: _buildSkipButton(context)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildDoneButton(context)),
+                      ],
                     ],
-                    if (data['status'] == 'Skipped') ...[
-                      Expanded(child: _buildDoneButton(context)),
-                      const SizedBox(width: 16),
-                    ],
-                    Expanded(child: _buildRestoreButton(context)),
-                  ] else ...[
-                    Expanded(child: _buildSkipButton(context)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildDoneButton(context)),
-                  ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );

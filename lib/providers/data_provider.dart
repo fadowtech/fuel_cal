@@ -41,10 +41,10 @@ final activeVehicleProvider = Provider<Vehicle?>((ref) {
       try {
         displayVehicle = vehicles.firstWhere((v) => v.id == defaultId);
       } catch (_) {
-        displayVehicle = vehicles.first;
+        displayVehicle = vehicles.firstWhere((v) => v.isDefault, orElse: () => vehicles.first);
       }
     } else {
-      displayVehicle = vehicles.first;
+      displayVehicle = vehicles.firstWhere((v) => v.isDefault, orElse: () => vehicles.first);
     }
   }
 

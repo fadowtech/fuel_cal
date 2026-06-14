@@ -4,7 +4,8 @@ import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/reminder_details_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:fuel_cal/services/ad_service.dart';
+import 'package:fuel_cal/models/vehicle_model.dart';
 class NotificationsPage extends ConsumerStatefulWidget {
   final Set<int> seenReminderIds;
   const NotificationsPage({super.key, required this.seenReminderIds});
@@ -15,6 +16,8 @@ class NotificationsPage extends ConsumerStatefulWidget {
 
 class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   late Set<int> _localSeenIds;
+  bool _showAllVehicles = false;
+  int? _localVehicleFilterId;
 
   @override
   void initState() {
@@ -28,10 +31,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         _localSeenIds.add(id);
       });
       final prefs = await SharedPreferences.getInstance();
-      final seenList = prefs.getStringList('seen_reminders') ?? [];
+      final seenList = prefs.getStringList('seen_reminder_ids') ?? [];
       if (!seenList.contains(id.toString())) {
         seenList.add(id.toString());
-        await prefs.setStringList('seen_reminders', seenList);
+        await prefs.setStringList('seen_reminder_ids', seenList);
       }
     }
   }
@@ -42,18 +45,103 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     final maxRemindersAsync = ref.watch(maxRemindersProvider);
     final maxReminders = maxRemindersAsync.value ?? 5;
     
+    final globalActiveVehicle = ref.watch(activeVehicleProvider);
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final vList = vehiclesAsync.valueOrNull ?? [];
+    
+    final activeVehicleToUse = _showAllVehicles 
+        ? null 
+        : (_localVehicleFilterId != null 
+            ? vList.firstWhere((v) => v.id == _localVehicleFilterId, orElse: () => globalActiveVehicle ?? vList.first)
+            : globalActiveVehicle);
+    
     return Scaffold(
       backgroundColor: ThemeService.backgroundColor,
       appBar: AppBar(
         backgroundColor: ThemeService.backgroundColor,
         elevation: 0,
-        title: const Text('Notifications', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text('Notifications', style: TextStyle(color: ThemeService.textColor, fontWeight: FontWeight.bold)),
+        iconTheme: IconThemeData(color: ThemeService.textColor),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0, top: 6.0, bottom: 6.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+              decoration: BoxDecoration(
+                color: ThemeService.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: _showAllVehicles ? -1 : (_localVehicleFilterId ?? globalActiveVehicle?.id ?? -1),
+                  icon: Icon(Icons.keyboard_arrow_down, color: ThemeService.textColor, size: 18),
+                  dropdownColor: ThemeService.cardColor,
+                  itemHeight: kMinInteractiveDimension,
+                  style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                  onChanged: (int? newValue) {
+                    setState(() {
+                      if (newValue == -1) {
+                        _showAllVehicles = true;
+                        _localVehicleFilterId = null;
+                      } else {
+                        _showAllVehicles = false;
+                        _localVehicleFilterId = newValue;
+                      }
+                    });
+                  },
+                  items: [
+                    const DropdownMenuItem<int>(
+                      value: -1,
+                      child: Text("All Vehicles"),
+                    ),
+                    ...vList.map((v) {
+                      return DropdownMenuItem<int>(
+                        value: v.id,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty)
+                              Text(v.vehicleNumber!, style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      body: remindersAsync.when(
-        data: (reminders) {
-          final allowedReminders = reminders.take(maxReminders).toList();
+      body: Column(
+        children: [
+          Expanded(
+            child: remindersAsync.when(
+              data: (reminders) {
+          final Map<int, List<dynamic>> groupedReminders = {};
+          for (final r in reminders) {
+            int? parsedVId;
+            if (r['vehicle_id'] != null) parsedVId = r['vehicle_id'] is int ? r['vehicle_id'] : int.tryParse(r['vehicle_id'].toString());
+            int vId = parsedVId ?? (vList.isNotEmpty ? vList.first.id : -1);
+            groupedReminders.putIfAbsent(vId, () => []).add(r);
+          }
+          final List<dynamic> allowedReminders = [];
+          for (final group in groupedReminders.values) {
+            allowedReminders.addAll(group.take(maxReminders));
+          }
+          
           final pendingReminders = allowedReminders.where((r) {
+            if (activeVehicleToUse != null) {
+              int? vId;
+              if (r['vehicle_id'] != null) vId = r['vehicle_id'] is int ? r['vehicle_id'] : int.tryParse(r['vehicle_id'].toString());
+              if (!(vId == activeVehicleToUse.id || (vId == null && vList.isNotEmpty && vList.first.id == activeVehicleToUse.id))) {
+                return false;
+              }
+            }
             if (r['status'] == 'completed' || r['status'] == 'skipped') return false;
             if (r['due_date'] != null) {
               try {
@@ -99,7 +187,11 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error loading notifications', style: TextStyle(color: ThemeService.dangerColor))),
+              error: (err, stack) => Center(child: Text('Error loading notifications', style: TextStyle(color: ThemeService.dangerColor))),
+            ),
+          ),
+          const BannerAdWidget(),
+        ],
       ),
     );
   }
@@ -164,20 +256,20 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.1),
+                    color: ThemeService.textColor.withOpacity(0.05),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.notifications_active, color: iconColor, size: 24),
+                  child: Icon(Icons.notifications_none_rounded, color: ThemeService.textColor, size: 24),
                 ),
                 if (isUnread)
                   Positioned(
-                    top: 0,
-                    right: 0,
+                    top: 2,
+                    right: 4,
                     child: Container(
-                      width: 10,
-                      height: 10,
+                      width: 12,
+                      height: 12,
                       decoration: BoxDecoration(
-                        color: Colors.redAccent,
+                        color: const Color(0xFFFF4B4B),
                         shape: BoxShape.circle,
                         border: Border.all(color: ThemeService.cardColor, width: 2),
                       ),
@@ -209,6 +301,44 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 ],
               ),
             ),
+            Builder(
+              builder: (context) {
+                final vehiclesList = ref.read(vehiclesProvider).valueOrNull ?? [];
+                Vehicle? vehicle;
+                for (var v in vehiclesList) {
+                  if (v.id == r['vehicle_id']) {
+                    vehicle = v;
+                    break;
+                  }
+                }
+                if (vehicle == null && vehiclesList.isNotEmpty) {
+                  vehicle = vehiclesList.first;
+                }
+                if (vehicle != null) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.directions_car, color: ThemeService.neonColor, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${vehicle.make} ${vehicle.model}',
+                          style: TextStyle(color: ThemeService.neonColor, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+            const SizedBox(width: 12),
             Icon(Icons.chevron_right, color: ThemeService.mutedColor),
           ],
         ),

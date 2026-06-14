@@ -121,6 +121,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final apiService = ref.read(apiServiceProvider);
     dynamic result;
 
+    final activeVehicle = ref.read(activeVehicleProvider);
+    final vehicleId = activeVehicle?.id;
+
     if (widget.existingExpense != null) {
       if (widget.isServiceMode) {
         result = await apiService.updateService(widget.existingExpense!.id, {
@@ -129,6 +132,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           "amount": amount,
           "date": _selectedDate.toIso8601String(),
           "notes": notes.isEmpty ? null : notes,
+          "vehicle_id": vehicleId,
         });
       } else {
         result = await apiService.updateExpense(widget.existingExpense!.id, {
@@ -137,6 +141,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           "amount": amount,
           "date": _selectedDate.toIso8601String(),
           "notes": notes.isEmpty ? null : notes,
+          "vehicle_id": vehicleId,
         });
       }
     } else {
@@ -148,6 +153,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           "amount": amount,
           "date": _selectedDate.toIso8601String(),
           "notes": notes.isEmpty ? null : notes,
+          "vehicle_id": vehicleId,
         });
       } else {
         created = await apiService.createExpense({
@@ -156,6 +162,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           "amount": amount,
           "date": _selectedDate.toIso8601String(),
           "notes": notes.isEmpty ? null : notes,
+          "vehicle_id": vehicleId,
         });
       }
       result = created ? true : 'Failed to save entry.';
@@ -524,6 +531,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     ),
                   ),
                   SizedBox(height: 24),
+                if (MediaQuery.of(context).viewInsets.bottom == 0)
                   const BannerAdWidget(),
                 ],
               ),

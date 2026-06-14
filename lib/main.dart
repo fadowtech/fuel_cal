@@ -339,7 +339,17 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
                     _buildFabMenuItem(Icons.notifications_active_rounded, const Color(0xFFF59E0B), 'Add Reminder', () {
                       final reminders = ref.read(remindersProvider).value ?? [];
                       final maxReminders = ref.read(maxRemindersProvider).value ?? 5;
-                      if (reminders.length >= maxReminders) {
+                      final activeVehicle = ref.read(activeVehicleProvider);
+                      final vehiclesList = ref.read(vehiclesProvider).valueOrNull ?? [];
+                      final vehicleReminders = reminders.where((r) {
+                        if (activeVehicle == null) return true;
+                        int? vId;
+                        if (r['vehicle_id'] != null) vId = r['vehicle_id'] is int ? r['vehicle_id'] : int.tryParse(r['vehicle_id'].toString());
+                        if (vId == activeVehicle.id) return true;
+                        if (vId == null && vehiclesList.isNotEmpty && vehiclesList.first.id == activeVehicle.id) return true;
+                        return false;
+                      }).toList();
+                      if (vehicleReminders.length >= maxReminders) {
                         _showUpgradeDialog(context, 'Reminders', maxReminders);
                       } else {
                         Navigator.push(context, MaterialPageRoute(builder: (context) => const AddReminderPage()));

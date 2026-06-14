@@ -15,6 +15,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
 import 'dart:convert';
 import 'package:fuel_cal/services/report_service.dart';
+import 'package:fuel_cal/services/ad_service.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -397,7 +398,16 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
             ),
             Expanded(
               child: expensesAsync.when(
-                data: (expenses) {
+                data: (allExpenses) {
+                  final activeVehicle = ref.watch(activeVehicleProvider);
+                  final expenses = allExpenses.where((e) {
+                    if (activeVehicle == null) return true;
+                    if (e.vehicleId == activeVehicle.id) return true;
+                    final vList = ref.read(vehiclesProvider).valueOrNull ?? [];
+                    if (e.vehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
+                    return false;
+                  }).toList();
+
                   var monthFiltered = expenses.where((e) {
                      final d = e.date ?? DateTime.now();
                      return d.year == _selectedMonth.year && d.month == _selectedMonth.month;
@@ -517,6 +527,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                 error: (e, st) => Center(child: Text('Failed to load expenses', style: TextStyle(color: _textColor))),
               ),
             ),
+            const BannerAdWidget(),
           ],
         ),
       ),
@@ -650,7 +661,16 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
         ),
       ),
       child: servicesAsync.when(
-        data: (services) {
+        data: (unfilteredServices) {
+          final activeVehicle = ref.watch(activeVehicleProvider);
+          final services = unfilteredServices.where((s) {
+            if (activeVehicle == null) return true;
+            if (s.vehicleId == activeVehicle.id) return true;
+            final vList = ref.read(vehiclesProvider).valueOrNull ?? [];
+            if (s.vehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
+            return false;
+          }).toList();
+          
           final allServices = services;
           
           final filteredServices = _selectedFilter == 'All'
@@ -1350,6 +1370,7 @@ class _FeatureScaffold extends StatelessWidget {
               ),
             ),
             Expanded(child: child),
+            const BannerAdWidget(),
           ],
         ),
       ),

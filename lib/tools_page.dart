@@ -119,7 +119,7 @@ class _ToolsPageState extends State<ToolsPage> {
           children: [
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 116),
                 itemCount: tools.length,
                 itemBuilder: (context, index) {
                   final tool = tools[index];
@@ -248,8 +248,6 @@ class _ToolsPageState extends State<ToolsPage> {
                 },
               ),
             ),
-            const BannerAdWidget(),
-            const SizedBox(height: 100), // Padding to sit exactly above the bottom nav
           ],
         ),
       ),
@@ -381,7 +379,6 @@ class _CalculatorWrapperState extends State<_CalculatorWrapper> {
                 ],
               ),
             ),
-            const BannerAdWidget(),
           ],
         ),
       ),

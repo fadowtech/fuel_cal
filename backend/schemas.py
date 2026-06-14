@@ -116,6 +116,7 @@ class Expense(ExpenseBase):
         from_attributes = True
 
 class ReminderBase(BaseModel):
+    vehicle_id: Optional[int] = None
     category: str
     title: str
     due_date: Optional[datetime] = None

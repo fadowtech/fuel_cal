@@ -194,156 +194,161 @@ class FuelLogDetailsPage extends ConsumerWidget {
           const SizedBox(width: 16),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Header Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: _cardColor,
-                borderRadius: BorderRadius.circular(20),
-              ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Top Header Card
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: iconColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
+                      color: _cardColor,
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Icon(iconData, color: iconColor, size: 40),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    stationName,
-                    style: TextStyle(color: ThemeService.textColor, fontSize: 24, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: iconColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${fuelLog.fuelQuantity.toStringAsFixed(1)} Liters',
-                      style: TextStyle(color: iconColor, fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                  const SizedBox(height: 24),
-                  IntrinsicHeight(
-                    child: Row(
+                    child: Column(
                       children: [
-                        Expanded(
-                          child: _buildHeaderInfo(Icons.calendar_today, const Color(0xFF10B981), 'Date', dateStr),
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: iconColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(iconData, color: iconColor, size: 40),
                         ),
-                        VerticalDivider(color: ThemeService.mutedColor.withOpacity(0.1), width: 32),
-                        Expanded(
-                          child: _buildHeaderInfo(CurrencyService.currentCurrencyIcon, const Color(0xFF3B82F6), 'Total Cost', '${CurrencyService.currencySymbol}${fuelLog.totalCost.toStringAsFixed(0)}'),
+                        const SizedBox(height: 16),
+                        Text(
+                          stationName,
+                          style: TextStyle(color: ThemeService.textColor, fontSize: 24, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
                         ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: iconColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${fuelLog.fuelQuantity.toStringAsFixed(1)} Liters',
+                            style: TextStyle(color: iconColor, fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        const SizedBox(height: 24),
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildHeaderInfo(Icons.calendar_today, const Color(0xFF10B981), 'Date', dateStr),
+                              ),
+                              VerticalDivider(color: ThemeService.mutedColor.withOpacity(0.1), width: 32),
+                              Expanded(
+                                child: _buildHeaderInfo(CurrencyService.currentCurrencyIcon, const Color(0xFF3B82F6), 'Total Cost', '${CurrencyService.currencySymbol}${fuelLog.totalCost.toStringAsFixed(0)}'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: _cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildListTile(
+                          icon: Icons.speed,
+                          iconColor: Colors.deepPurpleAccent,
+                          title: 'ODOMETER',
+                          subtitle: '${fuelLog.odometer.toStringAsFixed(0)} KM',
+                        ),
+                        Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        if (fuelLog.remainingRange != null && fuelLog.remainingRange! > 0) ...[
+                          _buildListTile(
+                            icon: Icons.compare_arrows_rounded,
+                            iconColor: const Color(0xFF00E676),
+                            title: 'DISTANCE TO EMPTY BEFORE FUEL',
+                            subtitle: '${fuelLog.remainingRange!.toStringAsFixed(0)} KM',
+                          ),
+                          Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        ],
+                        if (fuelLog.remainingRangeAfter != null && fuelLog.remainingRangeAfter! > 0) ...[
+                          _buildListTile(
+                            icon: Icons.compare_arrows_rounded,
+                            iconColor: const Color(0xFF00E676),
+                            title: 'DISTANCE TO EMPTY AFTER FUEL',
+                            subtitle: '${fuelLog.remainingRangeAfter!.toStringAsFixed(0)} KM',
+                          ),
+                          Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        ],
+                        if (fuelLog.fuelPrice != null) ...[
+                          _buildListTile(
+                            icon: Icons.price_change_outlined,
+                            iconColor: Colors.amber,
+                            title: 'FUEL PRICE',
+                            subtitle: '${CurrencyService.currencySymbol}${fuelLog.fuelPrice!.toStringAsFixed(2)} / L',
+                          ),
+                          Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        ],
+                        if (fuelLog.paymentMethod != null && fuelLog.paymentMethod!.isNotEmpty) ...[
+                          _buildListTile(
+                            icon: Icons.payment,
+                            iconColor: Colors.teal,
+                            title: 'PAYMENT METHOD',
+                            subtitle: fuelLog.paymentMethod,
+                          ),
+                          Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        ],
+                        if (fuelLog.location != null && fuelLog.location!.isNotEmpty) ...[
+                          _buildListTile(
+                            icon: Icons.location_on_outlined,
+                            iconColor: Colors.redAccent,
+                            title: 'LOCATION',
+                            subtitle: fuelLog.location,
+                          ),
+                          Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        ],
+                        _buildListTile(
+                          icon: Icons.local_gas_station,
+                          iconColor: Colors.green,
+                          title: 'FULL TANK',
+                          subtitle: fuelLog.isFullTank ? 'Yes' : 'No',
+                        ),
+                        Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        if (fuelLog.notes != null && fuelLog.notes!.isNotEmpty)
+                          _buildListTile(
+                            icon: Icons.notes,
+                            iconColor: const Color(0xFFF59E0B),
+                            title: 'NOTES',
+                            subtitle: fuelLog.notes,
+                          )
+                        else
+                          _buildListTile(
+                            icon: Icons.notes,
+                            iconColor: const Color(0xFFF59E0B),
+                            title: 'NOTES',
+                            subtitle: 'No notes provided',
+                          ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-            
-            const SizedBox(height: 24),
-            Container(
-              decoration: BoxDecoration(
-                color: _cardColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  _buildListTile(
-                    icon: Icons.speed,
-                    iconColor: Colors.deepPurpleAccent,
-                    title: 'ODOMETER',
-                    subtitle: '${fuelLog.odometer.toStringAsFixed(0)} KM',
-                  ),
-                  Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                  if (fuelLog.remainingRange != null && fuelLog.remainingRange! > 0) ...[
-                    _buildListTile(
-                      icon: Icons.compare_arrows_rounded,
-                      iconColor: const Color(0xFF00E676),
-                      title: 'DISTANCE TO EMPTY BEFORE FUEL',
-                      subtitle: '${fuelLog.remainingRange!.toStringAsFixed(0)} KM',
-                    ),
-                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                  ],
-                  if (fuelLog.remainingRangeAfter != null && fuelLog.remainingRangeAfter! > 0) ...[
-                    _buildListTile(
-                      icon: Icons.compare_arrows_rounded,
-                      iconColor: const Color(0xFF00E676),
-                      title: 'DISTANCE TO EMPTY AFTER FUEL',
-                      subtitle: '${fuelLog.remainingRangeAfter!.toStringAsFixed(0)} KM',
-                    ),
-                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                  ],
-                  if (fuelLog.fuelPrice != null) ...[
-                    _buildListTile(
-                      icon: Icons.price_change_outlined,
-                      iconColor: Colors.amber,
-                      title: 'FUEL PRICE',
-                      subtitle: '${CurrencyService.currencySymbol}${fuelLog.fuelPrice!.toStringAsFixed(2)} / L',
-                    ),
-                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                  ],
-                  if (fuelLog.paymentMethod != null && fuelLog.paymentMethod!.isNotEmpty) ...[
-                    _buildListTile(
-                      icon: Icons.payment,
-                      iconColor: Colors.teal,
-                      title: 'PAYMENT METHOD',
-                      subtitle: fuelLog.paymentMethod,
-                    ),
-                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                  ],
-                  if (fuelLog.location != null && fuelLog.location!.isNotEmpty) ...[
-                    _buildListTile(
-                      icon: Icons.location_on_outlined,
-                      iconColor: Colors.redAccent,
-                      title: 'LOCATION',
-                      subtitle: fuelLog.location,
-                    ),
-                    Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                  ],
-                  _buildListTile(
-                    icon: Icons.local_gas_station,
-                    iconColor: Colors.green,
-                    title: 'FULL TANK',
-                    subtitle: fuelLog.isFullTank ? 'Yes' : 'No',
-                  ),
-                  Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                  if (fuelLog.notes != null && fuelLog.notes!.isNotEmpty)
-                    _buildListTile(
-                      icon: Icons.notes,
-                      iconColor: const Color(0xFFF59E0B),
-                      title: 'NOTES',
-                      subtitle: fuelLog.notes,
-                    )
-                  else
-                    _buildListTile(
-                      icon: Icons.notes,
-                      iconColor: const Color(0xFFF59E0B),
-                      title: 'NOTES',
-                      subtitle: 'No notes provided',
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            const BannerAdWidget(),
-          ],
-        ),
+          ),
+          const BannerAdWidget(),
+        ],
       ),
     );
   }

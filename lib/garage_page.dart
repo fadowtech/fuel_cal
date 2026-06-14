@@ -37,51 +37,56 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: RefreshIndicator(
-          color: _neonColor,
-          backgroundColor: _cardColor,
-          onRefresh: () async {
-            ref.refresh(vehiclesProvider.future);
-            ref.refresh(fuelLogsProvider.future);
-            ref.refresh(maxVehiclesProvider.future);
-          },
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Column(
-              children: [
-              vehiclesAsync.when(
-                data: (vehicles) => _buildHeader(context, vehicles.length),
-                loading: () => _buildHeader(context, 0),
-                error: (e, s) => _buildHeader(context, 0),
-              ),
-              const SizedBox(height: 16),
-              
-              vehiclesAsync.when(
-                data: (vehicles) {
-                  if (vehicles.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text("No vehicles in garage. Add one below!", style: TextStyle(color: Colors.white)),
-                    );
-                  }
-                  return Column(
-                    children: vehicles.map((v) {
-                      final isLocked = vehicles.indexOf(v) >= maxVehicles;
-                      return _buildVehicleCard(context, v, allLogs, isLocked);
-                    }).toList(),
-                  );
+        child: Column(
+          children: [
+            Expanded(
+              child: RefreshIndicator(
+                color: _neonColor,
+                backgroundColor: _cardColor,
+                onRefresh: () async {
+                  ref.refresh(vehiclesProvider.future);
+                  ref.refresh(fuelLogsProvider.future);
+                  ref.refresh(maxVehiclesProvider.future);
                 },
-                loading: () => const CircularProgressIndicator(),
-                error: (e, s) => Text('Error: $e', style: const TextStyle(color: Colors.red)),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Column(
+                    children: [
+                      vehiclesAsync.when(
+                        data: (vehicles) => _buildHeader(context, vehicles.length),
+                        loading: () => _buildHeader(context, 0),
+                        error: (e, s) => _buildHeader(context, 0),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      vehiclesAsync.when(
+                        data: (vehicles) {
+                          if (vehicles.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Text("No vehicles in garage. Add one below!", style: TextStyle(color: Colors.white)),
+                            );
+                          }
+                          return Column(
+                            children: vehicles.map((v) {
+                              final isLocked = vehicles.indexOf(v) >= maxVehicles;
+                              return _buildVehicleCard(context, v, allLogs, isLocked);
+                            }).toList(),
+                          );
+                        },
+                        loading: () => const CircularProgressIndicator(),
+                        error: (e, s) => Text('Error: $e', style: const TextStyle(color: Colors.red)),
+                      ),
+                      
+                      const SizedBox(height: 100), // padding for bottom nav
+                    ],
+                  ),
+                ),
               ),
-              
-              const SizedBox(height: 24),
-              const BannerAdWidget(),
-              const SizedBox(height: 100), // padding for bottom nav
-            ],
-          ),
-        ),
+            ),
+            const BannerAdWidget(),
+          ],
         ),
       ),
     );

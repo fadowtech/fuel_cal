@@ -42,8 +42,11 @@ class LogsPage extends ConsumerStatefulWidget {
 }
 
 class _LogsPageState extends ConsumerState<LogsPage> {
-  String _searchQuery = '';
-  String _selectedFilter = 'All';
+  String _selectedFilter = "All";
+  String _searchQuery = "";
+  bool _showAllVehicles = false;
+  int? _localVehicleFilterId;
+
 
   @override
   Widget build(BuildContext context) {
@@ -75,15 +78,22 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     final remindersList = remindersAsync.valueOrNull ?? [];
     final vehiclesMap = {for (var v in (vehiclesAsync.valueOrNull ?? [])) v.id: v};
 
-    final activeVehicle = ref.watch(activeVehicleProvider);
+    final globalActiveVehicle = ref.watch(activeVehicleProvider);
+    final vList = vehiclesAsync.valueOrNull ?? [];
+    
+    // Determine which vehicle to filter by
+    final activeVehicleToUse = _showAllVehicles 
+        ? null 
+        : (_localVehicleFilterId != null 
+            ? vList.firstWhere((v) => v.id == _localVehicleFilterId, orElse: () => globalActiveVehicle ?? vList.first)
+            : globalActiveVehicle);
 
     List<UnifiedLog> unifiedLogs = [];
 
     bool matchesVehicle(int? logVehicleId) {
-      if (activeVehicle == null) return true;
-      if (logVehicleId == activeVehicle.id) return true;
-      final vList = vehiclesAsync.valueOrNull ?? [];
-      if (logVehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
+      if (activeVehicleToUse == null) return true;
+      if (logVehicleId == activeVehicleToUse.id) return true;
+      if (logVehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicleToUse.id) return true;
       return false;
     }
 
@@ -297,6 +307,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                       ),
               ),
             ),
+            const BannerAdWidget(),
           ],
         ),
       ),
@@ -362,6 +373,56 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                           'Add Fuel',
                           style: TextStyle(color: _neonColor, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _surfaceColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _showAllVehicles ? -1 : (_localVehicleFilterId ?? ref.watch(activeVehicleProvider)?.id ?? -1),
+                      icon: Icon(Icons.keyboard_arrow_down, color: ThemeService.textColor, size: 18),
+                      dropdownColor: _cardColor,
+                      itemHeight: 56,
+                      style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                      onChanged: (int? newValue) {
+                        setState(() {
+                          if (newValue == -1) {
+                            _showAllVehicles = true;
+                            _localVehicleFilterId = null;
+                          } else {
+                            _showAllVehicles = false;
+                            _localVehicleFilterId = newValue;
+                          }
+                        });
+                      },
+                      items: [
+                        const DropdownMenuItem<int>(
+                          value: -1,
+                          child: Text("All Vehicles"),
+                        ),
+                        ...(ref.watch(vehiclesProvider).valueOrNull ?? []).map((v) {
+                          return DropdownMenuItem<int>(
+                            value: v.id,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty)
+                                  Text(v.vehicleNumber!, style: TextStyle(color: _mutedColor, fontSize: 10)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
                       ],
                     ),
                   ),
@@ -891,13 +952,13 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Reminder Added',
+                Text(rem['title'] ?? 'Reminder',
                     style: TextStyle(
                         color: ThemeService.textColor,
                         fontSize: 14,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('${rem['category'] ?? 'General'} • ${rem['title'] ?? 'N/A'}',
+                Text('${rem['category'] ?? 'General'}',
                     style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
             ),

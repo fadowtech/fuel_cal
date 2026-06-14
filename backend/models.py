@@ -87,6 +87,7 @@ class Reminder(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
     category = Column(String)
     title = Column(String)
     due_date = Column(DateTime, nullable=True)
@@ -101,6 +102,7 @@ class Reminder(Base):
     completed_at = Column(DateTime, nullable=True)
     
     user = relationship("User")
+    vehicle = relationship("Vehicle")
 
 class Service(Base):
     __tablename__ = "services"
