@@ -78,88 +78,75 @@ class VehicleSelector extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Flexible(
+                      Text('Selected vehicle', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12.0)),
+                      if (selectedVehicle != null && selectedVehicle!.id == defaultVehicleId) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5A67D8).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('DEFAULT', style: TextStyle(color: Color(0xFF5A67D8), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
                         child: Text(
                           selectedVehicle?.displayName ?? 'Select a vehicle',
                           style: TextStyle(
                             color: ThemeService.textColor,
-                            fontSize: 18.0,
+                            fontSize: 16.0,
                             fontWeight: FontWeight.bold,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (selectedVehicle != null && selectedVehicle!.id == defaultVehicleId) ...[
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            border: Border.all(color: const Color(0xFF00BFA5)),
-                            borderRadius: BorderRadius.circular(4),
+                      if (selectedVehicle != null && currentOdometer != null) ...[
+                        const SizedBox(width: 8),
+                        Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 14)),
+                        const SizedBox(width: 8),
+                        Text.rich(
+                          TextSpan(
+                            text: currentOdometer!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.bold),
+                            children: [
+                              TextSpan(text: ' km', style: TextStyle(color: ThemeService.mutedColor, fontSize: 11, fontWeight: FontWeight.normal)),
+                            ],
                           ),
-                          child: const Text('DEFAULT', style: TextStyle(color: Color(0xFF00BFA5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                         ),
                       ],
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        color: ThemeService.textColor,
+                        size: 20,
+                      ),
                     ],
                   ),
                   if (selectedVehicle != null) ...[
-                    const SizedBox(height: 8.0),
+                    const SizedBox(height: 6.0),
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 8.0,
                       runSpacing: 4.0,
                       children: [
                         if (selectedVehicle!.vehicleNumber != null && selectedVehicle!.vehicleNumber!.isNotEmpty) ...[
-                          _buildPill(Icons.badge_outlined, selectedVehicle!.vehicleNumber!),
+                          _buildCustomPill(selectedVehicle!.vehicleNumber!, hasBorder: true),
                           Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
                         ],
-                        _buildPill(Icons.calendar_today_outlined, '${selectedVehicle!.year}'),
+                        _buildCustomPill('${selectedVehicle!.year}'),
                         Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
-                        _buildPill(Icons.water_drop_outlined, selectedVehicle!.fuelType, iconColor: const Color(0xFF00BFA5), textColor: const Color(0xFF00BFA5)),
+                        _buildCustomPill(selectedVehicle!.fuelType, textColor: const Color(0xFF00BFA5)),
                       ],
                     ),
                   ],
                 ],
               ),
-            ),
-            const SizedBox(width: 12.0),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (currentOdometer != null) ...[
-                  Row(
-                    children: [
-                      const Icon(Icons.speed, color: Color(0xFF5A67D8), size: 16),
-                      const SizedBox(width: 4),
-                      Text.rich(
-                        TextSpan(
-                          text: currentOdometer!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                          style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold),
-                          children: [
-                            TextSpan(text: ' km', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12, fontWeight: FontWeight.normal)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12.0),
-                ],
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF22222A),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.keyboard_arrow_down,
-                    color: ThemeService.textColor,
-                    size: 20,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -386,6 +373,25 @@ class VehicleSelector extends ConsumerWidget {
     );
   }
 
+  Widget _buildCustomPill(String text, {Color? textColor, bool hasBorder = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF22222A),
+        borderRadius: BorderRadius.circular(6),
+        border: hasBorder ? Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5), width: 1) : null,
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textColor ?? ThemeService.textColor.withOpacity(0.9),
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomButton(IconData icon, String title) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
@@ -569,7 +575,6 @@ class VehicleSelector extends ConsumerWidget {
                       if (!isLocked) ...[
                         const SizedBox(width: 8),
                         PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
                           color: ThemeService.surfaceColor,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           padding: EdgeInsets.zero,
@@ -718,3 +723,4 @@ class VehicleSelector extends ConsumerWidget {
       ),
     );
   }
+}

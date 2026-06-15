@@ -632,6 +632,22 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
   String _selectedFilter = 'All';
   DateTime _selectedMonth = DateTime.now();
   final List<String> _serviceCategories = ['Service', 'Engine', 'Brakes', 'Suspension', 'General', 'Tires'];
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickMonthOnly() async {
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -766,6 +782,18 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
     return _FeatureScaffold(
       title: 'Services',
       subtitle: 'Maintenance logs',
+      isSearching: _isSearching,
+      searchController: _searchController,
+      onSearchToggled: () {
+        setState(() {
+          if (_isSearching) {
+            _isSearching = false;
+            _searchController.clear();
+          } else {
+            _isSearching = true;
+          }
+        });
+      },
       action: GestureDetector(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage(isServiceMode: true))),
         child: Container(
@@ -802,11 +830,28 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
             return d.year == _selectedMonth.year && d.month == _selectedMonth.month;
           }).toList();
           
-          final allServices = monthFiltered;
+          var allServices = monthFiltered;
+          
+          final query = _searchController.text.trim().toLowerCase();
+          if (query.isNotEmpty) {
+            allServices = allServices.where((s) {
+              return s.title.toLowerCase().contains(query) || 
+                     s.category.toLowerCase().contains(query) ||
+                     s.amount.toString().contains(query);
+            }).toList();
+          }
           
           final filteredServices = _selectedFilter == 'All'
               ? allServices
               : allServices.where((s) => s.category.toLowerCase() == _selectedFilter.toLowerCase()).toList();
+
+          filteredServices.sort((a, b) {
+            final dateA = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final dateB = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final dateComp = dateB.compareTo(dateA);
+            if (dateComp != 0) return dateComp;
+            return b.id.compareTo(a.id);
+          });
 
           final total = filteredServices.fold<double>(
             0,
@@ -1494,12 +1539,18 @@ class _FeatureScaffold extends StatelessWidget {
   final String subtitle;
   final Widget child;
   final Widget? action;
+  final bool isSearching;
+  final TextEditingController? searchController;
+  final VoidCallback? onSearchToggled;
 
   const _FeatureScaffold({
     required this.title,
     required this.subtitle,
     required this.child,
     this.action,
+    this.isSearching = false,
+    this.searchController,
+    this.onSearchToggled,
   });
 
   @override
@@ -1526,21 +1577,46 @@ class _FeatureScaffold extends StatelessWidget {
                       child: Icon(Icons.chevron_left_rounded, color: _textColor, size: 24),
                     ),
                   ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title,
-                            style: TextStyle(color: _textColor,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 2),
-                        Text(subtitle,
-                            style: TextStyle(
-                                color: _mutedColor, fontSize: 12)),
-                      ],
+                  if (isSearching && searchController != null)
+                    Expanded(
+                      child: TextField(
+                        controller: searchController,
+                        autofocus: true,
+                        style: TextStyle(color: _textColor, fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: 'Search...',
+                          hintStyle: TextStyle(color: _textColor.withOpacity(0.3)),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title,
+                              style: TextStyle(color: _textColor,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 2),
+                          Text(subtitle,
+                              style: TextStyle(
+                                  color: _mutedColor, fontSize: 12)),
+                        ],
+                      ),
                     ),
-                  ),
+                  if (onSearchToggled != null) ...[
+                    GestureDetector(
+                      onTap: onSearchToggled,
+                      child: Container(
+                        width: 40, height: 40,
+                        margin: EdgeInsets.only(right: action != null ? 8 : 0),
+                        decoration: BoxDecoration(color: _surfaceColor, shape: BoxShape.circle),
+                        child: Icon(isSearching ? Icons.close : Icons.search, color: _textColor, size: 20),
+                      ),
+                    ),
+                  ],
                   if (action != null) action!,
                 ],
               ),
@@ -1676,20 +1752,21 @@ class _TotalSpendDonutCard extends StatelessWidget {
   final int previousTotal;
   final DateTime selectedMonth;
   final List<Expense> expenses;
+  final String title;
+  final IconData icon;
 
   const _TotalSpendDonutCard({
     required this.total, 
     required this.previousTotal, 
     required this.selectedMonth, 
-    required this.expenses
+    required this.expenses,
+    this.title = 'Total Expenses',
+    this.icon = Icons.credit_card,
   });
 
   @override
   Widget build(BuildContext context) {
-    final diff = total - previousTotal;
-    final percentChange = previousTotal > 0 ? (diff / previousTotal * 100).abs() : 0.0;
-    final isIncrease = diff >= 0;
-    final prevMonthFormat = DateFormat('MMM yyyy').format(DateTime(selectedMonth.year, selectedMonth.month - 1));
+    final monthFormat = DateFormat('MMMM yyyy').format(selectedMonth);
 
     final categoryTotals = <String, double>{};
     for (var expense in expenses) {
@@ -1700,12 +1777,12 @@ class _TotalSpendDonutCard extends StatelessWidget {
       ..sort((a, b) => b.value.compareTo(a.value));
       
     final colors = [
-      const Color(0xFF00FF88),
+      const Color(0xFF00E5FF),
       const Color(0xFF3399FF),
       const Color(0xFFFF9933),
       const Color(0xFF9933FF),
       const Color(0xFFFFD700),
-      const Color(0xFF00E5FF),
+      const Color(0xFF00FF88),
       const Color(0xFFFF0055),
     ];
 
@@ -1724,91 +1801,111 @@ class _TotalSpendDonutCard extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _cardColor, borderRadius: BorderRadius.circular(24)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('TOTAL SPENT', style: TextStyle(color: _mutedColor, fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('₹$total', style: TextStyle(color: _textColor, fontSize: 26, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                if (previousTotal > 0)
-                  Row(
-                    children: [
-                      Icon(isIncrease ? Icons.arrow_upward : Icons.arrow_downward, color: isIncrease ? const Color(0xFF00FF88) : const Color(0xFFFF0055), size: 12),
-                      const SizedBox(width: 2),
-                      Text('${percentChange.toStringAsFixed(0)}%', style: TextStyle(color: isIncrease ? const Color(0xFF00FF88) : const Color(0xFFFF0055), fontSize: 10, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 4),
-                      Text('vs $prevMonthFormat', style: TextStyle(color: _mutedColor, fontSize: 10)),
-                    ],
-                  )
-                else
-                  Text('No data', style: TextStyle(color: _mutedColor, fontSize: 10)),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: SizedBox(
-              width: 80, height: 80,
-              child: Stack(
-                alignment: Alignment.center,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
                 children: [
-                  CustomPaint(
-                    size: const Size(80, 80),
-                    painter: _DonutChartPainter(
-                      percentages: breakdown.map((e) => e['percent'] as double).toList(),
-                      colors: breakdown.map((e) => e['color'] as Color).toList(),
-                      strokeWidth: 12,
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00BFA5).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    child: Icon(icon, color: const Color(0xFF00BFA5), size: 16),
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('₹$total', style: TextStyle(color: _textColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                      Text('Total', style: TextStyle(color: _mutedColor, fontSize: 9)),
-                    ],
-                  )
+                  const SizedBox(width: 8),
+                  Text(title, style: TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold)),
                 ],
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00BFA5).withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF00BFA5).withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_month, color: Color(0xFF00BFA5), size: 12),
+                    const SizedBox(width: 4),
+                    Text(monthFormat, style: const TextStyle(color: Color(0xFF00BFA5), fontSize: 10, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          
-          Expanded(
-            flex: 5,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: breakdown.map((item) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: [
-                      Container(width: 6, height: 6, decoration: BoxDecoration(color: item['color'] as Color, shape: BoxShape.circle)),
-                      const SizedBox(width: 6),
-                      Expanded(child: Text(item['name'] as String, style: TextStyle(color: _textColor, fontSize: 10), overflow: TextOverflow.ellipsis)),
-                      SizedBox(
-                        width: 28,
-                        child: Text('${(item['percent'] as double).toInt()}%', style: TextStyle(color: _textColor, fontSize: 10, fontWeight: FontWeight.bold), textAlign: TextAlign.right),
-                      ),
-                      const SizedBox(width: 4),
-                      SizedBox(
-                        width: 40,
-                        child: Text('₹${NumberFormat('#,##0').format(item['amount'])}', style: TextStyle(color: _mutedColor, fontSize: 10), textAlign: TextAlign.right),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+          const SizedBox(height: 12),
+          Text('₹$total', style: TextStyle(color: _textColor, fontSize: 24, fontWeight: FontWeight.bold)),
+          if (previousTotal >= 0) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(total >= previousTotal ? Icons.arrow_upward : Icons.arrow_downward, color: total >= previousTotal ? const Color(0xFF10B981) : const Color(0xFFEF4444), size: 12),
+                const SizedBox(width: 4),
+                Text('₹$previousTotal', style: TextStyle(color: total >= previousTotal ? const Color(0xFF10B981) : const Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 4),
+                Text('Last Month (${DateFormat('MMMM').format(DateTime(selectedMonth.year, selectedMonth.month - 1, 1))})', style: TextStyle(color: _mutedColor, fontSize: 12)),
+              ],
             ),
-          )
+          ],
+          const SizedBox(height: 12),
+          Divider(color: Colors.white.withOpacity(0.1), height: 1),
+          const SizedBox(height: 12),
+          ...breakdown.map((item) {
+            final color = item['color'] as Color;
+            final percent = item['percent'] as double;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 60,
+                    child: Text(item['name'] as String, style: TextStyle(color: _textColor, fontSize: 11), overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: percent / 100,
+                        backgroundColor: Colors.white.withOpacity(0.05),
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 32,
+                    child: Text('${percent.toInt()}%', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold), textAlign: TextAlign.right),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(width: 1, height: 10, color: Colors.white.withOpacity(0.2)),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 40,
+                    child: Text('₹${NumberFormat('#,##0').format(item['amount'])}', style: TextStyle(color: _textColor, fontSize: 11), textAlign: TextAlign.right),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          if (breakdown.isEmpty)
+             Padding(
+               padding: const EdgeInsets.symmetric(vertical: 4),
+               child: Text('No data for this month', style: TextStyle(color: _mutedColor, fontSize: 12)),
+             ),
         ],
       ),
     );

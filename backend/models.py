@@ -58,6 +58,7 @@ class FuelLog(Base):
     remaining_range = Column(Float, nullable=True)
     remaining_range_after = Column(Float, nullable=True)
     is_full_tank = Column(Boolean, default=False)
+    missed_fillup = Column(Boolean, default=False)
     station_name = Column(String, nullable=True)
     location = Column(String, nullable=True)
     notes = Column(String, nullable=True)

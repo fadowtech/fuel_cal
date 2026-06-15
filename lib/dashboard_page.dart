@@ -315,7 +315,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       if (item is FuelLog) return item.date ?? DateTime.now();
                       if (item is Expense) return item.date ?? DateTime.now();
                       if (item is Map<String, dynamic>) {
-                        final dtStr = item['created_at'] ?? item['due_date'];
+                        final dtStr = item['created_at'];
                         if (dtStr != null) return DateTime.tryParse(dtStr) ?? DateTime.now();
                       }
                       return DateTime.now();
@@ -2181,12 +2181,62 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           final category = reminder['category'] as String? ?? '';
           final subTitleStr = category.isNotEmpty ? '$category • ${reminder['title'] ?? ''}' : (reminder['title'] ?? 'Custom Reminder');
           
-          final dtStr = reminder['created_at'] ?? reminder['due_date'];
+          final dtStr = reminder['created_at'];
           final dt = dtStr != null ? DateTime.tryParse(dtStr) : null;
           final dateStr = dt != null ? DateFormat('dd MMM yyyy').format(dt) : '-';
           
+          final dueDateStr = reminder['due_date'];
+          final dueDate = dueDateStr != null ? DateTime.tryParse(dueDateStr) : null;
+          final apiStatus = reminder['status'] as String? ?? 'pending';
+
+          String status = '';
+          String timeLeft = '';
+          if (dueDate != null) {
+            final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+            final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+            final diff = dueDay.difference(today).inDays;
+            if (diff < 0) {
+              status = 'Overdue';
+              timeLeft = '${diff.abs()} days overdue';
+            } else if (diff == 0) {
+              status = 'Due Today';
+              timeLeft = 'Today';
+            } else if (diff == 1) {
+              status = 'Due Tomorrow';
+              timeLeft = 'Tomorrow';
+            } else if (diff <= 3) {
+              status = 'Due soon';
+              timeLeft = '$diff days left';
+            } else {
+              status = 'In $diff days';
+            }
+          } else if (reminder['due_km'] != null) {
+              status = 'Based on KM';
+              timeLeft = '${reminder['due_km']} KM';
+          }
+
           IconData iconData = Icons.alarm;
           Color iconColor = Colors.orangeAccent;
+          Color statusColor = apiStatus != 'pending' 
+              ? (apiStatus == 'skipped' ? Colors.orange : const Color(0xFF22C55E)) 
+              : (status == 'Overdue' ? const Color(0xFFEF4444) : (status == 'Due Today' || status == 'Due Tomorrow' || status == 'Due soon' ? const Color(0xFFF59E0B) : iconColor));
+
+          final mappedReminder = {
+            'title': reminder['title'] ?? '',
+            'subtitle': apiStatus != 'pending' ? '${reminder['category']} • $timeLeft' : '${reminder['category']} • ${reminder['due_km'] != null ? 'Due in ${reminder['due_km']} KM' : (reminder['notes'] ?? '')}',
+            'status': status,
+            'statusColor': statusColor,
+            'timeleft': apiStatus != 'pending' ? '' : timeLeft,
+            'date': dueDate != null ? DateFormat('dd MMM yyyy').format(dueDate) : '',
+            'raw_date': dueDate,
+            'icon': iconData,
+            'color': iconColor,
+            'category': reminder['category'] ?? 'All',
+            'raw_data': reminder,
+            'is_completed': apiStatus != 'pending',
+            'is_locked': false,
+          };
+
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
             child: Slidable(
@@ -2224,7 +2274,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             ),
             child: GestureDetector(
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ReminderDetailsPage(data: reminder)));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ReminderDetailsPage(data: mappedReminder)));
             },
             child: Container(
               padding: const EdgeInsets.all(12),
@@ -2262,11 +2312,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                     crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('-',
+                      Text(status,
                           style: TextStyle(
-                              color: _mutedColor,
-                              fontSize: 14)),
-                      Text(dateStr,
+                              color: statusColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                      Text((mappedReminder['date'] as String).isNotEmpty ? mappedReminder['date'] as String : '-',
                           style:
                               TextStyle(color: _mutedColor, fontSize: 12)),
                     ],

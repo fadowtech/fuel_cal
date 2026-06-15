@@ -629,9 +629,6 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
         _buildLockedRemindersCard(lockedUpcomingCount, customSubtitleWidget: customSubtitleWidget),
         
       const SizedBox(height: 24),
-      _buildSmartReminders(),
-      const SizedBox(height: 16),
-      _buildInfoFooter(),
     ];
   }
 
@@ -652,9 +649,6 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
         ...unlockedReminders.map((r) => _buildReminderCard(r, false)),
       if (lockedRemindersCount > 0)
         _buildLockedRemindersCard(lockedRemindersCount),
-      _buildSmartReminders(),
-      const SizedBox(height: 16),
-      _buildInfoFooter(),
     ];
   }
 

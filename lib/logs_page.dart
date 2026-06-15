@@ -46,6 +46,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   String _searchQuery = "";
   bool _showAllVehicles = false;
   int? _localVehicleFilterId;
+  int _selectedMonthNum = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
+  final List<String> monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 
   @override
@@ -135,11 +138,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                if (!ds.endsWith('Z')) ds = '${ds}Z';
                dateToUse = DateTime.tryParse(ds)?.toLocal();
            }
-           if (dateToUse == null && r['due_date'] != null) {
-               String ds = r['due_date'];
-               if (!ds.endsWith('Z')) ds = '${ds}Z';
-               dateToUse = DateTime.tryParse(ds)?.toLocal();
-           }
+           
            if (dateToUse != null) {
                unifiedLogs.add(UnifiedLog(LogType.reminder, dateToUse, r));
            }
@@ -169,9 +168,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
       if (widget.onlyFuel) {
           final log = uLog.originalData as FuelLog;
-          if (_selectedFilter == "This month") {
-            final now = DateTime.now();
-            if (log.date!.year != now.year || log.date!.month != now.month) return false;
+          if (_selectedFilter == "By Month") {
+            if (log.date!.year != _selectedYear || log.date!.month != _selectedMonthNum) return false;
           } else if (_selectedFilter == "Petrol") {
             final vehicle = vehiclesMap[log.vehicleId];
             if (vehicle?.fuelType.toLowerCase() != 'petrol') return false;
@@ -422,7 +420,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                               children: [
                                 Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                 if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: 6),
                                   Text(v.vehicleNumber!, style: TextStyle(color: _mutedColor, fontSize: 10)),
                                 ]
                               ],
@@ -436,6 +434,34 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             ],
           ),
           const SizedBox(height: 16),
+          if (widget.onlyFuel) ...[
+            Row(
+              children: [
+                _buildDropdownSelector(
+                  value: monthNames[_selectedMonthNum - 1],
+                    items: monthNames,
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedMonthNum = monthNames.indexOf(val) + 1;
+                        _selectedFilter = "By Month";
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildDropdownSelector(
+                    value: _selectedYear.toString(),
+                    items: List.generate(5, (i) => (DateTime.now().year - i).toString()),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedYear = int.parse(val);
+                        _selectedFilter = "By Month";
+                      });
+                    },
+                  ),
+                ],
+              ),
+            const SizedBox(height: 16),
+          ],
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -474,8 +500,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: (widget.onlyFuel 
-                  ? ["All", "This month", "Petrol", "Diesel", "Full tank"]
+              children: [
+                ...(widget.onlyFuel 
+                  ? ["All", "Petrol", "Diesel", "Full tank"]
                   : ["All", "Fuel", "Expenses", "Services", "Reminders"])
                   .map((f) {
                 final isSelected = f == _selectedFilter;
@@ -507,9 +534,43 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                   ),
                 );
               }).toList(),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDropdownSelector({
+    required String value,
+    required List<String> items,
+    required Function(String) onChanged,
+  }) {
+    final isSelected = _selectedFilter == "By Month";
+    return PopupMenuButton<String>(
+      onSelected: onChanged,
+      color: ThemeService.isDarkMode ? const Color(0xFF23252A) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      itemBuilder: (context) => items.map((item) => PopupMenuItem(value: item, child: Text(item, style: TextStyle(color: ThemeService.isDarkMode ? Colors.white : Colors.black87)))).toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF00FF9D) : ThemeService.surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(value, style: TextStyle(
+              color: isSelected ? (ThemeService.isDarkMode ? Colors.black : Colors.white) : ThemeService.mutedColor,
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            )),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down, color: isSelected ? (ThemeService.isDarkMode ? Colors.black : Colors.white) : ThemeService.mutedColor, size: 14),
+          ],
+        ),
       ),
     );
   }
@@ -877,9 +938,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
     final dateStr = createdDate != null 
         ? timeFormat.format(createdDate) 
-        : (dueDate != null 
-            ? timeFormat.format(dueDate) 
-            : 'Unknown Time');
+        : '';
     
     final dueStr = dueDate != null 
         ? DateFormat('dd MMM yyyy').format(dueDate)

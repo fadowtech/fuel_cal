@@ -233,6 +233,7 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
       'category': _selectedCategory,
       'title': _titleController.text.trim(),
       'due_date': _dueDate?.toIso8601String(),
+      'created_at': DateTime.now().toUtc().toIso8601String(),
       'due_km': _kmController.text.isNotEmpty ? double.tryParse(_kmController.text) : null,
       'amount': _amountController.text.isNotEmpty ? double.tryParse(_amountController.text) : null,
       'notes': finalNotes,
@@ -268,25 +269,29 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
       final prefs = await SharedPreferences.getInstance();
       final notificationsEnabled = prefs.getBool('notifications_enabled_$email') ?? false;
       if (notificationsEnabled && _dueDate != null) {
-        final id = widget.editData != null ? widget.editData!['raw_data']['id'] : DateTime.now().millisecondsSinceEpoch.remainder(100000);
+        final baseId = widget.editData != null ? widget.editData!['raw_data']['id'] : DateTime.now().millisecondsSinceEpoch.remainder(100000);
         
-        final daysUntilDue = _dueDate!.difference(DateTime.now()).inDays;
-        DateTime notifyDate = _dueDate!;
-        String notifBody = finalNotes.isNotEmpty ? finalNotes : 'Reminder due!';
-
-        if (daysUntilDue > 30) {
-            notifyDate = _dueDate!.subtract(const Duration(days: 30));
-            if (finalNotes.isEmpty) {
-                notifBody = 'Reminder coming up in 30 days!';
-            }
-        }
-
+        // 1. Always schedule for the exact due date
         await NotificationService.scheduleNotification(
-          id: id as int,
+          id: (baseId * 10) + 0, // Unique ID for due date
           title: _titleController.text.trim(),
-          body: notifBody,
-          scheduledDate: notifyDate,
+          body: finalNotes.isNotEmpty ? finalNotes : 'Reminder due today!',
+          scheduledDate: _dueDate!,
         );
+
+        // 2. Schedule for each selected notify_before_days interval (30, 7, 1)
+        for (var days in _selectedNotifications) {
+          final notifyDate = _dueDate!.subtract(Duration(days: days));
+          // Only schedule if the notifyDate is in the future
+          if (notifyDate.isAfter(DateTime.now())) {
+            await NotificationService.scheduleNotification(
+              id: (baseId * 10) + days, // Unique ID per interval
+              title: _titleController.text.trim(),
+              body: 'Reminder coming up in $days day${days > 1 ? 's' : ''}!',
+              scheduledDate: notifyDate,
+            );
+          }
+        }
       }
 
       ScaffoldMessenger.of(context).showSnackBar(

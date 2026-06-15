@@ -1,5 +1,6 @@
 import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
@@ -40,7 +41,8 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   String? _selectedStation;
   DateTime _selectedDate = DateTime.now();
   bool _isFullTank = false;
-  String? _selectedPaymentMethod;
+  bool _missedFillUp = false;
+  String? _selectedPaymentMethod = 'Cash';
   bool _isLoading = false;
   String? _odoErrorText;
   String? _volumeErrorText;
@@ -167,6 +169,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       _remainingRangeController.text = _formatNumber(log['remainingRange'] ?? log['remaining_range']);
       _remainingRangeAfterController.text = _formatNumber(log['remainingRangeAfter'] ?? log['remaining_range_after']);
       _isFullTank = log['fullTank'] == true || log['is_full_tank'] == true;
+      _missedFillUp = log['missed_fillup'] == true;
       _locationController.text = log['location'] == 'Unknown location' ? '' : (log['location'] ?? '');
       _notesController.text = log['notes'] == 'No notes provided' ? '' : (log['notes'] ?? '');
       
@@ -505,6 +508,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       "remaining_range": double.tryParse(_remainingRangeController.text),
       "remaining_range_after": double.tryParse(_remainingRangeAfterController.text),
       "is_full_tank": _isFullTank,
+      "missed_fillup": _missedFillUp,
       "station_name": _selectedStation,
       "location": _locationController.text.isEmpty ? null : _locationController.text,
       "notes": _notesController.text.isEmpty ? null : _notesController.text,
@@ -1056,23 +1060,45 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 border: Border(left: BorderSide(color: _neonColor, width: 4)),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+              child: Column(
                 children: [
-                  Text('Full tank fill', style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
-                  SizedBox(width: 8),
-                  Icon(Icons.info_outline, color: _neonColor, size: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text('Full tank fill', style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+                          SizedBox(width: 8),
+                          Icon(Icons.info_outline, color: _neonColor, size: 16),
+                        ],
+                      ),
+                      Switch(
+                        value: _isFullTank,
+                        onChanged: (v) => setState(() => _isFullTank = v),
+                        activeColor: _neonColor,
+                      ),
+                    ],
+                  ),
+                  Divider(color: ThemeService.textColor.withOpacity(0.05)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Text('Last Fill-up Not Added', style: TextStyle(color: ThemeService.textColor, fontSize: 14)),
+                          SizedBox(width: 8),
+                          Icon(Icons.info_outline, color: _neonColor, size: 16),
+                        ],
+                      ),
+                      Switch(
+                        value: _missedFillUp,
+                        onChanged: (v) => setState(() => _missedFillUp = v),
+                        activeColor: _neonColor,
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              Switch(
-                value: _isFullTank,
-                onChanged: (v) => setState(() => _isFullTank = v),
-                activeColor: _neonColor,
-              ),
-            ],
-          ),
             ),
           ),
         ),
@@ -1413,6 +1439,20 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 SizedBox(height: 24),
                 TextField(
                   controller: stationController,
+                  textCapitalization: TextCapitalization.words,
+                  inputFormatters: [
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      if (newValue.text.isEmpty) return newValue;
+                      String newText = newValue.text.split(' ').map((word) {
+                        if (word.isEmpty) return '';
+                        return word[0].toUpperCase() + word.substring(1);
+                      }).join(' ');
+                      return newValue.copyWith(
+                        text: newText,
+                        selection: newValue.selection,
+                      );
+                    }),
+                  ],
                   style: TextStyle(color: ThemeService.textColor),
                   decoration: InputDecoration(
                     hintText: 'Enter station name',

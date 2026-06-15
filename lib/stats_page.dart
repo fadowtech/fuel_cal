@@ -168,7 +168,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                       children: [
                         Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                         if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 6),
                           Text(v.vehicleNumber!, style: TextStyle(color: _mutedColor, fontSize: 10)),
                         ]
                       ],

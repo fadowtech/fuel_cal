@@ -105,7 +105,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                           children: [
                             Text('${v.make} ${v.model}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                             if (v.vehicleNumber != null && v.vehicleNumber!.isNotEmpty) ...[
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 6),
                               Text(v.vehicleNumber!, style: TextStyle(color: ThemeService.mutedColor, fontSize: 10)),
                             ]
                           ],

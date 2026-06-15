@@ -439,6 +439,10 @@ class ReminderDetailsPage extends StatelessWidget {
                     final navigator = Navigator.of(context);
                     navigator.pop(); // close dialog
                     if (data['raw_data'] != null) {
+                      final rawData = Map<String, dynamic>.from(data['raw_data']);
+                      // Generate next repeating reminder before skipping this one
+                      await _handleRepeatLogic(rawData);
+
                       final updatedData = Map<String, dynamic>.from(data['raw_data']);
                       updatedData['status'] = 'skipped';
                       updatedData['completed_at'] = DateTime.now().toIso8601String();
@@ -511,6 +515,10 @@ class ReminderDetailsPage extends StatelessWidget {
                     final navigator = Navigator.of(context);
                     navigator.pop(); // close dialog
                     if (data['raw_data'] != null) {
+                      final rawData = Map<String, dynamic>.from(data['raw_data']);
+                      // Generate next repeating reminder before marking this one as completed
+                      await _handleRepeatLogic(rawData);
+
                       final updatedData = Map<String, dynamic>.from(data['raw_data']);
                       updatedData['status'] = 'completed';
                       updatedData['completed_at'] = DateTime.now().toIso8601String();
@@ -628,5 +636,63 @@ class ReminderDetailsPage extends StatelessWidget {
         ),
       ),
     );
+  }
+  Future<void> _handleRepeatLogic(Map<String, dynamic> rawData) async {
+    if (rawData['repeat'] != true || rawData['repeat_interval'] == null || rawData['due_date'] == null) {
+      return; // No repeat configured
+    }
+    
+    try {
+      DateTime currentDue = DateTime.parse(rawData['due_date']);
+      DateTime nextDue = currentDue;
+      final interval = rawData['repeat_interval'] as String;
+
+      if (interval == 'Monthly') {
+        nextDue = DateTime(currentDue.year, currentDue.month + 1, currentDue.day);
+      } else if (interval == 'Quarterly (3 Months)') {
+        nextDue = DateTime(currentDue.year, currentDue.month + 3, currentDue.day);
+      } else if (interval == 'Half-Yearly (6 Months)') {
+        nextDue = DateTime(currentDue.year, currentDue.month + 6, currentDue.day);
+      } else if (interval == 'Yearly') {
+        nextDue = DateTime(currentDue.year + 1, currentDue.month, currentDue.day);
+      } else if (interval.startsWith('Every ')) {
+        // e.g. "Every 2 Weeks" or "Every 45 Days"
+        final parts = interval.split(' ');
+        if (parts.length >= 3) {
+          final amount = int.tryParse(parts[1]) ?? 0;
+          final unit = parts[2].toLowerCase();
+          if (unit.startsWith('day')) {
+            nextDue = currentDue.add(Duration(days: amount));
+          } else if (unit.startsWith('week')) {
+            nextDue = currentDue.add(Duration(days: amount * 7));
+          } else if (unit.startsWith('month')) {
+            nextDue = DateTime(currentDue.year, currentDue.month + amount, currentDue.day);
+          } else if (unit.startsWith('year')) {
+            nextDue = DateTime(currentDue.year + amount, currentDue.month, currentDue.day);
+          }
+        }
+      }
+
+      // Check repeat_until
+      if (rawData['repeat_until'] != null) {
+        final untilDate = DateTime.parse(rawData['repeat_until']);
+        if (nextDue.isAfter(untilDate)) {
+          return; // Stop repeating
+        }
+      }
+
+      // Create new reminder
+      final newReminder = Map<String, dynamic>.from(rawData);
+      newReminder.remove('id');
+      newReminder.remove('created_at');
+      newReminder.remove('updated_at');
+      newReminder['status'] = 'pending';
+      newReminder['completed_at'] = null;
+      newReminder['due_date'] = nextDue.toIso8601String();
+
+      await ApiService().createReminder(newReminder);
+    } catch (e) {
+      debugPrint('Error handling repeat logic: $e');
+    }
   }
 }
