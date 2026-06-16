@@ -251,13 +251,13 @@ class VehicleDetailsPage extends ConsumerWidget {
 
   void _deleteVehicle(BuildContext context, WidgetRef ref) async {
     final apiService = ref.read(apiServiceProvider);
-    final success = await apiService.deleteVehicle(vehicle.id);
-    if (success && context.mounted) {
+    final error = await apiService.deleteVehicle(vehicle.id);
+    if (error == null && context.mounted) {
       ref.invalidate(vehiclesProvider);
       Navigator.of(context).pop(); // pop back to garage
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vehicle deleted successfully')));
     } else if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete vehicle')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Failed to delete vehicle')));
     }
   }
 

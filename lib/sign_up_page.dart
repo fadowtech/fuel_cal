@@ -26,6 +26,41 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   bool _obscureConfirmPassword = true;
   bool _agreedToTerms = true;
   String? _selectedGender;
+  String? _passwordError;
+
+  void _validatePassword(String value) {
+    if (value.isEmpty) {
+      setState(() => _passwordError = null);
+      return;
+    }
+    
+    bool hasUppercase = value.contains(RegExp(r'[A-Z]'));
+    bool hasLowercase = value.contains(RegExp(r'[a-z]'));
+    bool hasDigits = value.contains(RegExp(r'[0-9]'));
+    bool hasSpecialCharacters = value.contains(RegExp(r'[!@#\$%\^&\*]'));
+    bool hasMinLength = value.length >= 8;
+    
+    List<String> missing = [];
+    if (!hasMinLength) missing.add('at least 8 characters');
+    if (!hasUppercase) missing.add('1 uppercase');
+    if (!hasLowercase) missing.add('1 lowercase');
+    if (!hasDigits) missing.add('1 number');
+    if (!hasSpecialCharacters) missing.add('1 special character (!@#\$%^&*)');
+
+    if (missing.isEmpty) {
+      setState(() => _passwordError = null);
+    } else {
+      String errorText = 'Requires ';
+      if (missing.length == 1) {
+        errorText += missing.first;
+      } else if (missing.length == 2) {
+        errorText += '${missing[0]} and ${missing[1]}';
+      } else {
+        errorText += missing.sublist(0, missing.length - 1).join(', ') + ', and ' + missing.last;
+      }
+      setState(() => _passwordError = errorText);
+    }
+  }
 
   late TapGestureRecognizer _termsRecognizer;
   late TapGestureRecognizer _privacyRecognizer;
@@ -60,25 +95,28 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
           width: double.maxFinite,
           child: SingleChildScrollView(
             child: Text(
-              '''Welcome to Fuelvox!
+              '''Welcome to Fuel Calculator!
 
 1. Acceptance of Terms
-By creating an account and using Fuelvox, you agree to comply with and be bound by these Terms & Conditions. If you do not agree to these terms, please do not use the app.
+By creating an account and using the Fuel Calculator app, you agree to comply with and be bound by these Terms & Conditions. If you do not agree to these terms, please do not use the app.
 
 2. Description of Service
-Fuelvox provides tools for tracking vehicle mileage, logging fuel expenses, and setting maintenance reminders. All calculations and statistics are estimates based on user-provided data. We do not guarantee the absolute accuracy of these estimates.
+Fuel Calculator provides tools for tracking vehicle mileage, logging fuel expenses, and setting maintenance reminders. All calculations and statistics are estimates based on user-provided data. The Service Provider (Emishper Raj) does not guarantee the absolute accuracy of these estimates.
 
 3. In-App Purchases & Subscriptions
-Certain features, such as an ad-free experience, are available via auto-renewing subscriptions or one-time in-app purchases. Payments are processed securely through the Google Play Store. Subscriptions automatically renew unless canceled in your Google Play account settings.
+Certain premium features are available via in-app purchases. Payments are processed securely through the Google Play Store and managed by RevenueCat.
 
 4. Advertisements
-The free version of Fuelvox displays banner advertisements provided by Google AdMob. By using the free version, you agree to the display of these ads.
+The free version of the Application displays banner advertisements provided by Google AdMob. By using the free version, you agree to the display of these ads.
 
 5. User Accounts
-You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account. 
+You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account. We reserve the right to terminate accounts that violate our policies.
 
 6. Limitation of Liability
-Fuelvox and its developers shall not be liable for any indirect, incidental, or consequential damages resulting from the use or inability to use the app, including any loss of data.''',
+Fuel Calculator and its Service Provider shall not be liable for any indirect, incidental, or consequential damages resulting from the use or inability to use the app, including any loss of data. Use the service "AS IS".
+
+7. Contact Us
+If you have any questions about these Terms, please contact us at fuelfox@fadowtech.com.''',
               style: TextStyle(color: ThemeService.textColor, fontSize: 13, height: 1.5),
             ),
           ),
@@ -100,28 +138,22 @@ Fuelvox and its developers shall not be liable for any indirect, incidental, or 
           width: double.maxFinite,
           child: SingleChildScrollView(
             child: Text(
-              '''At Fuelvox, your privacy is our priority. This policy outlines how we handle your data.
+              '''This privacy policy applies to the Fuel Calculator app (hereby referred to as "Application") for mobile devices that was created by Emishper Raj (hereby referred to as "Service Provider") as a Free and Premium service. This service is intended for use "AS IS".
 
-1. Information We Collect
-• Personal Data: When you sign up, we collect your name, email address, and optionally your phone number and gender.
-• Vehicle & Usage Data: We collect the vehicle details, fuel logs, and expense records you manually enter into the app to provide you with insights.
+Information Collection, Data Storage, and Use
+The Application collects information when you download and use it. For a better experience, while using the Application, the Service Provider may require you to provide us with certain personally identifiable information (such as your name, email address, and vehicle details). This information is transmitted via a secure API and safely stored in the Service Provider's own database. The information that the Service Provider requests will be retained by them and used as described in this privacy policy.
 
-2. How We Use Your Data
-We use your data strictly to operate and improve the Fuelvox service, sync your data across devices, and authenticate your account. We do not sell your personal data to third parties.
+Third-Party Access
+Only aggregated, anonymized data is periodically transmitted to external services to aid the Service Provider in improving the Application and their service. The Application utilizes third-party services that have their own Privacy Policy about handling data, including:
+• Google Play Services
+• Google AdMob
+• RevenueCat
 
-3. Third-Party Services
-We use trusted third-party services that may collect information used to identify you:
-• Google AdMob: Used to serve advertisements in the free version. AdMob may use advertising IDs and cookies to serve personalized ads based on your interests, in accordance with Google's Privacy & Terms.
-• RevenueCat: Used to manage in-app subscriptions securely.
+Opt-Out Rights & Data Retention
+You can stop all collection of information by the Application easily by uninstalling it. The Service Provider will retain User Provided data for as long as you use the Application. If you'd like them to delete User Provided Data, please contact them at fuelfox@fadowtech.com.
 
-4. Data Security & Retention
-Your data is stored securely. We retain your information as long as your account is active.
-
-5. Your Rights
-You have the right to access, modify, or permanently delete your account and all associated data at any time from within the app settings.
-
-6. Changes to This Policy
-We may update our Privacy Policy periodically. We will notify you of any changes by updating this page.''',
+Contact Us
+If you have any questions regarding privacy while using the Application, or have questions about the practices, please contact the Service Provider via email at fuelfox@fadowtech.com.''',
               style: TextStyle(color: ThemeService.textColor, fontSize: 13, height: 1.5),
             ),
           ),
@@ -262,9 +294,12 @@ We may update our Privacy Policy periodically. We will notify you of any changes
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'First Name',
-                              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                            Text.rich(
+                              TextSpan(
+                                text: 'First Name ',
+                                style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                                children: [TextSpan(text: '*', style: TextStyle(color: redAccent))],
+                              ),
                             ),
                             const SizedBox(height: 8),
                             AuthTextField(
@@ -307,9 +342,12 @@ We may update our Privacy Policy periodically. We will notify you of any changes
                   ),
                   const SizedBox(height: 16),
                   
-                  Text(
-                    'Email',
-                    style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                  Text.rich(
+                    TextSpan(
+                      text: 'Email ',
+                      style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                      children: [TextSpan(text: '*', style: TextStyle(color: redAccent))],
+                    ),
                   ),
                   const SizedBox(height: 8),
                   AuthTextField(
@@ -336,9 +374,12 @@ We may update our Privacy Policy periodically. We will notify you of any changes
                   ),
                   const SizedBox(height: 16),
                   
-                  Text(
-                    'Gender',
-                    style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                  Text.rich(
+                    TextSpan(
+                      text: 'Gender ',
+                      style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                      children: [TextSpan(text: '*', style: TextStyle(color: redAccent))],
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -406,9 +447,12 @@ We may update our Privacy Policy periodically. We will notify you of any changes
                   ),
                   const SizedBox(height: 16),
                   
-                  Text(
-                    'Password',
-                    style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                  Text.rich(
+                    TextSpan(
+                      text: 'Password ',
+                      style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                      children: [TextSpan(text: '*', style: TextStyle(color: redAccent))],
+                    ),
                   ),
                   const SizedBox(height: 8),
                   AuthTextField(
@@ -416,24 +460,53 @@ We may update our Privacy Policy periodically. We will notify you of any changes
                     hintText: 'Create a password',
                     prefixIcon: Icons.lock_outline,
                     obscureText: _obscurePassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: ThemeService.mutedColor,
-                        size: 20,
-                      ),
-                      onPressed: () {
+                    onChanged: _validatePassword,
+                    suffixIcon: GestureDetector(
+                      onTap: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
                         });
                       },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: ThemeService.isDarkMode ? Colors.black26 : const Color(0xFFF0F4F8),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: ThemeService.textColor,
+                          size: 18,
+                        ),
+                      ),
                     ),
                   ),
+                  if (_passwordError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, left: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.error_outline, color: redAccent, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _passwordError!,
+                              style: TextStyle(color: redAccent, fontSize: 12, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   
-                  Text(
-                    'Confirm Password',
-                    style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                  Text.rich(
+                    TextSpan(
+                      text: 'Confirm Password ',
+                      style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+                      children: [TextSpan(text: '*', style: TextStyle(color: redAccent))],
+                    ),
                   ),
                   const SizedBox(height: 8),
                   AuthTextField(
@@ -441,17 +514,25 @@ We may update our Privacy Policy periodically. We will notify you of any changes
                     hintText: 'Confirm your password',
                     prefixIcon: Icons.lock_outline,
                     obscureText: _obscureConfirmPassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: ThemeService.mutedColor,
-                        size: 20,
-                      ),
-                      onPressed: () {
+                    suffixIcon: GestureDetector(
+                      onTap: () {
                         setState(() {
                           _obscureConfirmPassword = !_obscureConfirmPassword;
                         });
                       },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: ThemeService.isDarkMode ? Colors.black26 : const Color(0xFFF0F4F8),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: ThemeService.textColor,
+                          size: 18,
+                        ),
+                      ),
                     ),
                   ),
                   
@@ -532,6 +613,12 @@ We may update our Privacy Policy periodically. We will notify you of any changes
                         }
                         
                         if (firstName.isEmpty || email.isEmpty || password.isEmpty) return;
+                        if (_passwordError != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please meet the password requirements.')),
+                          );
+                          return;
+                        }
                         if (_selectedGender == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Please select your gender.')),

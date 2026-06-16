@@ -5,7 +5,7 @@ import 'package:fuel_cal/services/otp_service.dart';
 import 'package:fuel_cal/services/currency_service.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://184.174.37.4:8001';
+  static const String baseUrl = 'http://fuelvox.fadowtech.com:8001';
   
   final Dio _dio = Dio(BaseOptions(baseUrl: baseUrl));
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -303,17 +303,22 @@ class ApiService {
     }
   }
 
-  Future<bool> deleteVehicle(int id) async {
+  Future<String?> deleteVehicle(int id) async {
     try {
       await _dio.delete('/vehicles/$id');
-      return true;
+      return null;
     } catch (e) {
       if (e is DioException) {
         print('deleteVehicle error response: ${e.response?.data}');
+        final data = e.response?.data;
+        if (data is Map && data.containsKey('detail')) {
+          return data['detail'].toString();
+        }
+        return 'Server error: ${e.response?.statusCode ?? "Unknown"}';
       } else {
         print('deleteVehicle error: $e');
+        return 'An unexpected error occurred';
       }
-      return false;
     }
   }
 

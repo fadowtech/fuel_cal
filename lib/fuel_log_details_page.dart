@@ -136,11 +136,11 @@ class FuelLogDetailsPage extends ConsumerWidget {
             icon: Icons.edit,
             color: ThemeService.textColor.withOpacity(0.7),
             onTap: () async {
-              await Navigator.push(
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => AddFuelPage(existingLog: fuelLog.toJson())),
               );
-              if (context.mounted) {
+              if (result == true && context.mounted) {
                 Navigator.pop(context);
               }
             },

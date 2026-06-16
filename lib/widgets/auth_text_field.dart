@@ -11,6 +11,7 @@ class AuthTextField extends StatelessWidget {
   final TextInputType keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final TextCapitalization textCapitalization;
+  final ValueChanged<String>? onChanged;
 
   const AuthTextField({
     Key? key,
@@ -22,44 +23,61 @@ class AuthTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.inputFormatters,
     this.textCapitalization = TextCapitalization.none,
+    this.onChanged,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ThemeService.isDarkMode ? ThemeService.surfaceColor : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: ThemeService.isDarkMode ? ThemeService.surfaceColor : Colors.grey.shade300,
-          width: 1,
-        ),
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      textCapitalization: textCapitalization,
+      onChanged: onChanged,
+      style: TextStyle(
+        color: ThemeService.textColor,
+        fontSize: 14,
       ),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
-        textCapitalization: textCapitalization,
-        style: TextStyle(
-          color: ThemeService.textColor,
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(
+          color: ThemeService.mutedColor,
           fontSize: 14,
         ),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(
-            color: ThemeService.mutedColor,
-            fontSize: 14,
+        prefixIcon: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: ThemeService.isDarkMode ? Colors.black26 : const Color(0xFFF0F4F8),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(prefixIcon, color: ThemeService.textColor, size: 18),
           ),
-          prefixIcon: Icon(
-            prefixIcon,
-            color: ThemeService.mutedColor,
-            size: 20,
-          ),
-          suffixIcon: suffixIcon,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
+        suffixIcon: suffixIcon != null
+            ? Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: suffixIcon,
+              )
+            : null,
+        filled: true,
+        fillColor: ThemeService.isDarkMode ? ThemeService.surfaceColor : Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ThemeService.isDarkMode ? ThemeService.surfaceColor : Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: ThemeService.isDarkMode ? ThemeService.surfaceColor : Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16),
       ),
     );
   }

@@ -541,12 +541,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           backgroundColor: Colors.green,
         ),
       );
-      if (widget.existingLog != null) {
-        int count = 0;
-        Navigator.popUntil(context, (route) => count++ == 2);
-      } else {
-        Navigator.pop(context);
-      }
+      Navigator.pop(context, true);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to save fuel log.')),

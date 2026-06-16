@@ -129,19 +129,16 @@ class VehicleSelector extends ConsumerWidget {
                     ],
                   ),
                   if (selectedVehicle != null) ...[
-                    const SizedBox(height: 6.0),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8.0,
-                      runSpacing: 4.0,
+                    const SizedBox(height: 4.0),
+                    Row(
                       children: [
                         if (selectedVehicle!.vehicleNumber != null && selectedVehicle!.vehicleNumber!.isNotEmpty) ...[
-                          _buildCustomPill(selectedVehicle!.vehicleNumber!, hasBorder: true),
-                          Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
+                          Text(selectedVehicle!.vehicleNumber!, style: TextStyle(color: ThemeService.mutedColor, fontSize: 12)),
+                          Text('  •  ', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 12)),
                         ],
-                        _buildCustomPill('${selectedVehicle!.year}'),
-                        Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
-                        _buildCustomPill(selectedVehicle!.fuelType, textColor: const Color(0xFF00BFA5)),
+                        Text('${selectedVehicle!.year}', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12)),
+                        Text('  •  ', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 12)),
+                        Text(selectedVehicle!.fuelType, style: const TextStyle(color: Color(0xFF00BFA5), fontSize: 12)),
                       ],
                     ),
                   ],
@@ -171,6 +168,14 @@ class VehicleSelector extends ConsumerWidget {
                   return v.make.toLowerCase().contains(query) ||
                          v.model.toLowerCase().contains(query);
                 }).toList();
+                
+                filteredVehicles.sort((a, b) {
+                  bool aIsDefault = defaultId != null ? a.id == defaultId : a.isDefault;
+                  bool bIsDefault = defaultId != null ? b.id == defaultId : b.isDefault;
+                  if (aIsDefault && !bIsDefault) return -1;
+                  if (!aIsDefault && bIsDefault) return 1;
+                  return 0; // Keep original order for the rest
+                });
 
                 return Container(
               height: MediaQuery.of(context).size.height * 0.90,
@@ -431,7 +436,7 @@ class VehicleSelector extends ConsumerWidget {
 
   Widget _buildVehicleItem(BuildContext context, Vehicle vehicle, bool isLocked, WidgetRef ref, int? defaultId) {
     bool isSelected = selectedVehicle?.id == vehicle.id;
-    final isDefault = (defaultId != null && vehicle.id == defaultId) || vehicle.isDefault;
+    final isDefault = defaultId != null ? vehicle.id == defaultId : vehicle.isDefault;
 
     return GestureDetector(
       onTap: () {
@@ -465,137 +470,133 @@ class VehicleSelector extends ConsumerWidget {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12.0),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
-          color: ThemeService.surfaceColor,
+          color: isSelected 
+              ? (ThemeService.isDarkMode ? const Color(0xFF1E1E2D) : const Color(0xFFF0F4FF)) 
+              : ThemeService.surfaceColor,
           borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(color: const Color(0xFF5A67D8).withOpacity(0.5)),
+          border: isSelected 
+              ? Border.all(color: const Color(0xFF5A67D8), width: 1.5) 
+              : Border.all(color: ThemeService.mutedColor.withOpacity(0.1)),
         ),
         child: Opacity(
           opacity: isLocked ? 0.5 : 1.0,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
             children: [
-              _buildVehicleIcon(vehicle, size: 56),
-              const SizedBox(width: 16.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            vehicle.displayName,
-                            style: TextStyle(
-                              color: ThemeService.textColor,
-                              fontSize: 18.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isDefault) ...[
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.transparent,
-                              border: Border.all(color: const Color(0xFF00BFA5)),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('DEFAULT', style: TextStyle(color: Color(0xFF00BFA5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 8.0),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8.0,
-                      runSpacing: 4.0,
-                      children: [
-                        if (vehicle.vehicleNumber != null && vehicle.vehicleNumber!.isNotEmpty) ...[
-                          _buildPill(Icons.badge_outlined, vehicle.vehicleNumber!),
-                          Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
-                        ],
-                        _buildPill(Icons.calendar_today_outlined, '${vehicle.year}'),
-                        Text('•', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 10)),
-                        _buildPill(Icons.water_drop_outlined, vehicle.fuelType, iconColor: const Color(0xFF00BFA5), textColor: const Color(0xFF00BFA5)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12.0),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Top Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id)) ...[
-                    Row(
+                  _buildVehicleIcon(vehicle, size: 56),
+                  const SizedBox(width: 16.0),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.speed, color: Color(0xFF5A67D8), size: 16),
-                        const SizedBox(width: 4),
+                        Text(
+                          vehicle.displayName,
+                          style: TextStyle(
+                            color: ThemeService.textColor,
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            if (vehicle.vehicleNumber != null && vehicle.vehicleNumber!.isNotEmpty) ...[
+                              Text(vehicle.vehicleNumber!, style: TextStyle(color: ThemeService.mutedColor, fontSize: 12)),
+                              Text('  •  ', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 12)),
+                            ],
+                            Text('${vehicle.year}', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12)),
+                            Text('  •  ', style: TextStyle(color: ThemeService.mutedColor.withOpacity(0.5), fontSize: 12)),
+                            Text(vehicle.fuelType, style: const TextStyle(color: Color(0xFF00BFA5), fontSize: 12)),
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+                  if (isSelected)
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF5A67D8),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check, color: Colors.white, size: 16),
+                    )
+                  else if (isLocked)
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: ThemeService.isDarkMode ? const Color(0xFF22222A) : const Color(0xFFF0F0F5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.lock, color: ThemeService.mutedColor, size: 16),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+              const SizedBox(height: 12),
+              // Bottom Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.speed, color: ThemeService.mutedColor, size: 16),
+                      const SizedBox(width: 8),
+                      if (vehicleOdometers != null && vehicleOdometers!.containsKey(vehicle.id))
                         Text.rich(
                           TextSpan(
                             text: vehicleOdometers![vehicle.id]!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                            style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: ThemeService.textColor, fontSize: 14, fontWeight: FontWeight.bold),
                             children: [
                               TextSpan(text: ' km', style: TextStyle(color: ThemeService.mutedColor, fontSize: 12, fontWeight: FontWeight.normal)),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12.0),
-                  ],
+                        )
+                      else
+                        Text('-- km', style: TextStyle(color: ThemeService.mutedColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                   Row(
                     children: [
-                      if (isLocked)
+                      if (isDefault)
                         Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF22222A),
-                            shape: BoxShape.circle,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            border: Border.all(color: const Color(0xFF00BFA5)),
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Icon(Icons.lock, color: ThemeService.mutedColor, size: 16),
-                        )
-                      else if (isSelected)
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF5A67D8),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.check, color: Colors.white, size: 18),
+                          child: const Text('DEFAULT', style: TextStyle(color: Color(0xFF00BFA5), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                         ),
                       if (!isLocked) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         PopupMenuButton<String>(
                           color: ThemeService.surfaceColor,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           padding: EdgeInsets.zero,
                           offset: const Offset(0, 40),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF22222A),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.more_vert, color: Colors.white, size: 20),
-                          ),
+                          child: Icon(Icons.more_vert, color: ThemeService.textColor, size: 20),
                           onSelected: (value) async {
                             if (value == 'default') {
+                               // Show a quick loading state if possible, or just await
                                final prefs = await SharedPreferences.getInstance();
                                await prefs.setInt('default_vehicle_id', vehicle.id);
                                
                                final vehicleData = vehicle.toJson();
                                vehicleData['is_default'] = true;
-                               ref.read(apiServiceProvider).updateVehicle(vehicle.id, vehicleData);
+                               
+                               // Await the API call to ensure the backend updates BEFORE we refresh!
+                               await ref.read(apiServiceProvider).updateVehicle(vehicle.id, vehicleData);
+                               
                                ref.refresh(vehiclesProvider);
                                ref.invalidate(defaultVehicleIdProvider);
                                onVehicleSelected(vehicle);
@@ -632,11 +633,11 @@ class VehicleSelector extends ConsumerWidget {
                             ),
                           ],
                         ),
-                      ],
+                      ]
                     ],
-                  ),
+                  )
                 ],
-              ),
+              )
             ],
           ),
         ),
@@ -707,18 +708,45 @@ class VehicleSelector extends ConsumerWidget {
     }
 
     final iconData = _getIconForType(vehicle.vehicleType);
+    final baseColor = _parseVehicleColor(vehicle.color);
     
+    final bool isDarkTheme = ThemeService.isDarkMode;
+    final double luminance = baseColor.computeLuminance();
+    
+    bool invertColors = false;
+    if (isDarkTheme && luminance < 0.1) {
+      invertColors = true; // Black car in dark mode
+    } else if (!isDarkTheme && luminance > 0.8) {
+      invertColors = true; // White car in light mode
+    }
+
+    Color bgColor;
+    Color fgColor;
+
+    if (invertColors) {
+      if (isDarkTheme) {
+         bgColor = const Color(0xFFF0F0F5);
+         fgColor = const Color(0xFF1E1E26);
+      } else {
+         bgColor = const Color(0xFF6B6B73); // Dark grey background
+         fgColor = Colors.white; // White icon
+      }
+    } else {
+      bgColor = baseColor.withOpacity(0.15);
+      fgColor = baseColor;
+    }
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F0F5),
+        color: bgColor,
         borderRadius: BorderRadius.circular(14.0),
       ),
       alignment: Alignment.center,
       child: Icon(
         iconData,
-        color: const Color(0xFF1E1E26),
+        color: fgColor,
         size: size * 0.6,
       ),
     );
