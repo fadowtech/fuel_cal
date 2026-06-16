@@ -12,7 +12,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - /opt/fuelvox_db_production:/var/lib/postgresql/data
 
   web:
     build: .
@@ -24,4 +24,3 @@ services:
       - DATABASE_URL=postgresql://fuel_user:Fuel%402026Secure@db:5432/fuel_db
     depends_on:
       - db
-
