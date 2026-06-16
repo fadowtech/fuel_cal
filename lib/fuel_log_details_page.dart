@@ -274,24 +274,20 @@ class FuelLogDetailsPage extends ConsumerWidget {
                           subtitle: '${fuelLog.odometer.toStringAsFixed(0)} KM',
                         ),
                         Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                        if (fuelLog.remainingRange != null && fuelLog.remainingRange! > 0) ...[
-                          _buildListTile(
-                            icon: Icons.compare_arrows_rounded,
-                            iconColor: const Color(0xFF00E676),
-                            title: 'DISTANCE TO EMPTY BEFORE FUEL',
-                            subtitle: '${fuelLog.remainingRange!.toStringAsFixed(0)} KM',
-                          ),
-                          Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                        ],
-                        if (fuelLog.remainingRangeAfter != null && fuelLog.remainingRangeAfter! > 0) ...[
-                          _buildListTile(
-                            icon: Icons.compare_arrows_rounded,
-                            iconColor: const Color(0xFF00E676),
-                            title: 'DISTANCE TO EMPTY AFTER FUEL',
-                            subtitle: '${fuelLog.remainingRangeAfter!.toStringAsFixed(0)} KM',
-                          ),
-                          Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                        ],
+                        _buildListTile(
+                          icon: Icons.compare_arrows_rounded,
+                          iconColor: const Color(0xFF00E676),
+                          title: 'DISTANCE TO EMPTY BEFORE FUEL',
+                          subtitle: (fuelLog.remainingRange != null && fuelLog.remainingRange! > 0) ? '${fuelLog.remainingRange!.toStringAsFixed(0)} KM' : '--',
+                        ),
+                        Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        _buildListTile(
+                          icon: Icons.compare_arrows_rounded,
+                          iconColor: const Color(0xFF00E676),
+                          title: 'DISTANCE TO EMPTY AFTER FUEL',
+                          subtitle: (fuelLog.remainingRangeAfter != null && fuelLog.remainingRangeAfter! > 0) ? '${fuelLog.remainingRangeAfter!.toStringAsFixed(0)} KM' : '--',
+                        ),
+                        Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                         if (fuelLog.fuelPrice != null) ...[
                           _buildListTile(
                             icon: Icons.price_change_outlined,
@@ -320,26 +316,25 @@ class FuelLogDetailsPage extends ConsumerWidget {
                           Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
                         ],
                         _buildListTile(
-                          icon: Icons.local_gas_station,
-                          iconColor: Colors.green,
+                          icon: Icons.local_gas_station_rounded,
+                          iconColor: const Color(0xFF10B981),
                           title: 'FULL TANK',
                           subtitle: fuelLog.isFullTank ? 'Yes' : 'No',
                         ),
                         Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
-                        if (fuelLog.notes != null && fuelLog.notes!.isNotEmpty)
-                          _buildListTile(
-                            icon: Icons.notes,
-                            iconColor: const Color(0xFFF59E0B),
-                            title: 'NOTES',
-                            subtitle: fuelLog.notes,
-                          )
-                        else
-                          _buildListTile(
-                            icon: Icons.notes,
-                            iconColor: const Color(0xFFF59E0B),
-                            title: 'NOTES',
-                            subtitle: 'No notes provided',
-                          ),
+                        _buildListTile(
+                          icon: Icons.warning_amber_rounded,
+                          iconColor: Colors.redAccent,
+                          title: 'MISSED LAST FILL-UP',
+                          subtitle: fuelLog.missedFillup ? 'Yes' : 'No',
+                        ),
+                        Divider(color: ThemeService.mutedColor.withOpacity(0.1), height: 1),
+                        _buildListTile(
+                          icon: Icons.notes_rounded,
+                          iconColor: Colors.orangeAccent,
+                          title: 'NOTES',
+                          subtitle: fuelLog.notes?.isNotEmpty == true ? fuelLog.notes! : 'No notes provided',
+                        ),
                       ],
                     ),
                   ),

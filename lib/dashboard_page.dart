@@ -1698,6 +1698,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         else if (cat == 'Parking') { mappedData['icon'] = Icons.local_parking_outlined; mappedData['color'] = const Color(0xFFEAB308); }
         else if (cat == 'Wash') { mappedData['icon'] = Icons.local_car_wash_outlined; mappedData['color'] = const Color(0xFF06B6D4); }
         else if (cat == 'Tolls Recharge') { mappedData['icon'] = Icons.toll_outlined; mappedData['color'] = const Color(0xFFEC4899); }
+        else if (cat == 'Other') { mappedData['icon'] = Icons.more_horiz; mappedData['color'] = const Color(0xFF6366F1); }
         else { mappedData['icon'] = Icons.grid_view_rounded; mappedData['color'] = const Color(0xFF22C55E); }
 
         Vehicle? vehicle;
@@ -2070,6 +2071,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               case 'insurance': iconColor = Colors.indigoAccent; iconData = Icons.health_and_safety_outlined; break;
               case 'toll': 
               case 'tolls recharge': iconColor = Colors.orangeAccent; iconData = Icons.receipt_long_outlined; break;
+              case 'other': iconColor = const Color(0xFF6366F1); iconData = Icons.more_horiz; break;
               case 'parking': iconColor = Colors.blueAccent; iconData = Icons.local_parking_outlined; break;
               case 'wash':
               case 'washing': iconColor = Colors.cyan; iconData = Icons.local_car_wash_outlined; break;

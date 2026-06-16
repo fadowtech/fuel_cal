@@ -137,10 +137,11 @@ class _GaragePageState extends ConsumerState<GaragePage> {
               );
             } else {
               if (!context.mounted) return;
-              Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AddVehiclePage()),
               );
+              ref.refresh(vehiclesProvider.future);
             }
           },
           child: Container(
@@ -233,7 +234,7 @@ class _GaragePageState extends ConsumerState<GaragePage> {
     String odoText = latestOdo > 0 ? latestOdo.toInt().toString() : '-';
     
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (isLocked) {
           showDialog(
             context: context,
@@ -258,10 +259,11 @@ class _GaragePageState extends ConsumerState<GaragePage> {
           );
           return;
         }
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => VehicleDetailsPage(vehicle: v)),
         );
+        ref.refresh(vehiclesProvider.future);
       },
       child: Opacity(
         opacity: isLocked ? 0.5 : 1.0,
@@ -392,10 +394,13 @@ class _GaragePageState extends ConsumerState<GaragePage> {
             ),
           ),
           GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => VehicleDetailsPage(vehicle: v)),
-            ),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => VehicleDetailsPage(vehicle: v)),
+              );
+              ref.refresh(vehiclesProvider.future);
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(

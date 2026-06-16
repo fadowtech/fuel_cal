@@ -66,6 +66,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   double _estimatedRange = 0.0;
   double _tankLevelPercent = 0.0;
   double _lastOdo = 0.0;
+  double? _nextOdo;
   bool _isInitialized = false;
   
   bool _isFetchingLocation = false;
@@ -310,14 +311,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         _previousRange = _previousFuel * _avgMileage;
         _isFirstLog = false;
         
-        final sortedLogs = List<dynamic>.from(filteredLogs)
-          ..sort((a, b) => (b.date ?? DateTime.now()).compareTo(a.date ?? DateTime.now()));
-        final lastLog = sortedLogs.first;
-        _lastOdo = lastLog.odometer;
-        
         DateTime targetDate = DateTime.now();
         if (widget.existingLog != null) {
-           final raw = widget.existingLog!['rawDate'];
+           final raw = widget.existingLog!['rawDate'] ?? widget.existingLog!['date'];
            if (raw is DateTime) {
              targetDate = raw;
            } else if (raw is String) {
@@ -325,7 +321,27 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
            }
         }
         
-        final daysSinceLastLog = targetDate.difference(lastLog.date ?? DateTime.now()).inDays.clamp(0, 30);
+        int? editingId = widget.existingLog != null ? widget.existingLog!['id'] : null;
+        var otherLogs = filteredLogs.where((l) => l.id != editingId).toList();
+        otherLogs.sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+        
+        double prevOdo = 0.0;
+        double? nextOdo;
+        for (var l in otherLogs) {
+           final d = l.date ?? DateTime.now();
+           if (d.isBefore(targetDate) || d.isAtSameMomentAs(targetDate)) {
+               prevOdo = l.odometer;
+           } else {
+               nextOdo = l.odometer;
+               break; // first log after targetDate
+           }
+        }
+        
+        _lastOdo = prevOdo;
+        _nextOdo = nextOdo;
+        
+        final lastLog = ascLogs.isNotEmpty ? ascLogs.last : null;
+        final daysSinceLastLog = lastLog != null ? targetDate.difference(lastLog.date ?? DateTime.now()).inDays.clamp(0, 30) : 0;
         
         double avgDailyDistance = 30.0;
         if (ascLogs.length > 1) {
@@ -479,6 +495,9 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
     } else if (odo <= _lastOdo) {
       _odoErrorText = 'Must be > ${_lastOdo.toStringAsFixed(0)} KM';
       hasError = true;
+    } else if (_nextOdo != null && odo >= _nextOdo!) {
+      _odoErrorText = 'Must be < ${_nextOdo!.toStringAsFixed(0)} KM';
+      hasError = true;
     } else {
       _odoErrorText = null;
     }
@@ -504,6 +523,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
       "fuel_quantity": liters,
       "total_cost": totalCost,
       "odometer": odo,
+      "previous_odometer": _lastOdo,
       "fuel_price": double.tryParse(_fuelPriceController.text),
       "remaining_range": double.tryParse(_remainingRangeController.text),
       "remaining_range_after": double.tryParse(_remainingRangeAfterController.text),
@@ -893,7 +913,12 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         ),
         Padding(
           padding: const EdgeInsets.only(left: 48, top: 4, bottom: 12),
-          child: Text('Last ODO: ${_lastOdo.toStringAsFixed(0)} KM', style: TextStyle(color: _mutedColor, fontSize: 12)),
+          child: Text(
+            _nextOdo != null 
+              ? 'Prev ODO: ${_lastOdo.toStringAsFixed(0)} KM   •   Next ODO: ${_nextOdo!.toStringAsFixed(0)} KM'
+              : 'Last ODO: ${_lastOdo.toStringAsFixed(0)} KM', 
+            style: TextStyle(color: _mutedColor, fontSize: 12)
+          ),
         ),
         _buildTextField(
           controller: _remainingRangeController,

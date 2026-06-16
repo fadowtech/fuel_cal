@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/profile_service.dart';
 import '../services/subscription_service.dart';
+import '../services/notification_service.dart';
 import 'data_provider.dart';
 
 final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
@@ -172,6 +174,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await SubscriptionService.logout();
     await _ref.read(apiServiceProvider).logout();
     await ProfileService.clearProfile();
+    final prefs = await SharedPreferences.getInstance();
+    final showWelcome = prefs.getBool('show_welcome');
+    final themeMode = prefs.getString('theme_mode');
+    await prefs.clear();
+    if (showWelcome != null) await prefs.setBool('show_welcome', showWelcome);
+    if (themeMode != null) await prefs.setString('theme_mode', themeMode);
+
+    await NotificationService.cancelAllNotifications();
+
     _ref.invalidate(selectedVehicleProvider);
     _ref.invalidate(vehiclesProvider);
     _ref.invalidate(fuelLogsProvider);

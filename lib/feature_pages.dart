@@ -631,7 +631,7 @@ class ServicesPage extends ConsumerStatefulWidget {
 class _ServicesPageState extends ConsumerState<ServicesPage> {
   String _selectedFilter = 'All';
   DateTime _selectedMonth = DateTime.now();
-  final List<String> _serviceCategories = ['Service', 'Engine', 'Brakes', 'Suspension', 'General', 'Tires'];
+  final List<String> _serviceCategories = ['Service', 'Engine', 'Brakes', 'Suspension', 'General', 'Tires', 'Other'];
   bool _isSearching = false;
   final _searchController = TextEditingController();
 
@@ -993,6 +993,7 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
       {'name': 'Suspension', 'icon': Icons.hardware_outlined, 'color': Colors.purpleAccent},
       {'name': 'General', 'icon': Icons.fact_check_outlined, 'color': Colors.blueAccent},
       {'name': 'Tires', 'icon': Icons.tire_repair_outlined, 'color': Colors.cyan},
+      {'name': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF6366F1)},
     ];
 
     return SingleChildScrollView(
@@ -1084,6 +1085,7 @@ class _ServiceTile extends StatelessWidget {
       case 'suspension': iconColor = Colors.purpleAccent; iconData = Icons.hardware_outlined; break;
       case 'general': iconColor = Colors.blueAccent; iconData = Icons.fact_check_outlined; break;
       case 'tires': iconColor = Colors.cyan; iconData = Icons.tire_repair_outlined; break;
+      case 'other': iconColor = const Color(0xFF6366F1); iconData = Icons.more_horiz; break;
       default: iconColor = Colors.deepOrangeAccent; iconData = Icons.build_outlined; break;
     }
 

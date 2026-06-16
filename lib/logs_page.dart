@@ -1017,6 +1017,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         else if (cat == 'Parking') { catIcon = Icons.local_parking_outlined; catColor = const Color(0xFFEAB308); }
         else if (cat == 'Wash') { catIcon = Icons.local_car_wash_outlined; catColor = const Color(0xFF06B6D4); }
         else if (cat == 'Tolls Recharge') { catIcon = Icons.toll_outlined; catColor = const Color(0xFFEC4899); }
+        else if (cat == 'Other') { catIcon = Icons.more_horiz; catColor = const Color(0xFF6366F1); }
 
         final formattedDate = rem['due_date'] != null 
             ? DateFormat('dd MMM yyyy').format(DateTime.parse(rem['due_date']).toLocal()) 

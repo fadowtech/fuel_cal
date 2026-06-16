@@ -18,6 +18,7 @@ abstract class FuelLog with _$FuelLog {
     @JsonKey(name: 'remaining_range') double? remainingRange,
     @JsonKey(name: 'remaining_range_after') double? remainingRangeAfter,
     @JsonKey(name: 'is_full_tank') @Default(false) bool isFullTank,
+    @JsonKey(name: 'missed_fillup') @Default(false) bool missedFillup,
     String? location,
     String? notes,
     @JsonKey(name: 'payment_method') String? paymentMethod,

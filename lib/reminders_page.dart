@@ -43,6 +43,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
     {'name': 'Parking', 'icon': Icons.local_parking_outlined, 'color': Color(0xFFEAB308), 'badge': 0},
     {'name': 'Wash', 'icon': Icons.local_car_wash_outlined, 'color': Color(0xFF06B6D4), 'badge': 0},
     {'name': 'Tolls Recharge', 'icon': Icons.toll_outlined, 'color': Color(0xFFEC4899), 'badge': 0},
+    {'name': 'Other', 'icon': Icons.more_horiz, 'color': Color(0xFF6366F1), 'badge': 0},
   ];
 
   List<Map<String, dynamic>> _upcomingReminders = [];
