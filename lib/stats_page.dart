@@ -254,45 +254,52 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         break;
     }
 
-    final filteredLogs = logs.where((l) => l.date != null && l.date!.isAfter(startDate)).toList();
-    final filteredExpenses = expenses.where((e) => e.date != null && e.date!.isAfter(startDate)).toList();
-    final filteredServices = services.where((s) => s.date != null && s.date!.isAfter(startDate)).toList();
+    final filteredLogs = logs.where((l) => l.date != null && !l.date!.isBefore(startDate)).toList();
+    final filteredExpenses = expenses.where((e) => e.date != null && !e.date!.isBefore(startDate)).toList();
+    final filteredServices = services.where((s) => s.date != null && !s.date!.isBefore(startDate)).toList();
 
     double totalSpend = 0.0;
     for (var l in filteredLogs) totalSpend += l.totalCost;
     for (var e in filteredExpenses) totalSpend += e.amount;
     for (var s in filteredServices) totalSpend += s.amount;
 
-    final prevLogs = logs.where((l) => l.date != null && l.date!.isAfter(prevStartDate) && l.date!.isBefore(startDate)).toList();
-    final prevExpenses = expenses.where((e) => e.date != null && e.date!.isAfter(prevStartDate) && e.date!.isBefore(startDate)).toList();
-    final prevServices = services.where((s) => s.date != null && s.date!.isAfter(prevStartDate) && s.date!.isBefore(startDate)).toList();
+    final prevLogs = logs.where((l) => l.date != null && !l.date!.isBefore(prevStartDate) && l.date!.isBefore(startDate)).toList();
+    final prevExpenses = expenses.where((e) => e.date != null && !e.date!.isBefore(prevStartDate) && e.date!.isBefore(startDate)).toList();
+    final prevServices = services.where((s) => s.date != null && !s.date!.isBefore(prevStartDate) && s.date!.isBefore(startDate)).toList();
 
     double prevSpend = 0.0;
     for (var l in prevLogs) prevSpend += l.totalCost;
     for (var e in prevExpenses) prevSpend += e.amount;
     for (var s in prevServices) prevSpend += s.amount;
 
-    final allSortedLogs = List<FuelLog>.from(logs)..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
-
     double totalDistance = 0.0;
     double totalFuelLiters = 0.0;
     double prevDistance = 0.0;
     double prevFuelLiters = 0.0;
 
-    for (int i = 1; i < allSortedLogs.length; i++) {
-      final logDate = allSortedLogs[i].date;
-      if (logDate == null) continue;
-      
-      final dist = allSortedLogs[i].odometer - allSortedLogs[i-1].odometer;
-      final fuel = allSortedLogs[i-1].fuelQuantity;
-      
-      if (dist > 0 && fuel > 0) {
-        if (logDate.isAfter(startDate)) {
-          totalDistance += dist;
-          totalFuelLiters += fuel;
-        } else if (logDate.isAfter(prevStartDate) && !logDate.isAfter(startDate)) {
-          prevDistance += dist;
-          prevFuelLiters += fuel;
+    Map<int, List<FuelLog>> logsByVehicle = {};
+    for (var l in logs) {
+      final vid = l.vehicleId ?? -1;
+      logsByVehicle.putIfAbsent(vid, () => []).add(l);
+    }
+
+    for (var vLogs in logsByVehicle.values) {
+      vLogs.sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
+      for (int i = 1; i < vLogs.length; i++) {
+        final logDate = vLogs[i].date;
+        if (logDate == null) continue;
+        
+        final dist = vLogs[i].odometer - vLogs[i-1].odometer;
+        final fuel = vLogs[i].fuelQuantity; // The fuel added at this fillup covers the distance since the last fillup
+        
+        if (dist > 0 && fuel > 0) {
+          if (!logDate.isBefore(startDate)) {
+            totalDistance += dist;
+            totalFuelLiters += fuel;
+          } else if (!logDate.isBefore(prevStartDate) && logDate.isBefore(startDate)) {
+            prevDistance += dist;
+            prevFuelLiters += fuel;
+          }
         }
       }
     }
@@ -326,17 +333,20 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     List<double> mileageData = [];
     List<double> priceData = [];
     
-    for (int i = 1; i < allSortedLogs.length; i++) {
-      final logDate = allSortedLogs[i].date;
-      if (logDate != null && logDate.isAfter(startDate)) {
-        spendData.add(allSortedLogs[i].totalCost);
-        final dist = allSortedLogs[i].odometer - allSortedLogs[i-1].odometer;
-        if (dist > 0 && allSortedLogs[i].fuelQuantity > 0) {
-          distanceData.add(dist);
-          mileageData.add(dist / allSortedLogs[i-1].fuelQuantity);
-        }
-        if (allSortedLogs[i].fuelQuantity > 0) {
-          priceData.add(allSortedLogs[i].totalCost / allSortedLogs[i].fuelQuantity);
+    for (var vLogs in logsByVehicle.values) {
+      for (int i = 1; i < vLogs.length; i++) {
+        final logDate = vLogs[i].date;
+        if (logDate != null && !logDate.isBefore(startDate)) {
+          spendData.add(vLogs[i].totalCost);
+          final dist = vLogs[i].odometer - vLogs[i-1].odometer;
+          final fuel = vLogs[i].fuelQuantity;
+          if (dist > 0 && fuel > 0) {
+            distanceData.add(dist);
+            mileageData.add(dist / fuel);
+          }
+          if (fuel > 0) {
+            priceData.add(vLogs[i].totalCost / fuel);
+          }
         }
       }
     }
@@ -358,6 +368,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     final priceTrend = calcRealTrend(avgPrice, prevAvgPrice);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -407,7 +418,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         ),
         SparklineKpiCard(
           title: 'Avg price',
-          value: avgPrice > 0 ? '${CurrencyService.currencySymbol}${avgPrice.toStringAsFixed(1)}/L' : '-',
+          value: avgPrice > 0 ? '${CurrencyService.currencySymbol}${avgPrice.toStringAsFixed(2)}/L' : '-',
           trendValue: '${priceTrend.abs().toStringAsFixed(1)}%',
           isTrendUp: priceTrend >= 0, 
           trendText: dynamicTrendText,
@@ -540,16 +551,23 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       return _buildEmptyChart('Need at least 2 fill-ups');
     }
     
-    final sortedLogs = List<FuelLog>.from(logs)..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+    final Map<int, List<FuelLog>> logsByVehicle = {};
+    for (var l in logs) {
+      final vid = l.vehicleId ?? -1;
+      logsByVehicle.putIfAbsent(vid, () => []).add(l);
+    }
     
     final Map<String, List<double>> aggregatedDist = {};
     final Map<String, List<double>> aggregatedFuel = {};
     
-    for (int i = 1; i < sortedLogs.length; i++) {
-      final dist = sortedLogs[i].odometer - sortedLogs[i-1].odometer;
-      if (dist > 0 && sortedLogs[i-1].fuelQuantity > 0) {
-        final d = sortedLogs[i].date ?? DateTime.now();
-        String key;
+    for (var vLogs in logsByVehicle.values) {
+      vLogs.sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+      for (int i = 1; i < vLogs.length; i++) {
+        final dist = vLogs[i].odometer - vLogs[i-1].odometer;
+        final fuel = vLogs[i].fuelQuantity;
+        if (dist > 0 && fuel > 0) {
+          final d = vLogs[i].date ?? DateTime.now();
+          String key;
         if (_mileageChartFilter == 'By year') {
           key = DateFormat('yyyy').format(d);
         } else if (_mileageChartFilter == 'By month') {
@@ -560,7 +578,8 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         }
         
         aggregatedDist.putIfAbsent(key, () => []).add(dist);
-        aggregatedFuel.putIfAbsent(key, () => []).add(sortedLogs[i-1].fuelQuantity);
+        aggregatedFuel.putIfAbsent(key, () => []).add(fuel);
+        }
       }
     }
     
@@ -1627,13 +1646,23 @@ extension SmartInsightsExtension on _StatsPageState {
     // Mileage Insight
     double calcMileage(List<FuelLog> logList) {
       if (logList.length < 2) return 0.0;
-      final sorted = List<FuelLog>.from(logList)..sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
+      
+      final Map<int, List<FuelLog>> logsByVehicle = {};
+      for (var l in logList) {
+        final vid = l.vehicleId ?? -1;
+        logsByVehicle.putIfAbsent(vid, () => []).add(l);
+      }
+      
       double dist = 0, fuel = 0;
-      for (int i = 1; i < sorted.length; i++) {
-        final d = sorted[i].odometer - sorted[i-1].odometer;
-        if (d > 0 && sorted[i-1].fuelQuantity > 0) {
-          dist += d;
-          fuel += sorted[i-1].fuelQuantity;
+      for (var vLogs in logsByVehicle.values) {
+        vLogs.sort((a, b) => (a.date ?? now).compareTo(b.date ?? now));
+        for (int i = 1; i < vLogs.length; i++) {
+          final d = vLogs[i].odometer - vLogs[i-1].odometer;
+          final f = vLogs[i].fuelQuantity;
+          if (d > 0 && f > 0) {
+            dist += d;
+            fuel += f;
+          }
         }
       }
       return fuel > 0 ? dist / fuel : 0.0;

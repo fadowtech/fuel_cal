@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/currency_service.dart';
 import 'package:fuel_cal/services/subscription_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
-class UpgradePage extends StatefulWidget {
+class UpgradePage extends ConsumerStatefulWidget {
   const UpgradePage({super.key});
 
   @override
-  State<UpgradePage> createState() => _UpgradePageState();
+  ConsumerState<UpgradePage> createState() => _UpgradePageState();
 }
 
-class _UpgradePageState extends State<UpgradePage> {
+class _UpgradePageState extends ConsumerState<UpgradePage> {
   int _selectedPlanIndex = 0; // 0: Free, 1: Remove Ads, 2: Plus, 3: Pro
   int _currentPlanIndex = 0;
   bool _isYearly = false;
@@ -56,6 +58,9 @@ class _UpgradePageState extends State<UpgradePage> {
         setState(() {
           _currentPlanIndex = plan;
         });
+        ref.invalidate(maxVehiclesProvider);
+        ref.invalidate(maxRemindersProvider);
+        ref.invalidate(vehiclesProvider);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -125,6 +130,11 @@ class _UpgradePageState extends State<UpgradePage> {
               setState(() => _isLoading = true);
               final success = await SubscriptionService.restorePurchases();
               await _loadCurrency();
+              if (success) {
+                ref.invalidate(maxVehiclesProvider);
+                ref.invalidate(maxRemindersProvider);
+                ref.invalidate(vehiclesProvider);
+              }
               if (mounted) {
                 setState(() => _isLoading = false);
                 ScaffoldMessenger.of(context).showSnackBar(
