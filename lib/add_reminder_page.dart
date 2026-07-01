@@ -9,7 +9,7 @@ import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/notification_service.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:intl/intl.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 
 class AddReminderPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? editData;
@@ -32,7 +32,6 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
   
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
-  final _kmController = TextEditingController();
   final _notesController = TextEditingController();
   
   DateTime? _dueDate;
@@ -75,8 +74,6 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
       if (raw != null) {
         _selectedCategory = raw['category'] ?? '';
         _titleController.text = raw['title'] ?? '';
-        _kmController.text = _formatNumber(raw['due_km']);
-        
         _amountController.text = _formatNumber(raw['amount']);
         _notesController.text = raw['notes'] ?? '';
         if (raw['due_date'] != null) {
@@ -102,7 +99,6 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
   @override
   void dispose() {
     _titleController.dispose();
-    _kmController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -175,8 +171,8 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
                   SizedBox(height: 32),
                   _buildSaveButton(),
                   SizedBox(height: 40),
-                if (MediaQuery.of(context).viewInsets.bottom == 0)
-                  const BannerAdWidget(),
+
+                  
                 ],
               ),
             ),
@@ -235,7 +231,7 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
       'title': _titleController.text.trim(),
       'due_date': _dueDate?.toIso8601String(),
       'created_at': DateTime.now().toUtc().toIso8601String(),
-      'due_km': _kmController.text.isNotEmpty ? double.tryParse(_kmController.text) : null,
+      'due_km': null,
       'amount': _amountController.text.isNotEmpty ? double.tryParse(_amountController.text) : null,
       'notes': finalNotes,
       'repeat': _repeatReminder,
@@ -460,8 +456,6 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
         _buildAmountCard(),
         SizedBox(height: 12),
         _buildDueDateCard(),
-        SizedBox(height: 12),
-        _buildDueKmCard(),
         SizedBox(height: 24),
         Row(
           children: [
@@ -655,89 +649,6 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
           ),
         );
   }
-
-  Widget _buildDueKmCard() {
-    return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Container(
-              decoration: BoxDecoration(
-                color: _cardColor,
-                border: Border(left: BorderSide(color: _neonColor, width: 4)),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAB308).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.speed_outlined, color: Color(0xFFEAB308), size: 20),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(text: 'Due in KM ', style: TextStyle(color: ThemeService.textColor, fontSize: 13, fontWeight: FontWeight.w500)),
-                      TextSpan(text: '(Optional)', style: TextStyle(color: _mutedColor, fontSize: 11)),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: _backgroundColor,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: ThemeService.textColor.withOpacity(0.1)),
-                  ),
-                  child: TextField(
-                    controller: _kmController,
-                    keyboardType: TextInputType.number,
-                    style: TextStyle(color: ThemeService.textColor, fontSize: 12),
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      hintText: 'Enter KM',
-                      hintStyle: TextStyle(color: _mutedColor, fontSize: 12),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      suffixIcon: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          border: Border(left: BorderSide(color: ThemeService.textColor.withOpacity(0.1))),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('KM', style: TextStyle(color: _mutedColor, fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-            ),
-          ),
-        );
-  }
-
   Widget _buildAmountCard() {
     return Container(
           decoration: BoxDecoration(
@@ -1368,7 +1279,6 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
     
     final displayTitle = _titleController.text.isNotEmpty ? _titleController.text : 'Reminder Title';
     final displayDate = _dueDate != null ? DateFormat('dd MMM yyyy').format(_dueDate!) : '--';
-    final displayKm = _kmController.text.isNotEmpty ? '${_kmController.text} KM' : '--';
 
     Color priorityColor;
     if (_priority == 'High') priorityColor = _dangerColor;
@@ -1473,13 +1383,6 @@ class _AddReminderPageState extends ConsumerState<AddReminderPage> {
                           Icon(Icons.calendar_today_outlined, color: _mutedColor, size: 12),
                           SizedBox(width: 4),
                           Text(displayDate, style: TextStyle(color: _mutedColor, fontSize: 13)),
-                          SizedBox(width: 16),
-                          Icon(Icons.speed, color: _mutedColor, size: 14),
-                          SizedBox(width: 4),
-                          Text(
-                            displayKm,
-                            style: TextStyle(color: _mutedColor, fontSize: 13),
-                          ),
                         ],
                       ),
                     ],

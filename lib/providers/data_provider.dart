@@ -27,7 +27,12 @@ final defaultVehicleIdProvider = FutureProvider<int?>((ref) async {
   return prefs.getInt('default_vehicle_id');
 });
 
-final selectedVehicleProvider = StateProvider<Vehicle?>((ref) => null);
+class SelectedVehicleNotifier extends Notifier<Vehicle?> {
+  @override
+  Vehicle? build() => null;
+}
+
+final selectedVehicleProvider = NotifierProvider<SelectedVehicleNotifier, Vehicle?>(() => SelectedVehicleNotifier());
 
 final activeVehicleProvider = Provider<Vehicle?>((ref) {
   final selected = ref.watch(selectedVehicleProvider);

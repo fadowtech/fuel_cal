@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 import 'dart:convert';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
@@ -42,7 +42,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
   DateTime _selectedDate = DateTime.now();
   bool _isFullTank = false;
   bool _missedFillUp = false;
-  String? _selectedPaymentMethod = 'Cash';
+  String? _selectedPaymentMethod;
   bool _isLoading = false;
   String? _odoErrorText;
   String? _volumeErrorText;
@@ -592,9 +592,6 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInputSummaryCard(),
-                    SizedBox(height: 24),
-                    SizedBox(height: 24),
                     _buildSectionTitle('FUEL DETAILS'),
                     _buildFuelDetails(),
                     SizedBox(height: 24),
@@ -606,10 +603,12 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                     SizedBox(height: 24),
                     _buildSectionTitle('ADDITIONAL (OPTIONAL)'),
                     _buildAdditional(),
-
+                    SizedBox(height: 24),
+                    _buildInputSummaryCard(),
+                    
                     SizedBox(height: 32),
-                  if (MediaQuery.of(context).viewInsets.bottom == 0)
-                    const BannerAdWidget(),
+
+                    
                   ],
                 ),
               ),
@@ -687,14 +686,20 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF00E676).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF00E676).withOpacity(0.3)),
-              ),
-              child: Text('Current summary', style: TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.w600)),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E676).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF00E676).withOpacity(0.3)),
+                  ),
+                  child: Text('Current summary', style: TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 12),
+                Text('Ensure all values are correct.', style: TextStyle(color: ThemeService.textColor, fontSize: 13)),
+              ],
             ),
           ),
           Row(
@@ -1066,7 +1071,14 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
           ),
         ),
         ),
-        SizedBox(height: 12),
+
+      ],
+    );
+  }
+
+  Widget _buildAdditional() {
+    return Column(
+      children: [
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -1122,13 +1134,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildAdditional() {
-    return Column(
-      children: [
+        SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
@@ -1298,7 +1304,7 @@ class _AddFuelPageState extends ConsumerState<AddFuelPage> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _selectedPaymentMethod,
-                    hint: Text('Select payment method', style: TextStyle(color: _mutedColor, fontSize: 14)),
+                    hint: Text('Select', style: TextStyle(color: _mutedColor, fontSize: 14)),
                     dropdownColor: _cardColor,
                     icon: Icon(Icons.keyboard_arrow_down, color: _mutedColor),
                     isExpanded: true,

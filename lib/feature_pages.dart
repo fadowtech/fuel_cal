@@ -1,3 +1,4 @@
+import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +16,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
 import 'dart:convert';
 import 'package:fuel_cal/services/report_service.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -335,7 +336,20 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage())),
+                        onTap: () {
+                          final vehicles = ref.read(vehiclesProvider).value ?? [];
+                          if (vehicles.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please add a vehicle to your Garage first.'),
+                                backgroundColor: Colors.redAccent,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          } else {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage()));
+                          }
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -403,7 +417,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                   final expenses = allExpenses.where((e) {
                     if (activeVehicle == null) return true;
                     if (e.vehicleId == activeVehicle.id) return true;
-                    final vList = ref.read(vehiclesProvider).valueOrNull ?? [];
+                    final vList = ref.read(vehiclesProvider).value ?? [];
                     if (e.vehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
                     return false;
                   }).toList();
@@ -441,11 +455,24 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
 
                   int prevMonthTotal = 0;
                   final prevMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
-                  final prevMonthExpenses = expenses.where((e) {
+                  var prevMonthExpenses = expenses.where((e) {
                      final d = e.date ?? DateTime.now();
                      return d.year == prevMonth.year && d.month == prevMonth.month;
-                  });
-                  prevMonthTotal = prevMonthExpenses.fold<double>(
+                  }).toList();
+
+                  if (query.isNotEmpty) {
+                    prevMonthExpenses = prevMonthExpenses.where((e) {
+                      return e.title.toLowerCase().contains(query) || 
+                             e.category.toLowerCase().contains(query) ||
+                             e.amount.toString().contains(query);
+                    }).toList();
+                  }
+
+                  final filteredPrevMonthExpenses = _selectedFilter == 'All' 
+                      ? prevMonthExpenses 
+                      : prevMonthExpenses.where((e) => e.category == _selectedFilter).toList();
+
+                  prevMonthTotal = filteredPrevMonthExpenses.fold<double>(
                     0.0,
                     (sum, item) => sum + item.amount,
                   ).toInt();
@@ -527,7 +554,7 @@ class _ExpensesPageState extends ConsumerState<ExpensesPage> {
                 error: (e, st) => Center(child: Text('Failed to load expenses', style: TextStyle(color: _textColor))),
               ),
             ),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),
@@ -795,7 +822,20 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
         });
       },
       action: GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage(isServiceMode: true))),
+        onTap: () {
+          final vehicles = ref.read(vehiclesProvider).value ?? [];
+          if (vehicles.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please add a vehicle to your Garage first.'),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          } else {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const AddExpensePage(isServiceMode: true)));
+          }
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -821,7 +861,7 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
           final services = unfilteredServices.where((s) {
             if (activeVehicle == null) return true;
             if (s.vehicleId == activeVehicle.id) return true;
-            final vList = ref.read(vehiclesProvider).valueOrNull ?? [];
+            final vList = ref.read(vehiclesProvider).value ?? [];
             if (s.vehicleId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
             return false;
           }).toList();
@@ -860,11 +900,24 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
 
           int prevMonthTotal = 0;
           final prevMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
-          final prevMonthServices = services.where((s) {
+          var prevMonthServices = services.where((s) {
              final d = s.date ?? DateTime.now();
              return d.year == prevMonth.year && d.month == prevMonth.month;
-          });
-          prevMonthTotal = prevMonthServices.fold<double>(
+          }).toList();
+
+          if (query.isNotEmpty) {
+            prevMonthServices = prevMonthServices.where((s) {
+              return s.title.toLowerCase().contains(query) || 
+                     s.category.toLowerCase().contains(query) ||
+                     s.amount.toString().contains(query);
+            }).toList();
+          }
+
+          final filteredPrevMonthServices = _selectedFilter == 'All'
+              ? prevMonthServices
+              : prevMonthServices.where((s) => s.category.toLowerCase() == _selectedFilter.toLowerCase()).toList();
+
+          prevMonthTotal = filteredPrevMonthServices.fold<double>(
             0.0,
             (sum, item) => sum + item.amount,
           ).toInt();
@@ -1161,7 +1214,7 @@ class _ServiceTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '₹${service.amount.toStringAsFixed(0)}',
+                        '${CurrencyService.currencySymbol}${service.amount.toStringAsFixed(2)}',
                         style: TextStyle(color: ThemeService.textColor, fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
@@ -1204,7 +1257,27 @@ class _ServiceTile extends StatelessWidget {
               ),
             ),
             CustomSlidableAction(
-              onPressed: (context) {
+              onPressed: (context) async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF1E1E24),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    title: const Text('Delete Entry', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    content: const Text('Are you sure you want to delete this entry? This action cannot be undone.', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm != true) return;
                 if (onDelete != null) onDelete!();
               },
               backgroundColor: const Color(0xFFEF4444),
@@ -1279,10 +1352,10 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     final vehiclesAsync = ref.watch(vehiclesProvider);
     final servicesAsync = ref.watch(servicesProvider);
 
-    final fuelLogs = fuelLogsAsync.valueOrNull ?? [];
-    final expenses = expensesAsync.valueOrNull ?? [];
-    final vehicles = vehiclesAsync.valueOrNull ?? [];
-    final services = servicesAsync.valueOrNull ?? [];
+    final fuelLogs = fuelLogsAsync.value ?? [];
+    final expenses = expensesAsync.value ?? [];
+    final vehicles = vehiclesAsync.value ?? [];
+    final services = servicesAsync.value ?? [];
 
     final reports = [
       {
@@ -1624,7 +1697,7 @@ class _FeatureScaffold extends StatelessWidget {
               ),
             ),
             Expanded(child: child),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),
@@ -1692,7 +1765,7 @@ class _HeroTotalCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '₹${total.toStringAsFixed(0)}',
+                    '${CurrencyService.currencySymbol}${total.toStringAsFixed(2)}',
                     style: TextStyle(color: _textColor,
                       fontSize: 42,
                       fontWeight: FontWeight.bold,
@@ -1726,7 +1799,7 @@ class _HeroTotalCard extends StatelessWidget {
                 child: _DarkStat(
                   icon: Icons.currency_rupee_rounded,
                   label: 'Cost/KM',
-                  value: total > 0 ? '₹${costPerKm.toStringAsFixed(2)}' : '-',
+                  value: total > 0 ? '${CurrencyService.currencySymbol}${costPerKm.toStringAsFixed(2)}' : '-',
                 ),
               ),
               Container(
@@ -1846,14 +1919,14 @@ class _TotalSpendDonutCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text('₹$total', style: TextStyle(color: _textColor, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text('${CurrencyService.currencySymbol}$total', style: TextStyle(color: _textColor, fontSize: 24, fontWeight: FontWeight.bold)),
           if (previousTotal >= 0) ...[
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(total >= previousTotal ? Icons.arrow_upward : Icons.arrow_downward, color: total >= previousTotal ? const Color(0xFF10B981) : const Color(0xFFEF4444), size: 12),
+                Icon(total >= previousTotal ? Icons.arrow_upward : Icons.arrow_downward, color: total > previousTotal ? const Color(0xFFEF4444) : const Color(0xFF10B981), size: 12),
                 const SizedBox(width: 4),
-                Text('₹$previousTotal', style: TextStyle(color: total >= previousTotal ? const Color(0xFF10B981) : const Color(0xFFEF4444), fontSize: 12, fontWeight: FontWeight.w600)),
+                Text('${CurrencyService.currencySymbol}$previousTotal', style: TextStyle(color: total > previousTotal ? const Color(0xFFEF4444) : const Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.w600)),
                 const SizedBox(width: 4),
                 Text('Last Month (${DateFormat('MMMM').format(DateTime(selectedMonth.year, selectedMonth.month - 1, 1))})', style: TextStyle(color: _mutedColor, fontSize: 12)),
               ],
@@ -1897,7 +1970,7 @@ class _TotalSpendDonutCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   SizedBox(
                     width: 40,
-                    child: Text('₹${NumberFormat('#,##0').format(item['amount'])}', style: TextStyle(color: _textColor, fontSize: 11), textAlign: TextAlign.right),
+                    child: Text('${CurrencyService.currencySymbol}${NumberFormat('#,##0').format(item['amount'])}', style: TextStyle(color: _textColor, fontSize: 11), textAlign: TextAlign.right),
                   ),
                 ],
               ),
@@ -1971,7 +2044,7 @@ class _TotalSpendCard extends StatelessWidget {
                   fontSize: 10,
                   letterSpacing: 1.2,
                   fontWeight: FontWeight.bold)),
-          Text('₹$total',
+          Text('${CurrencyService.currencySymbol}$total',
               style: TextStyle(color: _textColor,
                   fontSize: 38,
                   fontWeight: FontWeight.bold)),
@@ -2639,7 +2712,7 @@ class _ExpenseTileState extends State<_ExpenseTile> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '₹${widget.expense.amount.toStringAsFixed(0)}',
+                        '${CurrencyService.currencySymbol}${widget.expense.amount.toStringAsFixed(2)}',
                         style: TextStyle(
                           color: ThemeService.textColor,
                           fontSize: 16,
@@ -2688,6 +2761,26 @@ class _ExpenseTileState extends State<_ExpenseTile> {
           ),
           CustomSlidableAction(
             onPressed: (context) async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E1E24),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text('Delete Entry', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  content: const Text('Are you sure you want to delete this entry? This action cannot be undone.', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm != true) return;
               if (widget.onDelete != null) await widget.onDelete!();
             },
             backgroundColor: const Color(0xFFEF4444),
@@ -2760,7 +2853,7 @@ class _TripTile extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                   child: _StatBox(
-                      label: 'Cost', value: '₹${trip['cost']}', neon: true)),
+                      label: 'Cost', value: '${CurrencyService.currencySymbol}${trip['cost']}', neon: true)),
             ],
           ),
         ],
@@ -3018,11 +3111,11 @@ class _LogSummaryCard extends StatelessWidget {
                   fontSize: 10,
                   letterSpacing: 1.2,
                   fontWeight: FontWeight.bold)),
-          Text('₹${log['amount']}',
+          Text('${CurrencyService.currencySymbol}${log['amount']}',
               style: TextStyle(color: _textColor,
                   fontSize: 38,
                   fontWeight: FontWeight.bold)),
-          Text('${log['liters']}L x ₹${log['pricePerL']}/L',
+          Text('${log['liters']}L x ${CurrencyService.currencySymbol}${log['pricePerL']}/L',
               style: TextStyle(color: _mutedColor, fontSize: 12)),
           const SizedBox(height: 16),
           Row(
@@ -3224,5 +3317,11 @@ IconData _categoryIcon(String category) {
       return Icons.shopping_bag_outlined;
   }
 }
+
+
+
+
+
+
 
 

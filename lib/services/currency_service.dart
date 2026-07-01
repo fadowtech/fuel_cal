@@ -14,7 +14,7 @@ class CurrencyService {
   }
 
   static String get currencySymbol {
-    return getCurrencySymbol(_currentCurrency ?? 'INR');
+    return getCurrencySymbol(_currentCurrency ?? '');
   }
 
   static IconData get currentCurrencyIcon {

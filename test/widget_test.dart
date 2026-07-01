@@ -23,7 +23,7 @@ class FuelCalculatorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false, // Hide the debug banner
-      title: 'Fuel Calculator',
+      title: 'Fuelvox',
       theme: ThemeData(
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -130,7 +130,7 @@ class _FuelCalculatorHomePageState extends State<FuelCalculatorHomePage> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100, // Light grey background for the whole app
       appBar: AppBar(
-        title: const Text('Fuel Calculator', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('Fuelvox', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.green, // Solid green app bar
         elevation: 0,
         centerTitle: true,

@@ -43,12 +43,13 @@ class _SignInPageState extends ConsumerState<SignInPage> {
             ClipPath(
               clipper: HeaderClipper(),
               child: Container(
-                height: 300,
+                height: 240,
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/images/gas_station.png'),
                     fit: BoxFit.cover,
+                    alignment: Alignment(0, -0.5),
                   ),
                 ),
                 child: Stack(
@@ -69,7 +70,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     ),
                     SafeArea(
                       child: Padding(
-                        padding: const EdgeInsets.all(24.0),
+                        padding: const EdgeInsets.fromLTRB(24.0, 16.0, 24.0, 24.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -77,47 +78,21 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                               children: [
                                 Image.asset(
                                   'assets/icon/app_icon.png',
-                                  width: 32,
-                                  height: 32,
+                                  width: 24,
+                                  height: 24,
                                   errorBuilder: (context, error, stackTrace) =>
-                                      const Icon(Icons.local_fire_department, color: Colors.red, size: 32),
+                                      const Icon(Icons.local_fire_department, color: Colors.red, size: 24),
                                 ),
                                 const SizedBox(width: 8),
                                 const Text(
                                   'Fuelvox',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 28,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'Fuel your journey,',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                              ),
-                            ),
-                            RichText(
-                              text: TextSpan(
-                                style: const TextStyle(fontSize: 18),
-                                children: [
-                                  TextSpan(
-                                    text: 'power',
-                                    style: TextStyle(
-                                      color: redAccent,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const TextSpan(
-                                    text: ' your day.',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ],
-                              ),
                             ),
                           ],
                         ),
@@ -268,26 +243,63 @@ class _SignInPageState extends ConsumerState<SignInPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Don't have an account? ",
+                        "New to Fuelvox?",
                         style: TextStyle(
                           color: ThemeService.mutedColor,
                           fontSize: 14,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () {
                           context.push('/signup');
                         },
-                        child: Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            color: redAccent,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: redAccent, width: 1.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Create Account',
+                                style: TextStyle(
+                                  color: redAccent,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.arrow_forward,
+                                color: redAccent,
+                                size: 16,
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ],
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Skip for now link
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        ref.read(authProvider.notifier).setGuestMode();
+                      },
+                      child: Text(
+                        'Skip for now',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
                   
                   const SizedBox(height: 24),

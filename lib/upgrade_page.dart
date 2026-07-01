@@ -352,7 +352,6 @@ class _UpgradePageState extends ConsumerState<UpgradePage> {
               _buildCheckItem('Unlimited Add Refuel Logs'),
               _buildCheckItem('Unlimited Add Expense Logs'),
               _buildCheckItem('Unlimited Add Service Logs'),
-              _buildCheckItem('Unlimited Fuel Calculators'),
               _buildCheckItem('Unlimited Analytics & Statistics'),
               _buildCheckItem('Dark Mode & Light Mode'),
               _buildCheckItem('Fuel Management Settings'),

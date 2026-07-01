@@ -95,13 +95,13 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
           width: double.maxFinite,
           child: SingleChildScrollView(
             child: Text(
-              '''Welcome to Fuel Calculator!
+              '''Welcome to Fuelvox!
 
 1. Acceptance of Terms
-By creating an account and using the Fuel Calculator app, you agree to comply with and be bound by these Terms & Conditions. If you do not agree to these terms, please do not use the app.
+By creating an account and using the Fuelvox app, you agree to comply with and be bound by these Terms & Conditions. If you do not agree to these terms, please do not use the app.
 
 2. Description of Service
-Fuel Calculator provides tools for tracking vehicle mileage, logging fuel expenses, and setting maintenance reminders. All calculations and statistics are estimates based on user-provided data. The Service Provider (Emishper Raj) does not guarantee the absolute accuracy of these estimates.
+Fuelvox provides tools for tracking vehicle mileage, logging fuel expenses, and setting maintenance reminders. All calculations and statistics are estimates based on user-provided data. The Service Provider (Emishper Raj) does not guarantee the absolute accuracy of these estimates.
 
 3. In-App Purchases & Subscriptions
 Certain premium features are available via in-app purchases. Payments are processed securely through the Google Play Store and managed by RevenueCat.
@@ -113,7 +113,7 @@ The free version of the Application displays banner advertisements provided by G
 You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account. We reserve the right to terminate accounts that violate our policies.
 
 6. Limitation of Liability
-Fuel Calculator and its Service Provider shall not be liable for any indirect, incidental, or consequential damages resulting from the use or inability to use the app, including any loss of data. Use the service "AS IS".
+Fuelvox and its Service Provider shall not be liable for any indirect, incidental, or consequential damages resulting from the use or inability to use the app, including any loss of data. Use the service "AS IS".
 
 7. Contact Us
 If you have any questions about these Terms, please contact us at fuelfox@fadowtech.com.''',
@@ -138,7 +138,7 @@ If you have any questions about these Terms, please contact us at fuelfox@fadowt
           width: double.maxFinite,
           child: SingleChildScrollView(
             child: Text(
-              '''This privacy policy applies to the Fuel Calculator app (hereby referred to as "Application") for mobile devices that was created by Emishper Raj (hereby referred to as "Service Provider") as a Free and Premium service. This service is intended for use "AS IS".
+              '''This privacy policy applies to the Fuelvox app (hereby referred to as "Application") for mobile devices that was created by Emishper Raj (hereby referred to as "Service Provider") as a Free and Premium service. This service is intended for use "AS IS".
 
 Information Collection, Data Storage, and Use
 The Application collects information when you download and use it. For a better experience, while using the Application, the Service Provider may require you to provide us with certain personally identifiable information (such as your name, email address, and vehicle details). This information is transmitted via a secure API and safely stored in the Service Provider's own database. The information that the Service Provider requests will be retained by them and used as described in this privacy policy.
@@ -679,22 +679,40 @@ If you have any questions regarding privacy while using the Application, or have
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Already have an account? ",
+                        "Already have an account?",
                         style: TextStyle(
                           color: ThemeService.mutedColor,
                           fontSize: 14,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () {
                           context.go('/signin');
                         },
-                        child: Text(
-                          'Sign In',
-                          style: TextStyle(
-                            color: redAccent,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: redAccent, width: 1.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.person_outline,
+                                color: redAccent,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Sign In',
+                                style: TextStyle(
+                                  color: redAccent,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

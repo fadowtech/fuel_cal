@@ -8,7 +8,7 @@ import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/add_expense_page.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 
 Color get _backgroundColor => ThemeService.backgroundColor;
 Color get _cardColor => ThemeService.cardColor;
@@ -261,7 +261,7 @@ class ExpenseDetailsPage extends ConsumerWidget {
                         ),
                         VerticalDivider(color: ThemeService.mutedColor.withOpacity(0.1), width: 32),
                         Expanded(
-                          child: _buildHeaderInfo(CurrencyService.currentCurrencyIcon, const Color(0xFF3B82F6), 'Amount', '${CurrencyService.currencySymbol}${expense.amount.toStringAsFixed(0)}'),
+                          child: _buildHeaderInfo(CurrencyService.currentCurrencyIcon, const Color(0xFF3B82F6), 'Amount', '${CurrencyService.currencySymbol}${expense.amount.toStringAsFixed(2)}'),
                         ),
                       ],
                     ),
@@ -303,10 +303,11 @@ class ExpenseDetailsPage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),
     );
   }
 }
+

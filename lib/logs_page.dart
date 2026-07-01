@@ -9,7 +9,7 @@ import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/expense_details_page.dart';
 import 'package:fuel_cal/reminder_details_page.dart';
 import 'package:fuel_cal/fuel_log_details_page.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 import 'package:intl/intl.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
@@ -42,6 +42,28 @@ class LogsPage extends ConsumerStatefulWidget {
 }
 
 class _LogsPageState extends ConsumerState<LogsPage> {
+  Future<bool?> _showDeleteConfirmation(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Entry', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to delete this entry? This action cannot be undone.', style: TextStyle(color: Colors.white70, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _selectedFilter = "All";
   String _searchQuery = "";
   bool _showAllVehicles = false;
@@ -61,7 +83,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
     final isLoading = fuelLogsAsync.isLoading || vehiclesAsync.isLoading || (!widget.onlyFuel && (expensesAsync.isLoading || servicesAsync.isLoading || remindersAsync.isLoading));
     
-    if (isLoading && fuelLogsAsync.valueOrNull == null) {
+    if (isLoading && fuelLogsAsync.value == null) {
        return Scaffold(
          backgroundColor: _backgroundColor,
          body: SafeArea(
@@ -75,14 +97,14 @@ class _LogsPageState extends ConsumerState<LogsPage> {
        );
     }
 
-    final fuelLogsList = fuelLogsAsync.valueOrNull ?? [];
-    final expensesList = expensesAsync.valueOrNull ?? [];
-    final servicesList = servicesAsync.valueOrNull ?? [];
-    final remindersList = remindersAsync.valueOrNull ?? [];
-    final vehiclesMap = {for (var v in (vehiclesAsync.valueOrNull ?? [])) v.id: v};
+    final fuelLogsList = fuelLogsAsync.value ?? [];
+    final expensesList = expensesAsync.value ?? [];
+    final servicesList = servicesAsync.value ?? [];
+    final remindersList = remindersAsync.value ?? [];
+    final vehiclesMap = {for (var v in (vehiclesAsync.value ?? [])) v.id: v};
 
     final globalActiveVehicle = ref.watch(activeVehicleProvider);
-    final vList = vehiclesAsync.valueOrNull ?? [];
+    final vList = vehiclesAsync.value ?? [];
     
     // Determine which vehicle to filter by
     final activeVehicleToUse = _showAllVehicles 
@@ -276,17 +298,33 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                           }
 
                           bool showHeader = false;
+                          String headerText = '';
+                          final now = DateTime.now();
+                          final today = DateTime(now.year, now.month, now.day);
+                          final tomorrow = today.add(const Duration(days: 1));
+                          
+                          String getHeaderString(DateTime date) {
+                            final d = DateTime(date.year, date.month, date.day);
+                            if (d == today) return 'Today';
+                            if (d == tomorrow) return 'Tomorrow';
+                            if (d.isAfter(tomorrow)) return 'Upcoming';
+                            return DateFormat('dd MMM yyyy').format(date);
+                          }
+
+                          final currentHeader = getHeaderString(uLog.date);
+
                           if (index == 0) {
                              showHeader = true;
                           } else {
                              final prevLog = filteredLogs[index - 1];
-                             if (uLog.date.day != prevLog.date.day || uLog.date.month != prevLog.date.month || uLog.date.year != prevLog.date.year) {
+                             final prevHeader = getHeaderString(prevLog.date);
+                             if (currentHeader != prevHeader) {
                                  showHeader = true;
                              }
                           }
                           
                           if (showHeader) {
-                              final headerText = DateFormat('dd MMM yyyy').format(uLog.date);
+                              headerText = currentHeader;
                               return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -309,7 +347,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                       ),
               ),
             ),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),
@@ -358,7 +396,18 @@ class _LogsPageState extends ConsumerState<LogsPage> {
               if (widget.onlyFuel)
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AddFuelPage()));
+                    final vehicles = ref.read(vehiclesProvider).value ?? [];
+                    if (vehicles.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please add a vehicle to your Garage first.'),
+                          backgroundColor: Colors.redAccent,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    } else {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const AddFuelPage()));
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -410,7 +459,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                           value: -1,
                           child: Text("All Vehicles"),
                         ),
-                        ...(ref.watch(vehiclesProvider).valueOrNull ?? []).map((v) {
+                        ...(ref.watch(vehiclesProvider).value ?? []).map((v) {
                           return DropdownMenuItem<int>(
                             value: v.id,
                             child: Column(
@@ -627,6 +676,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           ),
           CustomSlidableAction(
             onPressed: (context) async {
+              final confirm = await _showDeleteConfirmation(context);
+              if (confirm != true) return;
               final success = await ref.read(apiServiceProvider).deleteFuelLog(log.id);
               if (success) ref.invalidate(fuelLogsProvider);
             },
@@ -726,7 +777,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                 Text('${CurrencyService.currencySymbol}${log.totalCost.toStringAsFixed(0)}',
+                 Text('${CurrencyService.currencySymbol}${log.totalCost.toStringAsFixed(2)}',
                     style: TextStyle(
                         color: ThemeService.textColor,
                         fontSize: 14)),
@@ -831,6 +882,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           ),
           CustomSlidableAction(
             onPressed: (context) async {
+              final confirm = await _showDeleteConfirmation(context);
+              if (confirm != true) return;
               bool success = false;
               if (type == LogType.service) {
                 success = await ref.read(apiServiceProvider).deleteService(exp.id);
@@ -908,7 +961,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('${CurrencyService.currencySymbol}${exp.amount.toStringAsFixed(0)}',
+              Text('${CurrencyService.currencySymbol}${exp.amount.toStringAsFixed(2)}',
                   style: TextStyle(
                       color: ThemeService.textColor,
                       fontSize: 14)),
@@ -945,6 +998,28 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         : '';
     final status = rem['status'] as String? ?? 'pending';
     
+    String badgeText = status.toUpperCase();
+    Color badgeColor = status == 'pending' ? Colors.white70 : const Color(0xFF10B981);
+    Color badgeBgColor = status == 'pending' ? Colors.white.withOpacity(0.1) : const Color(0xFF10B981).withOpacity(0.1);
+
+    if (status == 'pending' && dueDate != null) {
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final tomorrow = today.add(const Duration(days: 1));
+        final dueD = DateTime(dueDate.year, dueDate.month, dueDate.day);
+        if (dueD == today) {
+            badgeText = 'TODAY';
+        } else if (dueD == tomorrow) {
+            badgeText = 'TOMORROW';
+        } else if (dueD.isAfter(tomorrow)) {
+            badgeText = 'UPCOMING';
+        } else {
+            badgeText = 'OVERDUE';
+            badgeColor = const Color(0xFFEF4444);
+            badgeBgColor = const Color(0xFFEF4444).withOpacity(0.1);
+        }
+    }
+    
     String? amountStr = rem['amount']?.toString();
 
     IconData iconData = Icons.alarm;
@@ -979,6 +1054,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           ),
           CustomSlidableAction(
             onPressed: (context) async {
+              final confirm = await _showDeleteConfirmation(context);
+              if (confirm != true) return;
               final success = await ref.read(apiServiceProvider).deleteReminder(rem['id'] as int);
               if (success) ref.invalidate(remindersProvider);
             },
@@ -1071,8 +1148,17 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                         fontSize: 14,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('${rem['category'] ?? 'General'}${dueStr.isNotEmpty ? ' • Due: $dueStr' : ''}',
-                    style: TextStyle(color: _mutedColor, fontSize: 12)),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: '${rem['category'] ?? 'General'}', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                      if (dueStr.isNotEmpty)
+                        TextSpan(text: ' • ', style: TextStyle(color: _mutedColor, fontSize: 12)),
+                      if (dueStr.isNotEmpty)
+                        TextSpan(text: 'Due: $dueStr', style: TextStyle(color: const Color(0xFF3B82F6), fontSize: 12)),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1088,14 +1174,12 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                 : Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: status == 'pending' 
-                          ? Colors.white.withOpacity(0.1) 
-                          : const Color(0xFF10B981).withOpacity(0.1),
+                      color: badgeBgColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(status.toUpperCase(),
+                    child: Text(badgeText,
                         style: TextStyle(
-                            color: status == 'pending' ? Colors.white70 : const Color(0xFF10B981),
+                            color: badgeColor,
                             fontSize: 10,
                             fontWeight: FontWeight.bold)),
                   ),
@@ -1112,3 +1196,4 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     );
   }
 }
+

@@ -7,7 +7,7 @@ import 'package:fuel_cal/models/fuel_log_model.dart';
 import 'package:fuel_cal/widgets/odometer_gauge_painter.dart';
 import 'package:fuel_cal/models/expense_model.dart';
 import 'package:fuel_cal/mock_data.dart' hide Vehicle, FuelLog;
-import 'package:fuel_cal/services/ad_service.dart';
+
 import 'package:fuel_cal/feature_pages.dart';
 import 'package:fuel_cal/reminders_page.dart';
 import 'package:fuel_cal/add_fuel_page.dart';
@@ -23,6 +23,8 @@ import 'package:fuel_cal/fuel_log_details_page.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fuel_cal/add_expense_page.dart';
 import 'package:fuel_cal/add_reminder_page.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/widgets/vehicle_selector.dart';
 import 'package:intl/intl.dart';
@@ -52,6 +54,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     with AutomaticKeepAliveClientMixin {
   Set<int> _seenReminderIds = {};
   DateTime _overviewMonth = DateTime.now();
+
+  Future<bool?> _showDeleteConfirmation(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Entry', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to delete this entry? This action cannot be undone.', style: TextStyle(color: Colors.white70, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -340,7 +364,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   },
                 ),
                 const SizedBox(height: 24),
-                const BannerAdWidget(),
+                
                 const SizedBox(height: 100), // padding for bottom nav
               ],
             ),
@@ -358,11 +382,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   }
 
   Widget _buildHeader(bool hasUnreadAlerts, List<dynamic> currentPendingReminders, String profileName) {
-    final name = profileName.isNotEmpty ? profileName : '';
-    final firstLetter = name.isNotEmpty
-        ? name.trim()[0].toUpperCase()
-        : 'U';
-    final displayName = name.split(' ')[0];
+    final isAuthenticated = ref.watch(authProvider).isAuthenticated;
+    final name = isAuthenticated ? (profileName.isNotEmpty ? profileName : '') : '';
+    final displayName = isAuthenticated ? (name.isNotEmpty ? name.split(' ')[0] : '') : 'Guest!';
+    final firstLetter = isAuthenticated ? (name.isNotEmpty ? name.trim()[0].toUpperCase() : 'U') : 'G';
 
     final hour = DateTime.now().hour;
     String greeting = 'Good morning 👋';
@@ -696,7 +719,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                             children: [
                               Text('Amount Paid', style: TextStyle(color: textColor, fontSize: 11)),
                               const SizedBox(height: 2),
-                              Text('${CurrencyService.currencySymbol}${lastFillCost.toStringAsFixed(0)}', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text('${CurrencyService.currencySymbol}${lastFillCost.toStringAsFixed(2)}', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 2),
                               Text('Total paid for last refuel', style: TextStyle(color: mutedColor, fontSize: 9)),
                             ],
@@ -1590,7 +1613,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   }
 
   Widget _buildAlertsList(List<dynamic> reminders, Vehicle? displayVehicle) {
-    final vehiclesList = ref.read(vehiclesProvider).valueOrNull ?? [];
+    final vehiclesList = ref.read(vehiclesProvider).value ?? [];
     final vehicleReminders = displayVehicle != null 
         ? reminders.where((rem) {
             if (rem['vehicle_id'] == displayVehicle.id) return true;
@@ -1743,20 +1766,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       child: Icon(Icons.notifications_active_outlined,
                           color: textColor, size: 20),
                     ),
-                    if (severity == 'danger' || severity == 'warning')
-                      Positioned(
-                        top: -2,
-                        right: -2,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF4B4B),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: _backgroundColor, width: 2),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(width: 12),
@@ -1840,18 +1849,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
 
     return GestureDetector(
         onTap: () {
-          final vehicles = ref.read(vehiclesProvider).value ?? [];
-          if (vehicles.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please add a vehicle to your Garage first.'),
-                backgroundColor: Colors.redAccent,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-            return;
-          }
-
           if (onTap != null) {
             onTap();
           } else if (page != null) {
@@ -1947,6 +1944,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   ),
                   CustomSlidableAction(
                     onPressed: (context) async {
+                      final confirm = await _showDeleteConfirmation(context);
+                      if (confirm != true) return;
                       final success = await ref.read(apiServiceProvider).deleteFuelLog(log.id);
                       if (success) ref.invalidate(fuelLogsProvider);
                     },
@@ -2033,7 +2032,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                         Text('${CurrencyService.currencySymbol}${log.totalCost.toStringAsFixed(0)}',
+                         Text('${CurrencyService.currencySymbol}${log.totalCost.toStringAsFixed(2)}',
                             style: TextStyle(
                                 color: _textColor,
                                 fontSize: 14)),
@@ -2101,6 +2100,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   ),
                   CustomSlidableAction(
                     onPressed: (context) async {
+                      final confirm = await _showDeleteConfirmation(context);
+                      if (confirm != true) return;
                       bool success = false;
                       if (isService) {
                         success = await ref.read(apiServiceProvider).deleteService(expense.id);
@@ -2162,7 +2163,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('${CurrencyService.currencySymbol}${expense.amount.toStringAsFixed(0)}',
+                        Text('${CurrencyService.currencySymbol}${expense.amount.toStringAsFixed(2)}',
                             style: TextStyle(
                                 color: _textColor,
                                 fontSize: 14)),
@@ -2261,6 +2262,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                 ),
                 CustomSlidableAction(
                   onPressed: (context) async {
+                    final confirm = await _showDeleteConfirmation(context);
+                    if (confirm != true) return;
                     final success = await ref.read(apiServiceProvider).deleteReminder(reminder['id'] as int);
                     if (success) ref.invalidate(remindersProvider);
                   },
@@ -2422,3 +2425,4 @@ class _BlinkingDotState extends State<BlinkingDot> with SingleTickerProviderStat
     );
   }
 }
+

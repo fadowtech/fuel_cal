@@ -1,5 +1,5 @@
 import 'package:fuel_cal/services/currency_service.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -43,7 +43,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     
     final globalActiveVehicle = ref.watch(activeVehicleProvider);
     final vehiclesAsync = ref.watch(vehiclesProvider);
-    final vList = vehiclesAsync.valueOrNull ?? [];
+    final vList = vehiclesAsync.value ?? [];
     
     final activeVehicleToUse = _showAllVehicles 
         ? null 
@@ -110,7 +110,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 ),
               ),
             ),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),
@@ -158,7 +158,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                   value: -1,
                   child: Text("All Vehicles"),
                 ),
-                ...(ref.watch(vehiclesProvider).valueOrNull ?? []).map((v) {
+                ...(ref.watch(vehiclesProvider).value ?? []).map((v) {
                   return DropdownMenuItem<int>(
                     value: v.id,
                     child: Column(
@@ -260,8 +260,6 @@ class _StatsPageState extends ConsumerState<StatsPage> {
 
     double totalSpend = 0.0;
     for (var l in filteredLogs) totalSpend += l.totalCost;
-    for (var e in filteredExpenses) totalSpend += e.amount;
-    for (var s in filteredServices) totalSpend += s.amount;
 
     final prevLogs = logs.where((l) => l.date != null && !l.date!.isBefore(prevStartDate) && l.date!.isBefore(startDate)).toList();
     final prevExpenses = expenses.where((e) => e.date != null && !e.date!.isBefore(prevStartDate) && e.date!.isBefore(startDate)).toList();
@@ -269,8 +267,6 @@ class _StatsPageState extends ConsumerState<StatsPage> {
 
     double prevSpend = 0.0;
     for (var l in prevLogs) prevSpend += l.totalCost;
-    for (var e in prevExpenses) prevSpend += e.amount;
-    for (var s in prevServices) prevSpend += s.amount;
 
     double totalDistance = 0.0;
     double totalFuelLiters = 0.0;
@@ -387,7 +383,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           childAspectRatio: 1.15,
           children: [
         SparklineKpiCard(
-          title: 'Total spend',
+          title: 'Total fuel spend',
           value: '${CurrencyService.currencySymbol}${NumberFormat('#,##0').format(totalSpend)}',
           trendValue: '${spendTrend.abs().toStringAsFixed(1)}%',
           isTrendUp: spendTrend >= 0,

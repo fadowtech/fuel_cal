@@ -4,7 +4,7 @@ import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/reminder_details_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 import 'package:fuel_cal/models/vehicle_model.dart';
 class NotificationsPage extends ConsumerStatefulWidget {
   final Set<int> seenReminderIds;
@@ -47,7 +47,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     
     final globalActiveVehicle = ref.watch(activeVehicleProvider);
     final vehiclesAsync = ref.watch(vehiclesProvider);
-    final vList = vehiclesAsync.valueOrNull ?? [];
+    final vList = vehiclesAsync.value ?? [];
     
     final activeVehicleToUse = _showAllVehicles 
         ? null 
@@ -192,7 +192,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               error: (err, stack) => Center(child: Text('Error loading notifications', style: TextStyle(color: ThemeService.dangerColor))),
             ),
           ),
-          const BannerAdWidget(),
+          
         ],
       ),
     );
@@ -328,7 +328,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             ),
             Builder(
               builder: (context) {
-                final vehiclesList = ref.read(vehiclesProvider).valueOrNull ?? [];
+                final vehiclesList = ref.read(vehiclesProvider).value ?? [];
                 Vehicle? vehicle;
                 for (var v in vehiclesList) {
                   if (v.id == r['vehicle_id']) {

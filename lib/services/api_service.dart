@@ -5,7 +5,7 @@ import 'package:fuel_cal/services/otp_service.dart';
 import 'package:fuel_cal/services/currency_service.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://fuelvox.fadowtech.com:8001';
+  static const String baseUrl = 'https://test-fuelvox.fadowtech.com/api/';
   
   final Dio _dio = Dio(BaseOptions(baseUrl: baseUrl));
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -112,6 +112,12 @@ class ApiService {
           );
           if (meRes.data['currency_code'] != null) {
             await CurrencyService.saveCurrency(meRes.data['currency_code']);
+          } else {
+            // Backend has no currency, sync local choice if available
+            final localCurrency = await CurrencyService.getCurrency();
+            if (localCurrency != null && localCurrency.isNotEmpty) {
+              await updateProfile({'currency_code': localCurrency});
+            }
           }
         } catch (_) {
           final nameStr = email.split('@').first;
@@ -170,12 +176,14 @@ class ApiService {
       final firstName = parts.first;
       final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
       
+      final currency = await CurrencyService.getCurrency();
       final response = await _dio.post('/auth/signup', data: {
         'first_name': firstName,
         'last_name': lastName,
         'email': email,
         'password': password,
         if (gender.isNotEmpty) 'gender': gender,
+        if (currency != null && currency.isNotEmpty) 'currency_code': currency,
       });
       
       if (response.statusCode == 200 || response.statusCode == 201) {

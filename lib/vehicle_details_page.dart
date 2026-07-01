@@ -6,7 +6,7 @@ import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/add_vehicle_page.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 class VehicleDetailsPage extends ConsumerWidget {
   final Vehicle vehicle;
 
@@ -224,7 +224,7 @@ class VehicleDetailsPage extends ConsumerWidget {
                 ),
               ),
             ),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),

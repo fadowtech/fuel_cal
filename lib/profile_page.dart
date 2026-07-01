@@ -14,7 +14,9 @@ import 'package:fuel_cal/services/notification_service.dart';
 import 'package:fuel_cal/services/subscription_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
+import 'package:go_router/go_router.dart';
+
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
 Color get _cardColor => ThemeService.cardColor;
@@ -37,7 +39,7 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
-  String _selectedCurrencyCode = '';
+  String _selectedCurrencyCode = 'Select Currency';
   String _profileName = ProfileService.defaultName;
   String _profileEmail = ProfileService.defaultEmail;
   String _profilePhone = ProfileService.defaultPhone;
@@ -62,7 +64,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           } else if (currency != null && currency.isNotEmpty) {
             _selectedCurrencyCode = currency;
           } else {
-            _selectedCurrencyCode = 'INR';
+            _selectedCurrencyCode = 'Select Currency';
           }
         });
       }
@@ -223,11 +225,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             }
                             final currency = await CurrencyService.getCurrency();
                             if (currency != null && currency.isNotEmpty) {
+                              // Sync the new currency selection with the backend API
+                              final success = await ref.read(apiServiceProvider).updateProfile({'currency_code': currency});
+                              if (context.mounted) {
+                                if (success) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Currency updated successfully!')));
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update currency on server.')));
+                                }
+                              }
                               setState(() {
                                 _selectedCurrencyCode = currency;
                               });
                             }
-                            Navigator.pop(context);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                            }
                           },
                         ),
                       ),
@@ -445,14 +458,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               _buildSignOutButton(),
                     const SizedBox(height: 16),
                     Center(
-                        child: Text('Fuelvox v1.0.19',
+                        child: Text('Fuelvox v1.0.6',
                             style: TextStyle(color: _mutedColor, fontSize: 10))),
                     const SizedBox(height: 100), // padding for bottom nav
                   ],
                 ),
               ),
             ),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),
@@ -460,17 +473,33 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildProfileCard() {
+    final isAuthenticated = ref.watch(authProvider).isAuthenticated;
+
     // Robust checks to handle hot-reloads and prevent any uninitialized/null state issues
     final name = (_profileName != null && (_profileName as dynamic) != null && _profileName.isNotEmpty) ? _profileName : '';
     final email = (_profileEmail != null && (_profileEmail as dynamic) != null && _profileEmail.isNotEmpty) ? _profileEmail : '';
     final phone = (_profilePhone != null && (_profilePhone as dynamic) != null && _profilePhone.isNotEmpty) ? _profilePhone : '';
 
-    final firstLetter = name.isNotEmpty
-        ? name.trim()[0].toUpperCase()
-        : 'U';
+    final displayName = isAuthenticated ? (name.isNotEmpty ? name : '') : 'Guest Mode';
+    final displayEmail = isAuthenticated ? email : 'Sign in to save and see your data';
+    final displayPhone = isAuthenticated ? phone : '';
+
+    final firstLetter = isAuthenticated ? (name.isNotEmpty ? name.trim()[0].toUpperCase() : 'U') : 'G';
 
     return GestureDetector(
       onTap: () async {
+        if (!isAuthenticated) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please sign in to update your profile.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          ref.read(authProvider.notifier).clearGuestMode();
+          return;
+        }
+
         final updated = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -517,19 +546,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 children: [
                   if (_isLoading)
                     Container(width: 120, height: 18, margin: const EdgeInsets.only(bottom: 4), decoration: BoxDecoration(color: _surfaceColor, borderRadius: BorderRadius.circular(4)))
-                  else if (name.isNotEmpty)
-                    Text(name,
+                  else if (displayName.isNotEmpty)
+                    Text(displayName,
                         style: TextStyle(
                             color: ThemeService.textColor,
                             fontSize: 18,
                             fontWeight: FontWeight.bold)),
                   if (_isLoading)
                     Container(width: 150, height: 12, margin: const EdgeInsets.only(bottom: 4), decoration: BoxDecoration(color: _surfaceColor, borderRadius: BorderRadius.circular(4)))
-                  else if (email.isNotEmpty)
-                    Text(email,
+                  else if (displayEmail.isNotEmpty)
+                    Text(displayEmail,
                         style: TextStyle(color: _mutedColor, fontSize: 12)),
-                  if (!_isLoading && phone.isNotEmpty)
-                    Text(phone,
+                  if (!_isLoading && displayPhone.isNotEmpty)
+                    Text(displayPhone,
                         style: TextStyle(color: _mutedColor, fontSize: 12)),
                 ],
               ),
@@ -670,27 +699,42 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildSignOutButton() {
+    final isAuthenticated = ref.watch(authProvider).isAuthenticated;
+
     return GestureDetector(
       onTap: () async {
-        await ref.read(authProvider.notifier).logout();
+        if (isAuthenticated) {
+          await ref.read(authProvider.notifier).logout();
+        } else {
+          ref.read(authProvider.notifier).clearGuestMode();
+        }
       },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: _dangerColor.withOpacity(0.1),
+          color: isAuthenticated 
+              ? _dangerColor.withOpacity(0.1) 
+              : ThemeService.neonColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.logout, color: _dangerColor, size: 16),
+            Icon(
+              isAuthenticated ? Icons.logout : Icons.login, 
+              color: isAuthenticated ? _dangerColor : ThemeService.neonColor, 
+              size: 16
+            ),
             const SizedBox(width: 8),
-            Text('Sign out',
-                style: TextStyle(
-                    color: _dangerColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold)),
+            Text(
+              isAuthenticated ? 'Sign out' : 'Sign in',
+              style: TextStyle(
+                color: isAuthenticated ? _dangerColor : ThemeService.neonColor,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -704,7 +748,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         title: Text('Privacy Policy', style: TextStyle(color: ThemeService.textColor, fontWeight: FontWeight.bold)),
         content: SingleChildScrollView(
           child: Text(
-            '''This privacy policy applies to the Fuel Calculator app (hereby referred to as "Application") for mobile devices that was created by Emishper Raj (hereby referred to as "Service Provider") as a Free and Premium service. This service is intended for use "AS IS".
+            '''This privacy policy applies to the Fuelvox app (hereby referred to as "Application") for mobile devices that was created by Emishper Raj (hereby referred to as "Service Provider") as a Free and Premium service. This service is intended for use "AS IS".
 
 Information Collection, Data Storage, and Use
 The Application collects information when you download and use it. For a better experience, while using the Application, the Service Provider may require you to provide us with certain personally identifiable information (such as your name, email address, and vehicle details). This information is transmitted via a secure API and safely stored in the Service Provider's own database. The information that the Service Provider requests will be retained by them and used as described in this privacy policy.

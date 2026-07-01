@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fuel_cal/router/app_router.dart';
@@ -23,7 +22,10 @@ import 'package:fuel_cal/add_expense_page.dart';
 import 'package:fuel_cal/widgets/connectivity_wrapper.dart';
 import 'package:fuel_cal/services/notification_service.dart';
 import 'package:fuel_cal/services/subscription_service.dart';
+
 import 'package:fuel_cal/upgrade_page.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -43,19 +45,7 @@ String _formatNumber(double number) {
   }
 }
 
-void main() async {
-  // Ensure Flutter widgets are initialized before running the app
-  WidgetsFlutterBinding.ensureInitialized();
-  await ThemeService.init();
-  await NotificationService.init();
-  await CurrencyService.init();
-  await SubscriptionService.init();
-  await MobileAds.instance.initialize();
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    // Ignore error if .env doesn't exist
-  }
+void main() {
   runApp(const ProviderScope(child: FuelCalculatorApp()));
 }
 
@@ -75,6 +65,27 @@ class _FuelCalculatorAppState extends ConsumerState<FuelCalculatorApp> {
   void initState() {
     super.initState();
     _checkFirstLaunchAndLoadCurrency();
+    
+    // Initialize quick services in the background
+    Future.microtask(() async {
+      await ThemeService.init();
+      await CurrencyService.init();
+      
+      // Trigger a rebuild once ThemeService is initialized
+      if (mounted) setState(() {});
+    });
+    
+    // Initialize heavy services after a slight delay to allow the splash screen to fade away smoothly
+    Future.delayed(const Duration(milliseconds: 1500), () async {
+      try {
+        await dotenv.load(fileName: ".env");
+      } catch (e) {}
+      
+      // Timezone parsing can take seconds in Debug mode, so we delay it
+      await NotificationService.init();
+      
+      SubscriptionService.init();
+    });
   }
 
   Future<void> _checkFirstLaunchAndLoadCurrency() async {
@@ -117,7 +128,7 @@ class _FuelCalculatorAppState extends ConsumerState<FuelCalculatorApp> {
             );
           },
           debugShowCheckedModeBanner: false,
-          title: 'Fuel Calculator',
+          title: 'Fuelvox',
           theme: ThemeData(
             brightness: Brightness.light,
             primarySwatch: Colors.green,
@@ -250,6 +261,8 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
 
   @override
   Widget build(BuildContext context) {
+    final isGuest = ref.watch(authProvider).isGuest;
+    final isAuthenticated = ref.watch(authProvider).isAuthenticated;
     return ValueListenableBuilder<bool>(
       valueListenable: ThemeService.isDarkModeNotifier,
       builder: (context, isDark, child) {
@@ -323,6 +336,64 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
                 children: pages,
               ),
               if (_isFabMenuOpen) _buildFabOverlay(),
+              if (!isAuthenticated && isGuest && _selectedIndex != 4)
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOutBack,
+                  bottom: _isFabMenuOpen ? 360 : 130,
+                  left: 20,
+                  right: 20,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: ThemeService.cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: ThemeService.neonColor.withOpacity(0.5), width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: ThemeService.neonColor),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Please login to save and see your data.',
+                              style: TextStyle(
+                                color: ThemeService.textColor,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed: () {
+                            ref.read(authProvider.notifier).clearGuestMode();
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: ThemeService.neonColor.withOpacity(0.1),
+                            foregroundColor: ThemeService.neonColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Login', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
           bottomNavigationBar: _buildCustomBottomNav(),
@@ -377,7 +448,7 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
                       final reminders = ref.read(remindersProvider).value ?? [];
                       final maxReminders = ref.read(maxRemindersProvider).value ?? 5;
                       final activeVehicle = ref.read(activeVehicleProvider);
-                      final vehiclesList = ref.read(vehiclesProvider).valueOrNull ?? [];
+                      final vehiclesList = ref.read(vehiclesProvider).value ?? [];
                       final vehicleReminders = reminders.where((r) {
                         if (activeVehicle == null) return true;
                         int? vId;
@@ -440,7 +511,18 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
     return InkWell(
       onTap: () {
         setState(() => _isFabMenuOpen = false);
-        onTap();
+        final vehicles = ref.read(vehiclesProvider).value ?? [];
+        if (vehicles.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please add a vehicle to your Garage first.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          onTap();
+        }
       },
       borderRadius: BorderRadius.circular(16),
       child: Padding(
@@ -507,20 +589,9 @@ class _FuelCalculatorHomePageState extends ConsumerState<FuelCalculatorHomePage>
   Widget _buildAddFuelButton() {
     return GestureDetector(
       onTap: () {
-        final vehicles = ref.read(vehiclesProvider).value ?? [];
-        if (vehicles.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please add a vehicle to your Garage first.'),
-              backgroundColor: Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        } else {
-          setState(() {
-            _isFabMenuOpen = !_isFabMenuOpen;
-          });
-        }
+        setState(() {
+          _isFabMenuOpen = !_isFabMenuOpen;
+        });
       },
       child: Container(
         width: 68,
@@ -985,120 +1056,122 @@ class _EfficiencyCalculatorPageState extends State<EfficiencyCalculatorPage>
                   ),
                 ],
               ),
-              padding: const EdgeInsets.all(18),
-              child: Row(
+              child: Stack(
                 children: [
-                  Expanded(
+                  Padding(
+                    padding: const EdgeInsets.all(18),
                     child: Row(
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: _surfaceColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _neonColor
-                                  .withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.local_gas_station_rounded,
-                            color: _neonColor,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
                         Expanded(
-                          child: Column(
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Your Fuel Efficiency',
-                                    style: TextStyle(
-                                      color: _mutedColor,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    icon: Icon(Icons.copy, size: 16, color: _mutedColor),
-                                    onPressed: () {
-                                      String output = 'Fuel Efficiency Calculation:\n'
-                                          '  Distance Traveled: ${_distanceController.text} KM\n'
-                                          '  Fuel Used: ${_fuelUsedController.text} Liters\n'
-                                          '  Fuel Efficiency: ${_formatNumber(_fuelEfficiency)} KM/L\n'
-                                          '  Efficiency Rating: $_efficiencyRating';
-                                      _copyToClipboard(output);
-                                    },
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    _fuelEfficiency > 0.0
-                                        ? _formatNumber(_fuelEfficiency)
-                                        : '---',
-                                    style: TextStyle(
-                                      color: _neonColor,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1.0,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'KM/L',
-                                    style: TextStyle(
-                                      color: _textColor,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (_fuelEfficiency > 0.0 &&
-                                  _efficiencyRating.isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  _efficiencyRating,
-                                  style: TextStyle(
-                                    color: _efficiencyRating
-                                            .contains('Excellent')
-                                        ? _neonColor
-                                        : _efficiencyRating.contains('optimize')
-                                            ? Colors.orangeAccent
-                                            : Colors.blueAccent,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: _surfaceColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: _neonColor.withValues(alpha: 0.2),
                                   ),
                                 ),
-                              ],
+                                child: Icon(
+                                  Icons.local_gas_station_rounded,
+                                  color: _neonColor,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Your Fuel Efficiency',
+                                      style: TextStyle(
+                                        color: _mutedColor,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                                      textBaseline: TextBaseline.alphabetic,
+                                      children: [
+                                        Text(
+                                          _fuelEfficiency > 0.0
+                                              ? _formatNumber(_fuelEfficiency)
+                                              : '---',
+                                          style: TextStyle(
+                                            color: _neonColor,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 1.0,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'KM/L',
+                                          style: TextStyle(
+                                            color: _textColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (_fuelEfficiency > 0.0 &&
+                                        _efficiencyRating.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        _efficiencyRating,
+                                        style: TextStyle(
+                                          color: _efficiencyRating.contains('Excellent')
+                                              ? _neonColor
+                                              : _efficiencyRating.contains('optimize')
+                                                  ? Colors.orangeAccent
+                                                  : Colors.blueAccent,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ],
+                          ),
+                        ),
+                        // Speedometer Gauge Custom Paint
+                        SizedBox(
+                          width: 90,
+                          height: 70,
+                          child: CustomPaint(
+                            painter: SpeedometerPainter(
+                              value: _fuelEfficiency,
+                              maxValue: 40.0,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  // Speedometer Gauge Custom Paint
-                  SizedBox(
-                    width: 90,
-                    height: 70,
-                    child: CustomPaint(
-                      painter: SpeedometerPainter(
-                        value: _fuelEfficiency,
-                        maxValue: 40.0,
-                      ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: IconButton(
+                      icon: Icon(Icons.copy, color: _textColor.withOpacity(0.6)),
+                      onPressed: () {
+                        String output = 'Fuel Efficiency Calculation:\n'
+                            '  Distance Traveled: ${_distanceController.text} KM\n'
+                            '  Fuel Used: ${_fuelUsedController.text} Liters\n'
+                            '  Fuel Efficiency: ${_formatNumber(_fuelEfficiency)} KM/L\n'
+                            '  Efficiency Rating: $_efficiencyRating';
+                        _copyToClipboard(output);
+                      },
                     ),
                   ),
                 ],
@@ -2993,7 +3066,7 @@ class AboutPage extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Text(
-              'Fuel Calculator', // Static app name
+              'Fuelvox', // Static app name
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -3014,14 +3087,14 @@ class AboutPage extends StatelessWidget {
             Align(
               alignment: Alignment.center, // Center the main title
               child: Text(
-                'Fuel Calculator - All-in-One Fuel & Trip Planner',
+                'Fuelvox - All-in-One Fuel & Trip Planner',
                 style: Theme.of(context).textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 20),
             const Text(
-              'Welcome to **Fuel Calculator!** ⛽ Your ultimate companion for optimizing fuel consumption and managing travel costs efficiently. This intuitive app helps you quickly calculate various aspects of your journeys, ensuring you get the most out of every drop!',
+              'Welcome to **Fuelvox!** ⛽ Your ultimate companion for optimizing fuel consumption and managing travel costs efficiently. This intuitive app helps you quickly calculate various aspects of your journeys, ensuring you get the most out of every drop!',
               style: TextStyle(fontSize: 16.0, color: Colors.black87),
               textAlign: TextAlign.justify,
             ),

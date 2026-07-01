@@ -8,7 +8,8 @@ import '../sign_in_page.dart';
 import '../sign_up_page.dart';
 import '../dashboard_page.dart';
 import '../providers/auth_provider.dart';
-import '../services/currency_service.dart';
+import 'package:fuel_cal/services/currency_service.dart';
+import 'package:fuel_cal/services/api_service.dart';
 import '../services/profile_service.dart';
 import '../main.dart';
 import '../otp_page.dart';
@@ -20,6 +21,7 @@ import '../onboarding_settings_page.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   final isAuthenticated = ref.watch(authProvider.select((s) => s.isAuthenticated));
   final isInitializing = ref.watch(authProvider.select((s) => s.isInitializing));
+  final isGuest = ref.watch(authProvider.select((s) => s.isGuest));
 
   return GoRouter(
     initialLocation: '/splash',
@@ -39,11 +41,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isAuthenticated ? '/dashboard' : '/signin';
       }
 
-      if (!isAuthenticated && !isLoggingIn) {
+      if (!isAuthenticated && !isGuest && !isLoggingIn) {
         return '/signin';
       }
 
-      if (isAuthenticated && isLoggingIn) {
+      if ((isAuthenticated || isGuest) && isLoggingIn) {
         return '/dashboard';
       }
 
@@ -52,10 +54,14 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (context, state) => const Scaffold(
-          backgroundColor: Color(0xFF1E1E1E),
+        builder: (context, state) => Scaffold(
+          backgroundColor: Colors.black,
           body: Center(
-            child: CircularProgressIndicator(color: Color(0xFF00E676)),
+            child: Image.asset(
+              'assets/icon/app_icon.png',
+              width: 144, // Match typical native splash icon size
+              height: 144,
+            ),
           ),
         ),
       ),
@@ -105,8 +111,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/currency_onboarding',
         builder: (context, state) => CurrencySelectionPage(
           isOnboarding: true,
-          onCurrencySelected: () {
-            context.go('/settings_onboarding');
+          onCurrencySelected: () async {
+            final isGuest = ref.read(authProvider).isGuest;
+            if (!isGuest) {
+              final currencyCode = await CurrencyService.getCurrency();
+              if (currencyCode != null && currencyCode.isNotEmpty) {
+                try {
+                  await ApiService().updateProfile({'currency_code': currencyCode});
+                } catch (_) {}
+              }
+              context.go('/settings_onboarding');
+            } else {
+              context.go('/dashboard');
+            }
           },
         ),
       ),
@@ -118,14 +135,14 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class MainDashboardWrapper extends StatefulWidget {
+class MainDashboardWrapper extends ConsumerStatefulWidget {
   const MainDashboardWrapper({super.key});
 
   @override
-  State<MainDashboardWrapper> createState() => _MainDashboardWrapperState();
+  ConsumerState<MainDashboardWrapper> createState() => _MainDashboardWrapperState();
 }
 
-class _MainDashboardWrapperState extends State<MainDashboardWrapper> {
+class _MainDashboardWrapperState extends ConsumerState<MainDashboardWrapper> {
   String _selectedCurrencyCode = '';
   String _selectedCurrencySymbol = '';
   bool _isLoading = true;
@@ -138,8 +155,10 @@ class _MainDashboardWrapperState extends State<MainDashboardWrapper> {
   }
 
   Future<void> _checkLockAndLoad() async {
+    final isGuest = ref.read(authProvider).isGuest;
+
     final hasCurrency = await CurrencyService.hasSelectedCurrency();
-    if (!hasCurrency) {
+    if (!hasCurrency && !isGuest) {
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           context.go('/currency_onboarding');
@@ -152,14 +171,16 @@ class _MainDashboardWrapperState extends State<MainDashboardWrapper> {
     final email = profile['email'] ?? '';
     final prefs = await SharedPreferences.getInstance();
     
-    final hasCompletedSettings = prefs.getBool('onboarding_settings_completed_$email') ?? false;
-    if (!hasCompletedSettings) {
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          context.go('/settings_onboarding');
-        });
+    if (!isGuest) {
+      final hasCompletedSettings = prefs.getBool('onboarding_settings_completed_$email') ?? false;
+      if (!hasCompletedSettings) {
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.go('/settings_onboarding');
+          });
+        }
+        return;
       }
-      return;
     }
 
     final fpEnabled = prefs.getBool('fingerprint_enabled_$email') ?? false;

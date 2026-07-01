@@ -3,7 +3,7 @@ import 'package:fuel_cal/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/manage_fuel_service.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 class ManageFuelPage extends StatefulWidget {
   const ManageFuelPage({super.key});
 
@@ -99,7 +99,7 @@ class _ManageFuelPageState extends State<ManageFuelPage> with SingleTickerProvid
                     ],
                   ),
                 ),
-                const BannerAdWidget(),
+                
               ],
             ),
     );

@@ -41,15 +41,10 @@ class _CurrencySelectionPageState extends State<CurrencySelectionPage> {
     });
   }
 
-  void _onCurrencyTapped(String code) async {
+  void _onCurrencyTapped(String code) {
     setState(() {
       _selectedCurrency = code;
     });
-    await CurrencyService.saveCurrency(code);
-    try {
-      await ApiService().updateProfile({'currency_code': code});
-    } catch (_) {}
-    widget.onCurrencySelected();
   }
 
   @override
@@ -84,6 +79,7 @@ class _CurrencySelectionPageState extends State<CurrencySelectionPage> {
                 },
               ),
             ),
+            _buildNextButton(),
           ],
         ),
       ),
@@ -110,7 +106,7 @@ class _CurrencySelectionPageState extends State<CurrencySelectionPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Currency',
+                'Choose the Currency',
                 style: TextStyle(
                   color: ThemeService.textColor,
                   fontSize: 20,
@@ -119,7 +115,7 @@ class _CurrencySelectionPageState extends State<CurrencySelectionPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                'Choose your preferred currency',
+                'Select your preferred currency',
                 style: TextStyle(
                   color: ThemeService.mutedColor,
                   fontSize: 14,
@@ -258,6 +254,64 @@ class _CurrencySelectionPageState extends State<CurrencySelectionPage> {
                   : null,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNextButton() {
+    final isEnabled = _selectedCurrency != null;
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: GestureDetector(
+        onTap: isEnabled ? () async {
+          await CurrencyService.saveCurrency(_selectedCurrency!);
+          widget.onCurrencySelected();
+        } : null,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isEnabled
+                  ? [ThemeService.neonColor, const Color(0xFF00BFA5)]
+                  : [Colors.grey.shade800, Colors.grey.shade800],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: isEnabled
+                ? [
+                    BoxShadow(
+                      color: ThemeService.neonColor.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                isEnabled 
+                    ? 'Continue with ${CurrencyService.getCurrencySymbol(_selectedCurrency!)} $_selectedCurrency'
+                    : 'Select Currency',
+                style: TextStyle(
+                  color: isEnabled ? Colors.black : Colors.grey.shade500,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (isEnabled) ...[
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Colors.black,
+                  size: 20,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

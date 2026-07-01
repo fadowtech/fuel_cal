@@ -6,7 +6,7 @@ import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/providers/data_provider.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 class UpperCaseTextFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
@@ -320,8 +320,8 @@ class _AddVehiclePageState extends ConsumerState<AddVehiclePage> {
                     _buildSectionHeader(Icons.more_horiz, 'ADDITIONAL (OPTIONAL)'),
                     _buildAdditionalSection(),
                     const SizedBox(height: 32),
-                  if (MediaQuery.of(context).viewInsets.bottom == 0)
-                    const BannerAdWidget(),
+
+                    
                   ],
                 ),
               ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/services/api_service.dart';
 import 'package:fuel_cal/add_reminder_page.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 
 class ReminderDetailsPage extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -411,7 +411,7 @@ class ReminderDetailsPage extends StatelessWidget {
                 ],
               ),
             ),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),

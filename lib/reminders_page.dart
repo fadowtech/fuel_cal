@@ -7,7 +7,7 @@ import 'package:fuel_cal/services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 import 'package:fuel_cal/providers/auth_provider.dart';
 import 'package:fuel_cal/services/subscription_service.dart';
 import 'package:fuel_cal/upgrade_page.dart';
@@ -100,7 +100,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
         int? vId;
         if (r['vehicle_id'] != null) vId = r['vehicle_id'] is int ? r['vehicle_id'] : int.tryParse(r['vehicle_id'].toString());
         if (vId == activeVehicle.id) return true;
-        final vList = ref.read(vehiclesProvider).valueOrNull ?? [];
+        final vList = ref.read(vehiclesProvider).value ?? [];
         if (vId == null && vList.isNotEmpty && vList.first.id == activeVehicle.id) return true;
         return false;
       }).toList();
@@ -237,7 +237,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
                   ],
                   
                   const SizedBox(height: 32),
-                  const BannerAdWidget(),
+                  
                 ],
               ),
             ),
@@ -308,6 +308,17 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
           const Spacer(),
           GestureDetector(
             onTap: () {
+              final vehicles = ref.read(vehiclesProvider).value ?? [];
+              if (vehicles.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please add a vehicle to your Garage first.'),
+                    backgroundColor: Colors.redAccent,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
               if (_upcomingReminders.length + _completedReminders.length >= _maxReminders) {
                 _showUpgradeDialog();
                 return;
@@ -1096,10 +1107,43 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
           ),
           CustomSlidableAction(
             onPressed: (context) async {
-              final success = await ApiService().deleteReminder(data['id'] as int);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E1E24),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text('Delete Entry', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  content: const Text('Are you sure you want to delete this entry? This action cannot be undone.', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm != true) return;
+              
+              int reminderId = 0;
+              final rawData = data['raw_data'];
+              if (rawData != null && rawData['id'] != null) {
+                if (rawData['id'] is int) reminderId = rawData['id'];
+                else if (rawData['id'] is String) reminderId = int.tryParse(rawData['id']) ?? 0;
+              }
+
+              final success = await ref.read(apiServiceProvider).deleteReminder(reminderId);
               if (success) {
                 ref.invalidate(remindersProvider);
                 _fetchReminders();
+              } else {
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(content: Text('Failed to delete reminder. Check your internet connection.')),
+                );
               }
             },
             backgroundColor: const Color(0xFFEF4444),

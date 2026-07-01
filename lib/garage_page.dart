@@ -7,9 +7,11 @@ import 'package:fuel_cal/models/vehicle_model.dart';
 import 'package:fuel_cal/add_vehicle_page.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:fuel_cal/vehicle_details_page.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 import 'package:fuel_cal/services/subscription_service.dart';
 import 'package:fuel_cal/upgrade_page.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -85,7 +87,7 @@ class _GaragePageState extends ConsumerState<GaragePage> {
                 ),
               ),
             ),
-            const BannerAdWidget(),
+            
           ],
         ),
       ),
@@ -99,7 +101,7 @@ class _GaragePageState extends ConsumerState<GaragePage> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('My garage',
+            Text('My Garage',
                 style: TextStyle(
                     color: ThemeService.textColor,
                     fontSize: 24,
@@ -110,6 +112,18 @@ class _GaragePageState extends ConsumerState<GaragePage> {
         ),
         GestureDetector(
           onTap: () async {
+            final isAuthenticated = ref.read(authProvider).isAuthenticated;
+            if (!isAuthenticated) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please sign in to add new vehicles.'),
+                  backgroundColor: Colors.redAccent,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              ref.read(authProvider.notifier).clearGuestMode();
+              return;
+            }
             final plan = await SubscriptionService.getCurrentPlan();
             final maxVehicles = SubscriptionService.getMaxVehicles(plan);
             if (count >= maxVehicles) {

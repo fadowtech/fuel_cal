@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:fuel_cal/main.dart'; // To access the calculator pages
 import 'package:fuel_cal/currency_selection_page.dart';
 import 'package:fuel_cal/services/currency_service.dart';
+import 'package:fuel_cal/services/api_service.dart';
 import 'package:fuel_cal/services/theme_service.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 
 Color get _surfaceColor => ThemeService.surfaceColor;
 Color get _neonColor => ThemeService.neonColor;
@@ -126,21 +127,63 @@ class _ToolsPageState extends State<ToolsPage> {
                   final toolColor = tool['color'] as Color;
                   
                   return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => _CalculatorWrapper(
-                            initialIndex: tool['pageIndex'] as int,
-                            selectedCurrencySymbol: _selectedCurrencySymbol,
-                            selectedCurrencyCode: _selectedCurrencyCode,
-                            onCurrencyChanged: () async {
-                              widget.onCurrencyChanged();
-                              await _loadCurrency();
-                            },
+                    onTap: () async {
+                      final hasCurrency = await CurrencyService.hasSelectedCurrency();
+                      if (!hasCurrency && context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CurrencySelectionPage(
+                              isOnboarding: true,
+                              onCurrencySelected: () async {
+                                Navigator.pop(context);
+                                widget.onCurrencyChanged();
+                                await _loadCurrency();
+                                final currencyCode = await CurrencyService.getCurrency();
+                                if (currencyCode != null && currencyCode.isNotEmpty) {
+                                  try {
+                                    await ApiService().updateProfile({'currency_code': currencyCode});
+                                  } catch (_) {}
+                                }
+                                if (context.mounted) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => _CalculatorWrapper(
+                                        initialIndex: tool['pageIndex'] as int,
+                                        selectedCurrencySymbol: _selectedCurrencySymbol,
+                                        selectedCurrencyCode: _selectedCurrencyCode,
+                                        onCurrencyChanged: () async {
+                                          widget.onCurrencyChanged();
+                                          await _loadCurrency();
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                        return;
+                      }
+
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => _CalculatorWrapper(
+                              initialIndex: tool['pageIndex'] as int,
+                              selectedCurrencySymbol: _selectedCurrencySymbol,
+                              selectedCurrencyCode: _selectedCurrencyCode,
+                              onCurrencyChanged: () async {
+                                widget.onCurrencyChanged();
+                                await _loadCurrency();
+                              },
+                            ),
+                          ),
+                        );
+                      }
                     },
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -298,6 +341,9 @@ class _CalculatorWrapperState extends State<_CalculatorWrapper> {
                 _selectedCurrencyCode = currency;
                 _selectedCurrencySymbol = CurrencyService.getCurrencySymbol(currency);
               });
+              try {
+                await ApiService().updateProfile({'currency_code': currency});
+              } catch (_) {}
             }
             Navigator.pop(context);
           },
@@ -318,7 +364,7 @@ class _CalculatorWrapperState extends State<_CalculatorWrapper> {
         systemOverlayStyle: ThemeService.isDarkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
         iconTheme: IconThemeData(color: _textColor),
         title: Text(
-          'Fuel Calculator',
+          'Fuelvox',
           style: TextStyle(
             color: _textColor,
             fontWeight: FontWeight.bold,
@@ -342,7 +388,7 @@ class _CalculatorWrapperState extends State<_CalculatorWrapper> {
                 child: Row(
                   children: [
                     Text(
-                      _selectedCurrencyCode.isNotEmpty ? _selectedCurrencyCode : 'INR',
+                      _selectedCurrencyCode.isNotEmpty && _selectedCurrencyCode != 'Select Currency' ? _selectedCurrencyCode : 'Select',
                       style: TextStyle(
                         color: _textColor,
                         fontSize: 13,

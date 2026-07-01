@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/services/api_service.dart';
 import 'package:fuel_cal/services/theme_service.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -223,24 +223,7 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                                     ),
                                   ),
                                 ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: Container(
-                                    width: 34,
-                                    height: 34,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: ThemeService.isDarkMode ? const Color(0xFF141921) : const Color(0xFFE2E8F0),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Icon(
-                                      Icons.camera_alt_outlined,
-                                      color: _neonColor,
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
+
                               ],
                             ),
                           ),
@@ -383,8 +366,8 @@ class _ProfileUpdatePageState extends State<ProfileUpdatePage> {
                     ),
                   ),
                 ),
-                if (MediaQuery.of(context).viewInsets.bottom == 0)
-                  const BannerAdWidget(),
+
+                  
               ],
             ),
           ),

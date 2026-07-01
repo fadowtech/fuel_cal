@@ -7,7 +7,7 @@ import 'package:fuel_cal/providers/data_provider.dart';
 import 'package:fuel_cal/services/theme_service.dart';
 import 'package:intl/intl.dart';
 import 'package:fuel_cal/models/expense_model.dart';
-import 'package:fuel_cal/services/ad_service.dart';
+
 Color get _neonColor => ThemeService.neonColor;
 Color get _surfaceColor => ThemeService.surfaceColor;
 Color get _cardColor => ThemeService.cardColor;
@@ -64,7 +64,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     super.initState();
     if (widget.existingExpense != null) {
       final e = widget.existingExpense!;
-      _amount.text = e.amount.toStringAsFixed(0);
+      _amount.text = e.amount.toStringAsFixed(2);
       _title.text = e.title;
       _categoryController.text = e.category;
       _selectedDate = e.date ?? DateTime.now();
@@ -195,7 +195,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
 
   void _addAmount(double add) {
     final current = double.tryParse(_amount.text) ?? 0.0;
-    _amount.text = (current + add).toStringAsFixed(0);
+    _amount.text = (current + add).toStringAsFixed(2);
   }
 
   Future<void> _pickDate() async {
@@ -531,8 +531,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                     ),
                   ),
                   SizedBox(height: 24),
-                if (MediaQuery.of(context).viewInsets.bottom == 0)
-                  const BannerAdWidget(),
+
+                  
                 ],
               ),
             ),
@@ -720,3 +720,4 @@ class _Section extends StatelessWidget {
     );
   }
 }
+
