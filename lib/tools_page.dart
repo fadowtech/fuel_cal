@@ -3,8 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:fuel_cal/main.dart'; // To access the calculator pages
 import 'package:fuel_cal/currency_selection_page.dart';
 import 'package:fuel_cal/services/currency_service.dart';
+import 'package:fuel_cal/services/currency_service.dart';
 import 'package:fuel_cal/services/api_service.dart';
+import 'package:fuel_cal/services/profile_service.dart';
 import 'package:fuel_cal/services/theme_service.dart';
+import 'package:fuel_cal/providers/auth_provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 
 Color get _surfaceColor => ThemeService.surfaceColor;
@@ -141,9 +145,14 @@ class _ToolsPageState extends State<ToolsPage> {
                                 await _loadCurrency();
                                 final currencyCode = await CurrencyService.getCurrency();
                                 if (currencyCode != null && currencyCode.isNotEmpty) {
-                                  try {
-                                    await ApiService().updateProfile({'currency_code': currencyCode});
-                                  } catch (_) {}
+                                  final storage = const FlutterSecureStorage();
+                                  final token = await storage.read(key: 'access_token');
+                                  final isGuest = token == null || token.isEmpty;
+                                  if (!isGuest) {
+                                    try {
+                                      await ApiService().updateProfile({'currency_code': currencyCode});
+                                    } catch (_) {}
+                                  }
                                 }
                                 if (context.mounted) {
                                   Navigator.push(
@@ -341,9 +350,14 @@ class _CalculatorWrapperState extends State<_CalculatorWrapper> {
                 _selectedCurrencyCode = currency;
                 _selectedCurrencySymbol = CurrencyService.getCurrencySymbol(currency);
               });
-              try {
-                await ApiService().updateProfile({'currency_code': currency});
-              } catch (_) {}
+              final storage = const FlutterSecureStorage();
+              final token = await storage.read(key: 'access_token');
+              final isGuest = token == null || token.isEmpty;
+              if (!isGuest) {
+                try {
+                  await ApiService().updateProfile({'currency_code': currency});
+                } catch (_) {}
+              }
             }
             Navigator.pop(context);
           },

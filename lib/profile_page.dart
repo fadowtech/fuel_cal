@@ -225,13 +225,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             }
                             final currency = await CurrencyService.getCurrency();
                             if (currency != null && currency.isNotEmpty) {
-                              // Sync the new currency selection with the backend API
-                              final success = await ref.read(apiServiceProvider).updateProfile({'currency_code': currency});
-                              if (context.mounted) {
-                                if (success) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Currency updated successfully!')));
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update currency on server.')));
+                              final isAuthenticated = !ref.read(authProvider).isGuest;
+                              if (isAuthenticated) {
+                                // Sync the new currency selection with the backend API
+                                final errorMsg = await ref.read(apiServiceProvider).updateProfile({'currency_code': currency});
+                                if (context.mounted) {
+                                  if (errorMsg == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Currency updated successfully!')));
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $errorMsg')));
+                                  }
                                 }
                               }
                               setState(() {

@@ -13,6 +13,7 @@ def get_current_user_profile(current_user: models.User = Depends(auth.get_curren
     return current_user
 
 @router.put("/me", response_model=schemas.User)
+@router.post("/me", response_model=schemas.User)
 def update_current_user_profile(
     user_update: schemas.UserUpdate, 
     db: Session = Depends(database.get_db), 

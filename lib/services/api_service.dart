@@ -251,17 +251,16 @@ class ApiService {
     await _storage.delete(key: 'user_password');
   }
 
-  Future<bool> updateProfile(Map<String, dynamic> data) async {
+  Future<String?> updateProfile(Map<String, dynamic> data) async {
     try {
-      await _dio.put('/users/me', data: data);
-      return true;
+      await _dio.post('/users/me', data: data);
+      return null;
     } catch (e) {
       if (e is DioException) {
         print('updateProfile error response: ${e.response?.data}');
-      } else {
-        print('updateProfile error: $e');
+        return e.response?.data?.toString() ?? e.message;
       }
-      return false;
+      return e.toString();
     }
   }
 
